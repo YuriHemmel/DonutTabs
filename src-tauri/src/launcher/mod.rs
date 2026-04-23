@@ -32,6 +32,21 @@ pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
     Ok(outcome)
 }
 
+pub struct TauriOpener<'a, R: tauri::Runtime> {
+    app: &'a tauri::AppHandle<R>,
+}
+
+impl<'a, R: tauri::Runtime> TauriOpener<'a, R> {
+    pub fn new(app: &'a tauri::AppHandle<R>) -> Self { Self { app } }
+}
+
+impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        use tauri_plugin_opener::OpenerExt;
+        self.app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
