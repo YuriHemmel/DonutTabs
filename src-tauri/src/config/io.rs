@@ -44,7 +44,7 @@ mod tests {
         let path = dir.path().join("config.json");
         std::fs::write(&path, "{ not json").unwrap();
         let err = load_from_path(&path).unwrap_err();
-        matches!(err, AppError::Config(_));
+        assert!(matches!(err, AppError::Config(_)), "got: {err:?}");
     }
 
     #[test]
@@ -55,6 +55,6 @@ mod tests {
         cfg.pagination.items_per_page = 99;
         std::fs::write(&path, serde_json::to_string(&cfg).unwrap()).unwrap();
         let err = load_from_path(&path).unwrap_err();
-        matches!(err, AppError::Config(_));
+        assert!(matches!(err, AppError::Config(_)), "got: {err:?}");
     }
 }
