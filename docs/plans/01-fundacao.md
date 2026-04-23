@@ -123,7 +123,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
-ts-rs = { version = "9", features = ["serde-compat"] }
+ts-rs = { version = "9", features = ["serde-compat", "uuid-impl"] }
 mouse_position = "0.1"
 url = "2"
 ```
@@ -328,7 +328,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub version: u32,
@@ -341,19 +341,19 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct Appearance {
     pub theme: Theme,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub enum Theme { Dark, Light, Auto }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct Interaction {
     pub spawn_position: SpawnPosition,
@@ -362,17 +362,17 @@ pub struct Interaction {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub enum SpawnPosition { Cursor, Center }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub enum SelectionMode { ClickOrRelease, HoverRelease, ClickOnly }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct Pagination {
     pub items_per_page: u8,
@@ -380,19 +380,19 @@ pub struct Pagination {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub enum WheelDirection { Standard, Inverted }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct SystemConfig {
     pub autostart: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct Tab {
     pub id: Uuid,
@@ -404,12 +404,12 @@ pub struct Tab {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub enum OpenMode { ReuseOrNewWindow, NewWindow, NewTab }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../src/core/types/")]
+#[ts(export, export_to = "../../src/core/types/")]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Item {
     #[serde(rename_all = "camelCase")]
