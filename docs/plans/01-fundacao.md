@@ -158,10 +158,11 @@ git commit -m "chore: add Tauri plugins and Rust/npm deps"
 
 ---
 
-### Task 3: Configurar janelas e permissões em `tauri.conf.json`
+### Task 3: Configurar janelas, permissões e feature `macos-private-api`
 
 **Arquivos:**
 - Modificar: `src-tauri/tauri.conf.json`
+- Modificar: `src-tauri/Cargo.toml` (feature `macos-private-api` no crate `tauri` — exigido pelo flag `macOSPrivateApi` da config)
 
 - [ ] **Step 3.1 — Substituir seção `app.windows`**
 
@@ -173,6 +174,12 @@ Em `app`, adicionar:
 
 ```json
 "macOSPrivateApi": true
+```
+
+Também atualizar a linha do crate `tauri` em `src-tauri/Cargo.toml` para habilitar a feature correspondente (Tauri 2 exige paridade entre esse flag e a feature de cargo):
+
+```toml
+tauri = { version = "2", features = ["macos-private-api"] }
 ```
 
 - [ ] **Step 3.3 — Adicionar capabilities**
@@ -207,8 +214,8 @@ cd src-tauri && cargo check && cd ..
 - [ ] **Step 3.5 — Commit**
 
 ```bash
-git add src-tauri/tauri.conf.json src-tauri/capabilities/default.json
-git commit -m "chore: configure Tauri windows and capabilities"
+git add src-tauri/tauri.conf.json src-tauri/capabilities/default.json src-tauri/Cargo.toml
+git commit -m "chore: configure Tauri windows, capabilities and macos-private-api feature"
 ```
 
 ---
