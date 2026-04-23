@@ -118,7 +118,8 @@ Resolvido via `app_config_dir()` do Tauri — sem hardcode.
   "shortcut": "Ctrl+Shift+Space",
 
   "appearance": {
-    "theme": "dark"                     // "dark" | "light" | "auto" (padrão: "dark")
+    "theme": "dark",                    // "dark" | "light" | "auto" (padrão: "dark")
+    "language": "auto"                  // "pt-BR" | "en" | "auto" (padrão: "auto" — usa navigator.language, fallback "en")
   },
 
   "interaction": {
@@ -170,6 +171,7 @@ Resolvido via `app_config_dir()` do Tauri — sem hardcode.
 
 ### 4.5. Espaço reservado para fases futuras
 
+- `appearance.language` ativo a partir da Fase 2 (i18n — "auto" | "pt-BR" | "en", com espaço para mais idiomas). Campo já reservado no schema do MVP, porém ignorado até a Fase 2.
 - `profiles[]` (perfis — Fase 2)
 - `appearance` ganhando acentos, transparência, customização por perfil (Fase 4)
 - `items[].kind` aceitando `"file"`, `"app"`, `"folder"`, `"script"` (Fase 3)
@@ -275,6 +277,17 @@ Arquivo rotativo em `app_log_dir()` do Tauri. Níveis: INFO (eventos normais), W
 
 Telemetria e relatórios de crash automáticos não entram no MVP. Se necessário depois, entram com opt-in explícito.
 
+### 6.7. Mensagens de erro e i18n (Fase 2+)
+
+No MVP, mensagens de erro dentro de `AppError` são strings livres em português. A partir da **Fase 2** (quando o i18n entra), `AppError` evolui para variantes com **código estruturado + contexto** em vez de mensagem pronta. Exemplo:
+
+- MVP: `AppError::Config("itemsPerPage deve estar entre 4 e 8 (got 99)")`
+- Fase 2+: `AppError::Config { code: "items_per_page_out_of_range", context: { got: 99 } }`
+
+O frontend recebe o código e usa a chave de tradução correspondente (`errors.config.itemsPerPageOutOfRange`) com interpolação de `context`. Isso desacopla texto de lógica e evita strings hardcoded no núcleo Rust.
+
+Logs internos (arquivo) continuam em inglês técnico — independentes da localização da UI do usuário.
+
 ### 6.7. Princípio geral
 
 Nunca perder dados do usuário em silêncio. Nunca travar o fluxo principal por erro em borda. Sempre deixar rastro (log + notificação).
@@ -341,6 +354,8 @@ Testar **comportamento** na fronteira, não implementação. Cada módulo tem co
 
 ### 8.2. Fase 2 (v0.2) — qualidade de vida
 
+- **i18n (primeira sub-task da fase, antes da UI de Settings)**: `react-i18next` no frontend, arquivos JSON em `src/locales/{pt-BR,en}.json`, seletor de idioma no Settings, detecção automática via `navigator.language` com fallback para `en`. `AppError` do Rust evolui para códigos estruturados + contexto (ver Seção 6.7) em vez de strings livres. Toda string nova da UI do Settings já nasce traduzível. Arquitetura acomoda novos idiomas (es, etc.) apenas adicionando o JSON.
+- **Janela de configurações (Settings)** com todos os componentes previstos no design: `<TabList>`, `<TabEditor>`, `<ShortcutRecorder>`, `<AppearanceSection>`. Comandos Rust `save_tab`, `delete_tab`, `set_shortcut` com write atômica. Evento `config-changed` sincronizando as duas janelas. Fatia "+" no donut abrindo Settings no modo "nova aba".
 - **Perfis** (múltiplos usuários / contextos no mesmo computador) no lado direito do círculo central: clicar entra em "modo perfil" — as fatias externas viram sub-fatias dos perfis disponíveis, com uma fatia "+" para criar novo perfil (leva ao Settings). Hover + clique troca o perfil ativo e o donut volta ao modo normal com as abas do perfil selecionado. Mesma linguagem visual do donut principal.
 - Cada perfil tem: suas próprias abas, atalho e tema.
 - Menu de contexto (clique direito) nas abas como caminho alternativo para editar/excluir.
