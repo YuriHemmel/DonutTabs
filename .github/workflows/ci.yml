@@ -83,3 +83,12 @@ jobs:
       - name: cargo test
         working-directory: src-tauri
         run: cargo test --lib
+
+      - name: Verify ts-rs bindings are up to date (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          if ! git diff --exit-code src/core/types/; then
+            echo "::error::ts-rs bindings in src/core/types/ are out of date."
+            echo "::error::Run 'cd src-tauri && cargo test --lib config::schema' locally and commit the changes."
+            exit 1
+          fi
