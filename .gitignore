@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ts-rs generated bindings (regenerated during Rust tests)
+src/core/types/
