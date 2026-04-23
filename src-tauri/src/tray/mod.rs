@@ -3,7 +3,7 @@ use crate::errors::AppResult;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, Runtime,
+    Runtime,
 };
 
 pub fn setup<R: Runtime>(app: &tauri::App<R>) -> AppResult<()> {

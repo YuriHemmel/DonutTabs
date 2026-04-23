@@ -1011,6 +1011,7 @@ git commit -m "feat(commands): AppState and get_config/open_tab/hide_donut"
 
 **Arquivos:**
 - Modificar: `src-tauri/src/tray/mod.rs`
+- Modificar: `src-tauri/Cargo.toml` (adicionar feature `tray-icon` ao crate `tauri` — exigida por `tauri::menu` e `tauri::tray`)
 
 - [ ] **Step 11.1 — Implementar tray**
 
@@ -1021,7 +1022,7 @@ use crate::errors::AppResult;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, Runtime,
+    Runtime,
 };
 
 pub fn setup<R: Runtime>(app: &tauri::App<R>) -> AppResult<()> {
@@ -1052,7 +1053,15 @@ pub fn setup<R: Runtime>(app: &tauri::App<R>) -> AppResult<()> {
 }
 ```
 
-- [ ] **Step 11.2 — Verificar compila (vai falhar — `donut_window::show` não existe ainda)**
+- [ ] **Step 11.2 — Adicionar feature `tray-icon` ao crate `tauri` em `Cargo.toml`**
+
+A linha do crate `tauri` deve ficar:
+
+```toml
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+```
+
+- [ ] **Step 11.3 — Verificar compila (vai falhar — `donut_window::show` não existe ainda)**
 
 Deixar o import `use crate::donut_window;` — a próxima task implementa.
 
