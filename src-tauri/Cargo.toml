@@ -25,7 +25,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
-ts-rs = { version = "9", features = ["serde-compat"] }
+ts-rs = { version = "9", features = ["serde-compat", "uuid-impl"] }
 mouse_position = "0.1"
 url = "2"
 
