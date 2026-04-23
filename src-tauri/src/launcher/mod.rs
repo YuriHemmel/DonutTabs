@@ -14,7 +14,10 @@ pub struct LaunchOutcome {
 }
 
 pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
-    let mut outcome = LaunchOutcome { total: tab.items.len(), ..Default::default() };
+    let mut outcome = LaunchOutcome {
+        total: tab.items.len(),
+        ..Default::default()
+    };
     for item in &tab.items {
         match item {
             Item::Url { value } => {
@@ -26,7 +29,8 @@ pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
     }
     if outcome.failures.len() == outcome.total && outcome.total > 0 {
         return Err(AppError::Launcher(format!(
-            "todos os {} items falharam", outcome.total
+            "todos os {} items falharam",
+            outcome.total
         )));
     }
     Ok(outcome)
@@ -37,20 +41,25 @@ pub struct TauriOpener<'a, R: tauri::Runtime> {
 }
 
 impl<'a, R: tauri::Runtime> TauriOpener<'a, R> {
-    pub fn new(app: &'a tauri::AppHandle<R>) -> Self { Self { app } }
+    pub fn new(app: &'a tauri::AppHandle<R>) -> Self {
+        Self { app }
+    }
 }
 
 impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
     fn open_url(&self, url: &str) -> Result<(), String> {
         use tauri_plugin_opener::OpenerExt;
-        self.app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+        self.app
+            .opener()
+            .open_url(url, None::<&str>)
+            .map_err(|e| e.to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::schema::{OpenMode, Item, Tab};
+    use crate::config::schema::{Item, OpenMode, Tab};
     use std::sync::Mutex;
     use uuid::Uuid;
 
@@ -77,18 +86,27 @@ mod tests {
             icon: None,
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
-            items: urls.iter().map(|u| Item::Url { value: (*u).into() }).collect(),
+            items: urls
+                .iter()
+                .map(|u| Item::Url { value: (*u).into() })
+                .collect(),
         }
     }
 
     #[test]
     fn opens_all_urls_in_order() {
-        let opener = MockOpener { calls: Mutex::new(vec![]), fail_on: vec![] };
+        let opener = MockOpener {
+            calls: Mutex::new(vec![]),
+            fail_on: vec![],
+        };
         let tab = tab_with(&["https://a", "https://b", "https://c"]);
         let outcome = launch_tab(&tab, &opener).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(outcome.total, 3);
-        assert_eq!(*opener.calls.lock().unwrap(), vec!["https://a", "https://b", "https://c"]);
+        assert_eq!(
+            *opener.calls.lock().unwrap(),
+            vec!["https://a", "https://b", "https://c"]
+        );
     }
 
     #[test]
@@ -116,7 +134,10 @@ mod tests {
 
     #[test]
     fn empty_tab_is_ok() {
-        let opener = MockOpener { calls: Mutex::new(vec![]), fail_on: vec![] };
+        let opener = MockOpener {
+            calls: Mutex::new(vec![]),
+            fail_on: vec![],
+        };
         let tab = tab_with(&[]);
         let outcome = launch_tab(&tab, &opener).unwrap();
         assert_eq!(outcome.total, 0);

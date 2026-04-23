@@ -1,4 +1,4 @@
-use crate::config::{schema::Config, io::load_from_path};
+use crate::config::{io::load_from_path, schema::Config};
 use crate::errors::{AppError, AppResult};
 use crate::launcher::{launch_tab, TauriOpener};
 use std::path::PathBuf;
@@ -23,7 +23,10 @@ pub fn open_tab<R: tauri::Runtime>(
     tab_id: Uuid,
 ) -> Result<(), AppError> {
     let cfg = state.config.read().unwrap();
-    let tab = cfg.tabs.iter().find(|t| t.id == tab_id)
+    let tab = cfg
+        .tabs
+        .iter()
+        .find(|t| t.id == tab_id)
         .ok_or_else(|| AppError::Launcher(format!("tab {} não encontrada", tab_id)))?;
     let opener = TauriOpener::new(&app);
     launch_tab(tab, &opener)?;

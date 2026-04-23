@@ -18,11 +18,15 @@ pub enum AppError {
 }
 
 impl From<std::io::Error> for AppError {
-    fn from(e: std::io::Error) -> Self { AppError::Io(e.to_string()) }
+    fn from(e: std::io::Error) -> Self {
+        AppError::Io(e.to_string())
+    }
 }
 
 impl From<serde_json::Error> for AppError {
-    fn from(e: serde_json::Error) -> Self { AppError::Config(e.to_string()) }
+    fn from(e: serde_json::Error) -> Self {
+        AppError::Config(e.to_string())
+    }
 }
 
 pub type AppResult<T> = Result<T, AppError>;

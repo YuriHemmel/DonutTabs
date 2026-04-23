@@ -16,11 +16,20 @@ pub fn validate(config: &Config) -> AppResult<()> {
     }
 
     for tab in &config.tabs {
-        let has_name = tab.name.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
-        let has_icon = tab.icon.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+        let has_name = tab
+            .name
+            .as_ref()
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
+        let has_icon = tab
+            .icon
+            .as_ref()
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
         if !has_name && !has_icon {
             return Err(AppError::Config(format!(
-                "tab {} sem nome e sem ícone", tab.id
+                "tab {} sem nome e sem ícone",
+                tab.id
             )));
         }
     }
@@ -115,7 +124,9 @@ mod tests {
         cfg.tabs.push(tab_with(
             Some("X"),
             None,
-            vec![Item::Url { value: "not a url".into() }],
+            vec![Item::Url {
+                value: "not a url".into(),
+            }],
         ));
         assert!(validate(&cfg).is_err());
     }

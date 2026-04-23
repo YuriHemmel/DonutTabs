@@ -9,7 +9,9 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     if let Some(window) = app.get_webview_window(DONUT_LABEL) {
         position_at_cursor(&window)?;
         window.show().map_err(|e| AppError::Window(e.to_string()))?;
-        window.set_focus().map_err(|e| AppError::Window(e.to_string()))?;
+        window
+            .set_focus()
+            .map_err(|e| AppError::Window(e.to_string()))?;
         return Ok(());
     }
 
@@ -28,7 +30,9 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
 
     position_at_cursor(&window)?;
     window.show().map_err(|e| AppError::Window(e.to_string()))?;
-    window.set_focus().map_err(|e| AppError::Window(e.to_string()))?;
+    window
+        .set_focus()
+        .map_err(|e| AppError::Window(e.to_string()))?;
     Ok(())
 }
 
@@ -38,12 +42,15 @@ fn position_at_cursor<R: Runtime>(window: &tauri::WebviewWindow<R>) -> AppResult
         Mouse::Error => return Ok(()),
     };
 
-    let scale = window.scale_factor().map_err(|e| AppError::Window(e.to_string()))?;
+    let scale = window
+        .scale_factor()
+        .map_err(|e| AppError::Window(e.to_string()))?;
     let half = (DONUT_SIZE / 2.0) * scale;
     let x = (pos.0 - half).round() as i32;
     let y = (pos.1 - half).round() as i32;
 
-    window.set_position(PhysicalPosition::new(x, y))
+    window
+        .set_position(PhysicalPosition::new(x, y))
         .map_err(|e| AppError::Window(e.to_string()))?;
     Ok(())
 }

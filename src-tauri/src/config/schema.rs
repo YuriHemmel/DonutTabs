@@ -25,7 +25,11 @@ pub struct Appearance {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
-pub enum Theme { Dark, Light, Auto }
+pub enum Theme {
+    Dark,
+    Light,
+    Auto,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
@@ -39,12 +43,19 @@ pub struct Interaction {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
-pub enum SpawnPosition { Cursor, Center }
+pub enum SpawnPosition {
+    Cursor,
+    Center,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
-pub enum SelectionMode { ClickOrRelease, HoverRelease, ClickOnly }
+pub enum SelectionMode {
+    ClickOrRelease,
+    HoverRelease,
+    ClickOnly,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
@@ -57,7 +68,10 @@ pub struct Pagination {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
-pub enum WheelDirection { Standard, Inverted }
+pub enum WheelDirection {
+    Standard,
+    Inverted,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
@@ -81,7 +95,11 @@ pub struct Tab {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
-pub enum OpenMode { ReuseOrNewWindow, NewWindow, NewTab }
+pub enum OpenMode {
+    ReuseOrNewWindow,
+    NewWindow,
+    NewTab,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
@@ -132,7 +150,9 @@ mod tests {
             icon: Some("💼".into()),
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
-            items: vec![Item::Url { value: "https://example.com".into() }],
+            items: vec![Item::Url {
+                value: "https://example.com".into(),
+            }],
         };
         let json = serde_json::to_string(&tab).unwrap();
         let parsed: Tab = serde_json::from_str(&json).unwrap();
