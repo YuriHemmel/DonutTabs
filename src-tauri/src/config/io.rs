@@ -58,4 +58,25 @@ mod tests {
         let err = load_from_path(&path).unwrap_err();
         assert!(matches!(err, AppError::Config(_)), "got: {err:?}");
     }
+
+    #[test]
+    fn loads_v1_config_without_language_field() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        std::fs::write(
+            &path,
+            r#"{
+                "version": 1,
+                "shortcut": "CommandOrControl+Shift+Space",
+                "appearance": { "theme": "dark" },
+                "interaction": { "spawnPosition": "cursor", "selectionMode": "clickOrRelease", "hoverHoldMs": 800 },
+                "pagination": { "itemsPerPage": 6, "wheelDirection": "standard" },
+                "system": { "autostart": false },
+                "tabs": []
+            }"#,
+        )
+        .unwrap();
+        let cfg = load_from_path(&path).unwrap();
+        assert_eq!(cfg.appearance.language, crate::config::schema::Language::Auto);
+    }
 }
