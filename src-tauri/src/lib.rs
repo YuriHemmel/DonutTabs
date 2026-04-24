@@ -52,6 +52,7 @@ pub fn run() {
             commands::save_tab,
             commands::delete_tab,
             commands::open_settings,
+            commands::consume_settings_intent,
             commands::close_settings,
         ])
         .run(tauri::generate_context!())

@@ -30,8 +30,10 @@ vi.mock("../../core/ipc", () => ({
     closeSettings: vi.fn(),
     openTab: vi.fn(),
     hideDonut: vi.fn(),
+    consumeSettingsIntent: vi.fn().mockResolvedValue(null),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
+  SETTINGS_INTENT_EVENT: "settings-intent",
 }));
 
 import { ipc } from "../../core/ipc";

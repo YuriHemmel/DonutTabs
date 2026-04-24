@@ -3,15 +3,21 @@ use crate::config::schema::{Config, Tab};
 use crate::errors::{AppError, AppResult};
 use crate::launcher::{launch_tab, TauriOpener};
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 use tauri::{Emitter, Manager};
 use uuid::Uuid;
 
 pub const CONFIG_CHANGED_EVENT: &str = "config-changed";
+pub const SETTINGS_INTENT_EVENT: &str = "settings-intent";
 
 pub struct AppState {
     pub config: RwLock<Config>,
     pub config_path: PathBuf,
+    /// Intent a ser consumido pela Settings na próxima montagem. Serve de
+    /// buffer para o caso em que a Settings ainda está carregando quando o
+    /// comando `open_settings` é invocado (evento de listen ainda não
+    /// registrado).
+    pub pending_settings_intent: Mutex<Option<String>>,
 }
 
 #[tauri::command]
@@ -92,8 +98,31 @@ pub fn delete_tab<R: tauri::Runtime>(
 }
 
 #[tauri::command]
-pub fn open_settings<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), AppError> {
-    crate::settings_window::show(&app)
+pub fn open_settings<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    intent: Option<String>,
+) -> Result<(), AppError> {
+    if let Some(intent) = &intent {
+        *state.pending_settings_intent.lock().unwrap() = Some(intent.clone());
+    }
+    crate::settings_window::show(&app)?;
+    if let Some(intent) = intent {
+        // Emite para quem já está escutando (janela reaberta). O
+        // `consume_settings_intent` abaixo cobre o caso em que a Settings
+        // ainda não tinha listener no momento do emit.
+        let _ = app.emit_to(
+            crate::settings_window::SETTINGS_LABEL,
+            SETTINGS_INTENT_EVENT,
+            intent,
+        );
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn consume_settings_intent(state: tauri::State<'_, AppState>) -> Option<String> {
+    state.pending_settings_intent.lock().unwrap().take()
 }
 
 #[tauri::command]
@@ -106,6 +135,7 @@ pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
     Ok(AppState {
         config: RwLock::new(cfg),
         config_path,
+        pending_settings_intent: Mutex::new(None),
     })
 }
 

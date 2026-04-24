@@ -1,5 +1,6 @@
 import React from "react";
 import type { Tab } from "../core/types/Tab";
+import type { SettingsIntent } from "../core/ipc";
 import { Slice } from "./Slice";
 import { CenterCircle } from "./CenterCircle";
 import { sliceAngleRange } from "./geometry";
@@ -9,7 +10,7 @@ export interface DonutProps {
   tabs: Tab[];
   size: number;
   onSelect: (tabId: string) => void;
-  onOpenSettings?: () => void;
+  onOpenSettings?: (intent?: SettingsIntent) => void;
 }
 
 const PLUS_KEY = "__plus__";
@@ -70,7 +71,7 @@ export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect, onOpenSettin
             endAngle={end}
             icon="+"
             highlighted={highlighted === plusIndex}
-            onClick={() => onOpenSettings?.()}
+            onClick={() => onOpenSettings?.("new-tab")}
           />
         );
       })()}

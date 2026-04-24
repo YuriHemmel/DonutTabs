@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { TabList } from "./TabList";
 import { TabEditor } from "./TabEditor";
 import { useConfig } from "./useConfig";
+import { ipc, SETTINGS_INTENT_EVENT } from "../core/ipc";
 import type { Tab } from "../core/types/Tab";
 
 type Selection =
@@ -10,10 +12,32 @@ type Selection =
   | { mode: "new" }
   | { mode: "edit"; tabId: string };
 
+function applyIntent(intent: string | null, setSelection: (s: Selection) => void) {
+  if (intent === "new-tab") {
+    setSelection({ mode: "new" });
+  }
+}
+
 export const SettingsApp: React.FC = () => {
   const { t } = useTranslation();
   const { config, saveTab, deleteTab } = useConfig();
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    // Primeiro registra o listener, depois consome qualquer intent pendente
+    // no AppState. Assim eventos emitidos durante a janela de "consume" não
+    // são perdidos.
+    void listen<string>(SETTINGS_INTENT_EVENT, (e) => {
+      applyIntent(e.payload, setSelection);
+    }).then((fn) => {
+      unlisten = fn;
+      void ipc.consumeSettingsIntent().then((intent) => {
+        applyIntent(intent, setSelection);
+      });
+    });
+    return () => unlisten?.();
+  }, []);
 
   if (!config) {
     return <div style={{ padding: 24 }}>…</div>;

@@ -71,9 +71,9 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     }
   };
 
-  const handleOpenSettings = async () => {
+  const handleOpenSettings = async (intent?: import("../core/ipc").SettingsIntent) => {
     try {
-      await ipc.openSettings();
+      await ipc.openSettings(intent);
     } finally {
       void ipc.hideDonut();
     }
