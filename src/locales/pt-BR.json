@@ -16,7 +16,8 @@
       "unknown": "Erro ao abrir aba: {{code}}"
     },
     "shortcut": {
-      "registrationFailed": "Não foi possível registrar o atalho: {{reason}}",
+      "shortcutRegistrationFailed": "Não foi possível registrar o atalho: {{reason}}",
+      "shortcutParseFailed": "Combinação inválida: {{reason}}",
       "unknown": "Erro de atalho: {{code}}"
     },
     "window": {

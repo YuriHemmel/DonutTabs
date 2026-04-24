@@ -16,7 +16,8 @@
       "unknown": "Failed to open tab: {{code}}"
     },
     "shortcut": {
-      "registrationFailed": "Could not register the shortcut: {{reason}}",
+      "shortcutRegistrationFailed": "Could not register the shortcut: {{reason}}",
+      "shortcutParseFailed": "Invalid combination: {{reason}}",
       "unknown": "Shortcut error: {{code}}"
     },
     "window": {
