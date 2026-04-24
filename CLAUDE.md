@@ -132,6 +132,6 @@ Next slices (in order):
 
 1. **Plano 5 — Donut gestures**: paginação com roda + indicadores, hover-hold → editar/excluir (abre o TabEditor na aba correspondente). A fatia "+" já foi entregue no Plano 3.
 2. **Plano 6 — Perfis**: schema v2 + migração v1→v2 + profile switcher no lado direito do centro (atalho e tema por perfil).
-3. **Plano 7 — Polimento**: porte visual do tema para donut + TabList + TabEditor (hoje só o cascão da Settings respeita `data-theme`), menu de contexto nas fatias, favicons / Lucide, drag-and-drop para reordenar, autostart.
+3. **Plano 7 — Polimento**: menu de contexto nas fatias, favicons / Lucide, drag-and-drop para reordenar, autostart. (O donut permanece propositalmente em paleta escura — é overlay transparente; alternar para tema claro brigaria com o fundo da área de trabalho.)
 
 Any new user-facing string must have keys in both locale files; any new `AppError` code must have a translation under `errors.{kind}.{camelCode}`. The `errors.{kind}.unknown` fallback exists precisely to catch missed ones — if you see it surfaced in dev, add the specific key before merging.
