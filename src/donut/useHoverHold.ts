@@ -51,11 +51,13 @@ export function useHoverHold(opts: UseHoverHoldOpts): UseHoverHoldResult {
     }
   }, []);
 
-  // Reage à mudança de hoveredSlice. Estados travados (actionable / confirming)
-  // ignoram o hover — só `cancel()` ou ações explícitas mudam.
+  // Reage à mudança de hoveredSlice. `confirming` fica travado (usuário já
+  // pediu pra excluir — só Sim/Não / cancel explícito tiram de lá).
+  // `actionable` desmonta quando o cursor sai da fatia (intuitivo: tirou o
+  // mouse de cima, overlay some).
   useEffect(() => {
     const current = stateRef.current;
-    if (current.phase === "actionable" || current.phase === "confirming") {
+    if (current.phase === "confirming") {
       return;
     }
 
@@ -64,6 +66,17 @@ export function useHoverHold(opts: UseHoverHoldOpts): UseHoverHoldResult {
       stopTimer();
       if (current.phase !== "idle") setState({ phase: "idle" });
       return;
+    }
+
+    if (current.phase === "actionable") {
+      if (current.sliceIndex === i) {
+        // mesma fatia em modo ação — mantém o overlay
+        return;
+      }
+      // cursor pulou pra outra fatia: volta ao idle e (cai pro fluxo abaixo)
+      // reinicia o holding na nova fatia
+      stopTimer();
+      setState({ phase: "idle" });
     }
 
     if (current.phase === "holding" && current.sliceIndex === i) {

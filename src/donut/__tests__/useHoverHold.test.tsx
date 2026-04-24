@@ -128,6 +128,72 @@ describe("useHoverHold", () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  it("actionable collapses back to idle when the cursor leaves the slice", () => {
+    const { result, rerender } = renderHook(
+      ({ hovered }: { hovered: number | null }) =>
+        useHoverHold({
+          hoveredSlice: hovered,
+          isTabSlice: () => true,
+          holdMs: HOLD_MS,
+          onComplete: vi.fn(),
+        }),
+      { initialProps: { hovered: null as number | null } },
+    );
+    rerender({ hovered: 1 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS + 10);
+    });
+    expect(result.current.state.phase).toBe("actionable");
+
+    rerender({ hovered: null });
+    expect(result.current.state.phase).toBe("idle");
+  });
+
+  it("actionable stays while the cursor remains on the same slice", () => {
+    const { result, rerender } = renderHook(
+      ({ hovered }: { hovered: number | null }) =>
+        useHoverHold({
+          hoveredSlice: hovered,
+          isTabSlice: () => true,
+          holdMs: HOLD_MS,
+          onComplete: vi.fn(),
+        }),
+      { initialProps: { hovered: null as number | null } },
+    );
+    rerender({ hovered: 2 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS + 10);
+    });
+    expect(result.current.state.phase).toBe("actionable");
+    // simular "mesma fatia" disparando outra passagem pelo effect
+    rerender({ hovered: 2 });
+    expect(result.current.state.phase).toBe("actionable");
+  });
+
+  it("confirming is NOT dismissed when the cursor leaves the slice", () => {
+    const { result, rerender } = renderHook(
+      ({ hovered }: { hovered: number | null }) =>
+        useHoverHold({
+          hoveredSlice: hovered,
+          isTabSlice: () => true,
+          holdMs: HOLD_MS,
+          onComplete: vi.fn(),
+        }),
+      { initialProps: { hovered: null as number | null } },
+    );
+    rerender({ hovered: 0 });
+    act(() => {
+      vi.advanceTimersByTime(HOLD_MS + 10);
+    });
+    act(() => {
+      result.current.requestDelete();
+    });
+    expect(result.current.state.phase).toBe("confirming");
+
+    rerender({ hovered: null });
+    expect(result.current.state.phase).toBe("confirming");
+  });
+
   it("cancel() returns from actionable to idle", () => {
     const { result, rerender } = renderHook(
       ({ hovered }: { hovered: number | null }) =>
