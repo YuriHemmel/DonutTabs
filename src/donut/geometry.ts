@@ -34,7 +34,25 @@ export interface ArcPathOpts {
 
 export function arcPath(o: ArcPathOpts): string {
   const { cx, cy, innerR, outerR, startAngle, endAngle } = o;
-  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  const delta = endAngle - startAngle;
+
+  // Caso degenerado: arco cobre o círculo inteiro. SVG não desenha um arco
+  // com start == end (vira um ponto/linha), então emitimos um anel fechado
+  // com dois sub-paths e `fill-rule="evenodd"` para recortar o miolo.
+  if (delta >= Math.PI * 2 - 1e-6) {
+    return [
+      `M ${cx + outerR} ${cy}`,
+      `A ${outerR} ${outerR} 0 1 1 ${cx - outerR} ${cy}`,
+      `A ${outerR} ${outerR} 0 1 1 ${cx + outerR} ${cy}`,
+      "Z",
+      `M ${cx + innerR} ${cy}`,
+      `A ${innerR} ${innerR} 0 1 0 ${cx - innerR} ${cy}`,
+      `A ${innerR} ${innerR} 0 1 0 ${cx + innerR} ${cy}`,
+      "Z",
+    ].join(" ");
+  }
+
+  const largeArc = delta > Math.PI ? 1 : 0;
   const x1 = cx + outerR * Math.cos(startAngle);
   const y1 = cy + outerR * Math.sin(startAngle);
   const x2 = cx + outerR * Math.cos(endAngle);

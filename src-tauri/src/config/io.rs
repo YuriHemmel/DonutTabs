@@ -1,6 +1,7 @@
 use super::schema::Config;
 use super::validate::validate;
 use crate::errors::AppResult;
+use std::io::Write;
 use std::path::Path;
 
 /// Lê a config do caminho dado. Se o arquivo não existe, retorna `Config::default()`.
@@ -13,6 +14,29 @@ pub fn load_from_path(path: &Path) -> AppResult<Config> {
     let config: Config = serde_json::from_str(&raw)?;
     validate(&config)?;
     Ok(config)
+}
+
+/// Grava a config em disco de forma atômica: valida, escreve em `<path>.tmp`,
+/// renomeia para `<path>`. Falhar antes do rename deixa o arquivo original intacto.
+pub fn save_atomic(path: &Path, config: &Config) -> AppResult<()> {
+    validate(config)?;
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let tmp_path = path.with_extension("json.tmp");
+    let json = serde_json::to_string_pretty(config)?;
+
+    {
+        let mut file = std::fs::File::create(&tmp_path)?;
+        file.write_all(json.as_bytes())?;
+        // best-effort fsync; Windows não garante fsync de diretório
+        let _ = file.sync_all();
+    }
+
+    std::fs::rename(&tmp_path, path)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -57,6 +81,72 @@ mod tests {
         std::fs::write(&path, serde_json::to_string(&cfg).unwrap()).unwrap();
         let err = load_from_path(&path).unwrap_err();
         assert!(matches!(err, AppError::Config { .. }), "got: {err:?}");
+    }
+
+    #[test]
+    fn save_atomic_writes_then_renames() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let cfg = Config::default();
+
+        save_atomic(&path, &cfg).unwrap();
+
+        assert!(path.exists());
+        assert!(!path.with_extension("json.tmp").exists());
+
+        let loaded = load_from_path(&path).unwrap();
+        assert_eq!(loaded, cfg);
+    }
+
+    #[test]
+    fn save_atomic_overwrites_existing_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let cfg1 = Config::default();
+        save_atomic(&path, &cfg1).unwrap();
+
+        let mut cfg2 = cfg1.clone();
+        cfg2.pagination.items_per_page = 7;
+        save_atomic(&path, &cfg2).unwrap();
+
+        let loaded = load_from_path(&path).unwrap();
+        assert_eq!(loaded.pagination.items_per_page, 7);
+    }
+
+    #[test]
+    fn save_atomic_creates_parent_dir_if_missing() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("nested").join("sub").join("config.json");
+        let cfg = Config::default();
+        save_atomic(&path, &cfg).unwrap();
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn save_atomic_rejects_invalid_config() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let mut cfg = Config::default();
+        cfg.pagination.items_per_page = 99;
+        let err = save_atomic(&path, &cfg).unwrap_err();
+        assert!(matches!(err, AppError::Config { .. }));
+        // Arquivo não foi criado — falhou antes de abrir o .tmp.
+        assert!(!path.exists());
+        assert!(!path.with_extension("json.tmp").exists());
+    }
+
+    #[test]
+    fn save_atomic_preserves_previous_file_on_identical_save() {
+        // Sanidade do contrato: uma segunda gravação idêntica resulta em conteúdo igual.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let cfg = Config::default();
+        save_atomic(&path, &cfg).unwrap();
+        let before = std::fs::read_to_string(&path).unwrap();
+
+        save_atomic(&path, &cfg).unwrap();
+        let after = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(before, after);
     }
 
     #[test]

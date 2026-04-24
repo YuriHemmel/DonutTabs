@@ -15,6 +15,7 @@ Before making non-trivial changes, read:
 - [docs/Plano.md](docs/Plano.md) — design spec with the "why" of every architectural decision, the phased roadmap, and extensibility hooks in the schema
 - [docs/plans/01-fundacao.md](docs/plans/01-fundacao.md) — the executed implementation plan for the current MVP (Plano 1)
 - [docs/plans/02-i18n.md](docs/plans/02-i18n.md) — the executed implementation plan for i18n + structured AppError (Plano 2)
+- [docs/plans/03-settings-crud.md](docs/plans/03-settings-crud.md) — the executed implementation plan for the Settings window / CRUD (Plano 3)
 - [docs/qa-smoke.md](docs/qa-smoke.md) — manual smoke checklist for the three OSes
 
 The user speaks Portuguese; all docs, commit messages, and user-facing strings in the app should be in Portuguese.
@@ -60,7 +61,7 @@ Single process with **three logical pieces**:
 
 1. **Rust core** (`src-tauri/src/`) — all OS-level concerns: global shortcut, tray icon, window creation (transparent/undecorated/always-on-top), URL opening, config IO. Never draws UI.
 2. **Donut webview** (`src/entry/donut.tsx` → `src/donut/*`) — transparent window rendered at cursor position, shows the SVG donut, captures hover/click, calls Rust commands via IPC.
-3. **Settings webview** (not yet implemented — Plano 3) — normal decorated window with the CRUD UI for tabs and preferences.
+3. **Settings webview** (`src/entry/settings.tsx` → `src/settings/*`) — decorated, resizable window with `<TabList>` + `<TabEditor>` for CRUD. Loads config via IPC and listens to `config-changed`; the donut mirrors the same event so both windows stay in sync without polling. Preferences UI (shortcut + appearance) lands in Plano 4.
 
 Rust and frontend communicate via **typed Tauri commands** through `src/core/ipc.ts`. Types in `src/core/types/` are **auto-generated** from Rust by `ts-rs` — never hand-edit them.
 
@@ -70,12 +71,13 @@ The golden fence: **Rust never draws UI; frontend never touches disk or OS APIs.
 
 - `config/schema.rs` — `Config`, `Tab`, `Item`, the enums. All derive `Serialize + Deserialize + PartialEq + TS` with `#[serde(rename_all = "camelCase")]`. `Item` is a **tagged union** (`#[serde(tag = "kind")]`) designed for future `kind: "file" | "app" | "script" | "folder"` variants (Fase 3). Do **not** flatten it into an untagged enum. `Appearance.language` is `Language::{Auto, PtBr, En}`, consumed by `src/core/i18n.ts` at bootstrap.
 - `config/validate.rs` — semantic rules: items_per_page range, at least one of `name`/`icon` per tab, URL parseability, unique ids. First-error semantics (not accumulating). Logic-level tests. Errors emit structured codes (e.g. `items_per_page_out_of_range`, `invalid_url`), never free-form strings.
-- `config/io.rs` — read-only today (`load_from_path` with default fallback, recovery errors on malformed JSON). `appearance.language` uses `#[serde(default)]` so configs written before Plano 2 still load. Plano 3 adds atomic writes.
+- `config/io.rs` — `load_from_path` (default fallback, recovery error on malformed JSON) **and** `save_atomic` (validates first, writes to `config.json.tmp`, then `rename`). `appearance.language` uses `#[serde(default)]` so configs written before Plano 2 still load.
 - `launcher/` — `Opener` trait for testability + `TauriOpener<'a, R>` impl that delegates to the `opener` plugin. `launch_tab` accumulates per-URL failures and only errors if **all** items failed (`all_items_failed` code).
-- `tray/` — tray icon with "Abrir donut" / "Sair" menu. Triggers `donut_window::show` on menu click.
+- `tray/` — tray icon with "Abrir donut" / "Configurações" / "Sair". The "Configurações" item calls `settings_window::show`.
 - `shortcut/` — registers the global shortcut from config; its handler calls `donut_window::show`.
 - `donut_window/` — creates the window (transparent, undecorated, always-on-top, `skip_taskbar`, no shadow) and positions it at the cursor using the `mouse_position` crate, taking DPI into account via `scale_factor()`. Caches the window after first creation so subsequent `show` calls are instant.
-- `commands.rs` — `AppState { config: RwLock<Config>, config_path }` + the three Tauri commands (`get_config`, `open_tab`, `hide_donut`). `config_path` is marked `#[allow(dead_code)]` — reserved for Plano 3 save/delete.
+- `settings_window/` — creates/focuses/closes the decorated Settings window (label `settings`, min size 720×520, initial 960×640). Consumed by the `open_settings` / `close_settings` commands and by the tray.
+- `commands.rs` — `AppState { config: RwLock<Config>, config_path }` + Tauri commands `get_config`, `open_tab`, `hide_donut`, `save_tab`, `delete_tab`, `open_settings`, `close_settings`. `save_tab`/`delete_tab` call `apply_save`/`apply_delete` (pure, tested), then `save_atomic`; on IO failure, in-memory state is rolled back by reloading from disk. Successful mutations emit `CONFIG_CHANGED_EVENT` ("config-changed") with the new `Config` as payload.
 - `errors.rs` — `AppError` with `#[serde(tag = "kind", content = "message")]`, content shape `{ code: String, context: BTreeMap<String, String> }`. Helpers `AppError::config/launcher/window/shortcut("code", &[("k", v)])` for ergonomic construction. Frontend maps `code` → translation key via `src/core/errors.ts`.
 - `lib.rs` — orchestration: loads config, registers commands, sets up tray + shortcut, pre-warms the donut window.
 
@@ -83,24 +85,28 @@ The golden fence: **Rust never draws UI; frontend never touches disk or OS APIs.
 
 - `src/donut/geometry.ts` — pure math (SVG arc paths, polar→slice hit-testing). No React, fully unit-testable.
 - `src/donut/useSliceHighlight.ts` — hook converting `MouseEvent` into the currently-hovered slice index, or `null` if in the center dead zone or beyond the outer ring.
-- `src/donut/{Slice,CenterCircle,Donut}.tsx` — presentational SVG components. `CenterCircle` currently shows a gear ⚙ (will open Settings in Plano 3) and a profile glyph 👤 (right half reserved for the profile switcher — see Fase 2 in `Plano.md`).
+- `src/donut/{Slice,CenterCircle,Donut}.tsx` — presentational SVG components. The ⚙ on `CenterCircle`'s left half is now clickable (opens Settings); the right half still shows the profile glyph 👤 reserved for the profile switcher (Plano 6). The donut passes `onOpenSettings` through.
 - `src/core/i18n.ts` — `react-i18next` init. `resolveLanguage()` combines `appearance.language` from config with `navigator.language`; `initI18n()` bootstraps the global instance; `createI18n()` creates isolated instances for tests. Locale JSON lives in `src/locales/{pt-BR,en}.json`.
 - `src/core/errors.ts` — `translateAppError(err, t)` converts the Rust `AppError` payload into a localized string, trying `errors.{kind}.{camelCode}` → `errors.{kind}.unknown` → `errors.fallback`.
-- `src/entry/donut.tsx` — window entrypoint: bootstraps i18next from config before React mounts, wires ESC / click-outside / window-blur → `hideDonut`, delegates selection to `openTab`, and surfaces launch failures as a dismissible localized toast.
+- `src/core/ipc.ts` — typed wrappers for all commands plus the `CONFIG_CHANGED_EVENT` constant that both windows use to subscribe via `@tauri-apps/api/event`'s `listen`.
+- `src/entry/donut.tsx` — window entrypoint: bootstraps i18next from config before React mounts, wires ESC / click-outside / window-blur → `hideDonut`, delegates selection to `openTab`, listens for `config-changed` to refresh tabs, surfaces launch failures as a dismissible localized toast, and routes gear clicks to `openSettings` + `hideDonut`.
+- `src/entry/settings.tsx` + `src/settings/*` — the Settings window. `SettingsApp` owns selection state between `TabList` (sidebar) and `TabEditor` (form). `useConfig` is the single source of truth for config: loads on mount via `get_config` and subscribes to `config-changed`, with `saveTab`/`deleteTab` helpers that round-trip through IPC and apply the returned snapshot. `TabEditor` validates name-or-icon / at-least-one-URL / `new URL(...)` client-side, then submits; server-side `AppError`s render via `translateAppError`. Delete passes through `window.confirm`.
 
 ### Tauri config gotchas (already applied — do not undo)
 
 - `tauri.conf.json`: `app.windows = []` (windows are created programmatically), `app.macOSPrivateApi = true` for transparency on macOS
 - `src-tauri/Cargo.toml`: `tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }` — both flags are **required** by the matching conf/API usage
-- `capabilities/default.json` lists permissions for only the `donut` window; global-shortcut and opener plugins are gated through `global-shortcut:default` / `opener:default` + `opener:allow-open-url`
+- `capabilities/default.json` lists permissions for both `donut` and `settings` windows; global-shortcut and opener plugins are gated through `global-shortcut:default` / `opener:default` + `opener:allow-open-url`; `core:event:default` enables `listen`/`emit` for the `config-changed` event that syncs both windows
 
 ## Conventions
 
 - **TDD** for pure logic (`config/*`, `launcher`, `geometry`, `useSliceHighlight`, `Donut`). Write the failing test first, then the minimum code to pass. Don't backfill tests onto already-written code unless the task says so.
 - **Small commits with scoped messages**: `feat(config): ...`, `chore(tray): ...`, `fix(config): ...`, `ci: ...`, `docs(plan): ...`. One task = one logical concern = one commit (Cargo.lock updates piggy-back on the commit that changed Cargo.toml).
 - **Schema-first, IPC-typed**: any new frontend↔Rust data shape lives as a Rust struct with `#[derive(TS)]`, generated into TS, and consumed through `src/core/ipc.ts`. Don't duplicate types by hand.
-- **Config file is the source of truth** at startup. The app reads `%APPDATA%\DonutTabs\config.json` (Windows), `~/Library/Application Support/DonutTabs/config.json` (macOS), or `~/.config/DonutTabs/config.json` (Linux). Plano 3 adds write-back with atomic rename (`config.json.tmp` → `rename`).
+- **Config file is the source of truth** at startup. The app reads `%APPDATA%\DonutTabs\config.json` (Windows), `~/Library/Application Support/DonutTabs/config.json` (macOS), or `~/.config/DonutTabs/config.json` (Linux). Mutations always go through `config::io::save_atomic` (validate → write `.tmp` → rename); no other code writes directly.
+- **Every `Config` mutation broadcasts.** `save_tab` and `delete_tab` emit `CONFIG_CHANGED_EVENT` on success. Future write commands must follow the same pattern: validate + atomic-write + emit, with in-memory rollback (reload from disk) if the write fails.
 - **Text in code vs in UI**: internal logs and dev-facing error context stay in English technical form; anything the user reads goes through `t()` from `react-i18next`. No hardcoded Portuguese (or English) UI strings in JSX or in `AppError` payloads. New Rust errors use `AppError::config/launcher/window/shortcut` with `snake_case` codes and a matching entry in both `src/locales/pt-BR.json` and `src/locales/en.json` (under `errors.{kind}.{camelCode}`).
+- **Temporary files go in `tmp/`**: any throwaway artifact (scratch notes, ad-hoc scripts, generated logs, PR bodies, debug dumps, one-off reproducers) must be written under the repo-root `tmp/` folder, which is gitignored via `tmp/*`. Never drop temporary files at the repo root, inside `src/`, `src-tauri/`, or `docs/`. Create the directory if it doesn't exist yet.
 
 ## CI
 
@@ -114,15 +120,17 @@ The golden fence: **Rust never draws UI; frontend never touches disk or OS APIs.
 
 Docs-only changes are skipped via `paths-ignore` (`**/*.md`, `docs/**`, `LICENSE*`, `.gitignore`). Linux is the primary test target; macOS/Windows mainly verify cross-platform compilation of the same tests.
 
-**Clippy is currently run without `-D warnings`** because the MVP intentionally leaves some dead-code warnings for items consumed in Plano 3 (e.g., `AppState::config_path`, `AppError::shortcut` helper). When Plano 3 wires these up, tighten to `-D warnings`.
+**Clippy is currently run without `-D warnings`** because the MVP intentionally leaves one harmless dead-code warning (`AppError::shortcut` helper — consumed in Plano 4). When Plano 4 wires it up, tighten to `-D warnings`. `AppState::config_path` is now live and no longer marked `#[allow(dead_code)]`.
 
-## Looking ahead to Plano 3 and beyond
+## Looking ahead to Plano 4 and beyond
 
-Plano 2 is done: i18n (`react-i18next` with `pt-BR` + `en`), `appearance.language` active, and `AppError` is fully structured (`code` + `context`). Plano 3 builds on this base.
+Plano 3 is done: Settings window with `<TabList>` + `<TabEditor>` + CRUD via `save_tab` / `delete_tab`, `config::io::save_atomic`, and `config-changed` event synchronizing the donut and the Settings in real time.
 
-Read `Plano.md` section 8.2 before starting. Key decisions still pending:
+Next slices (in order):
 
-1. **Settings window** (`src/entry/settings.tsx` + `src/settings/*`): `<TabList>`, `<TabEditor>`, `<ShortcutRecorder>`, `<AppearanceSection>` (including a language selector that calls `changeLanguage` from `src/core/i18n.ts`). New Rust commands: `save_tab`, `delete_tab`, `set_shortcut`. `config/io.rs` gains atomic write (`config.json.tmp` → `rename`). Event `config-changed` emits from Rust so the donut re-reads state when Settings mutates.
-2. **Fatia "+"** on the donut, pagination + hover-hold → editar/excluir, per Seção 5 of `Plano.md`.
-3. **Perfis** (Plano 4, already designed): right half of the center circle becomes a profile switcher; schema gains `profiles[]` with a v1→v2 migration.
-4. Any new user-facing string must have keys in both locale files; any new `AppError` code must have a translation under `errors.{kind}.{camelCode}`. The `errors.{kind}.unknown` fallback exists precisely to catch missed ones — if you see it surfaced in dev, add the specific key before merging.
+1. **Plano 4 — Settings preferences**: `<ShortcutRecorder>` (captures key combos, rejects reserved keys), `<AppearanceSection>` with theme + language selectors (the language select calls `changeLanguage` already exported from `src/core/i18n.ts`; wire a listener on `config-changed` to retranslate `document.title`). New Rust command `set_shortcut` with conflict-aware registration. Tighten clippy to `-D warnings` once `AppError::shortcut` is consumed.
+2. **Plano 5 — Donut gestures**: fatia "+", paginação com roda + indicadores, hover-hold → editar/excluir (abre o TabEditor na aba correspondente).
+3. **Plano 6 — Perfis**: schema v2 + migração v1→v2 + profile switcher no lado direito do centro (atalho e tema por perfil).
+4. **Plano 7 — Polimento**: menu de contexto nas fatias, favicons / Lucide, drag-and-drop para reordenar, autostart.
+
+Any new user-facing string must have keys in both locale files; any new `AppError` code must have a translation under `errors.{kind}.{camelCode}`. The `errors.{kind}.unknown` fallback exists precisely to catch missed ones — if you see it surfaced in dev, add the specific key before merging.

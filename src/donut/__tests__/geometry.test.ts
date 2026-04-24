@@ -43,4 +43,18 @@ describe("arcPath", () => {
     expect(d.startsWith("M")).toBe(true);
     expect(d).toMatch(/A /);
   });
+
+  it("renders a full ring (two sub-paths) when the arc covers 2π", () => {
+    const d = arcPath({
+      cx: 200,
+      cy: 200,
+      innerR: 80,
+      outerR: 180,
+      startAngle: -Math.PI / 2,
+      endAngle: -Math.PI / 2 + Math.PI * 2,
+    });
+    // Dois sub-paths (outer + inner) significa dois "M" e dois "Z".
+    expect((d.match(/M /g) ?? []).length).toBe(2);
+    expect((d.match(/Z/g) ?? []).length).toBe(2);
+  });
 });

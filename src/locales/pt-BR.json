@@ -31,5 +31,39 @@
   },
   "donut": {
     "toastDismiss": "Fechar"
+  },
+  "settings": {
+    "title": "Configurações",
+    "tabs": {
+      "sectionTitle": "Abas",
+      "addTab": "Adicionar aba",
+      "empty": "Nenhuma aba cadastrada. Clique em \"Adicionar aba\" para começar.",
+      "selectPrompt": "Selecione uma aba para editar ou clique em \"Adicionar aba\"."
+    },
+    "editor": {
+      "newTabTitle": "Nova aba",
+      "name": "Nome",
+      "namePlaceholder": "Trabalho",
+      "icon": "Ícone",
+      "iconPlaceholder": "💼",
+      "iconHint": "Um emoji ou caractere curto. Nome ou ícone são obrigatórios.",
+      "openMode": "Modo de abertura",
+      "openModeReuseOrNewWindow": "Reutilizar ou nova janela",
+      "openModeNewWindow": "Nova janela",
+      "openModeNewTab": "Nova aba",
+      "urls": "URLs",
+      "urlPlaceholder": "https://…",
+      "addUrl": "Adicionar URL",
+      "removeUrl": "Remover URL",
+      "save": "Salvar",
+      "saving": "Salvando…",
+      "cancel": "Cancelar",
+      "delete": "Excluir",
+      "confirmDelete": "Excluir aba \"{{label}}\"? Essa ação não pode ser desfeita.",
+      "validationNameOrIcon": "Preencha nome ou ícone.",
+      "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone.",
+      "validationAtLeastOneUrl": "Adicione ao menos uma URL.",
+      "validationInvalidUrl": "URL inválida: {{value}}"
+    }
   }
 }

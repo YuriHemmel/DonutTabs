@@ -1,0 +1,22 @@
+# Força LF em todo arquivo texto. Evita falsos positivos de "modified"
+# em Windows quando ferramentas (cargo/tauri-build/ts-rs/vite) reescrevem
+# arquivos em LF enquanto o autocrlf local esperava CRLF.
+* text=auto eol=lf
+
+# Scripts que SÓ funcionam com CRLF (Windows)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binários — nunca converter
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
