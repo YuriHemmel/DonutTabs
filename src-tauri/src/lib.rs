@@ -43,6 +43,10 @@ pub fn run() {
             commands::get_config,
             commands::open_tab,
             commands::hide_donut,
+            commands::save_tab,
+            commands::delete_tab,
+            commands::open_settings,
+            commands::close_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
