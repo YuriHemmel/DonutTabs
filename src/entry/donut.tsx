@@ -98,6 +98,8 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
         <Donut
           tabs={config.tabs}
           size={WINDOW_SIZE}
+          itemsPerPage={config.pagination.itemsPerPage}
+          wheelDirection={config.pagination.wheelDirection}
           onSelect={handleSelect}
           onOpenSettings={handleOpenSettings}
         />
