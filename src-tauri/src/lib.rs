@@ -29,8 +29,15 @@ pub fn run() {
 
             tray::setup(app).map_err(|e| format!("tray: {e}"))?;
 
-            shortcut::register_from_config(app.handle(), &shortcut_str)
-                .map_err(|e| format!("shortcut: {e}"))?;
+            // Registro do atalho é best-effort. Falha típica (especialmente
+            // em dev, depois de um HMR de Rust) é o processo antigo ainda
+            // estar segurando o atalho quando o novo sobe. Seguimos em frente
+            // — tray e janelas continuam acessíveis.
+            if let Err(e) = shortcut::register_from_config(app.handle(), &shortcut_str) {
+                eprintln!(
+                    "[setup] shortcut registration failed ({e:?}); the global shortcut will be unavailable until the app is restarted"
+                );
+            }
 
             let _ = donut_window::show(app.handle());
             if let Some(w) = app.get_webview_window("donut") {
@@ -40,8 +47,13 @@ pub fn run() {
             // Pré-aquece a janela Settings oculta. Criar janelas a partir de
             // comandos tardiamente trava o build do WebView2 em alguns
             // ambientes Windows; criar durante o setup garante inicialização
-            // limpa e abertura instantânea depois.
-            settings_window::prewarm(app.handle()).map_err(|e| format!("prewarm settings: {e}"))?;
+            // limpa e abertura instantânea depois. Falha aqui é recuperável
+            // via fallback em `settings_window::show`.
+            if let Err(e) = settings_window::prewarm(app.handle()) {
+                eprintln!(
+                    "[setup] settings window prewarm failed ({e:?}); first open may be slower"
+                );
+            }
 
             Ok(())
         })
