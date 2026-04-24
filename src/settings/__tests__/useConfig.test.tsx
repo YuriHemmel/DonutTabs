@@ -34,6 +34,9 @@ vi.mock("../../core/ipc", () => ({
     openTab: vi.fn(),
     hideDonut: vi.fn(),
     consumeSettingsIntent: vi.fn().mockResolvedValue(null),
+    setShortcut: vi.fn(),
+    setTheme: vi.fn(),
+    setLanguage: vi.fn(),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",
@@ -117,5 +120,40 @@ describe("useConfig", () => {
 
     await act(() => result.current.deleteTab("some-id"));
     expect(ipc.deleteTab).toHaveBeenCalledWith("some-id");
+  });
+
+  it("setShortcut delegates to ipc and applies the new snapshot", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const updated = { ...makeConfig(), shortcut: "CommandOrControl+Alt+D" };
+    (ipc.setShortcut as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    await act(() => result.current.setShortcut("CommandOrControl+Alt+D"));
+    expect(ipc.setShortcut).toHaveBeenCalledWith("CommandOrControl+Alt+D");
+    expect(result.current.config?.shortcut).toBe("CommandOrControl+Alt+D");
+  });
+
+  it("setTheme delegates to ipc", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.setTheme as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    await act(() => result.current.setTheme("light"));
+    expect(ipc.setTheme).toHaveBeenCalledWith("light");
+  });
+
+  it("setLanguage delegates to ipc", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.setLanguage as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    await act(() => result.current.setLanguage("en"));
+    expect(ipc.setLanguage).toHaveBeenCalledWith("en");
   });
 });

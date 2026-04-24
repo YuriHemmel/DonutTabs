@@ -3,12 +3,17 @@ import { listen } from "@tauri-apps/api/event";
 import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
 import type { Config } from "../core/types/Config";
 import type { Tab } from "../core/types/Tab";
+import type { Theme } from "../core/types/Theme";
+import type { Language } from "../core/types/Language";
 
 export interface UseConfig {
   config: Config | null;
   loadError: unknown;
   saveTab: (tab: Tab) => Promise<Config>;
   deleteTab: (tabId: string) => Promise<Config>;
+  setShortcut: (combo: string) => Promise<Config>;
+  setTheme: (theme: Theme) => Promise<Config>;
+  setLanguage: (language: Language) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -54,5 +59,31 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
-  return { config, loadError, saveTab, deleteTab };
+  const setShortcut = useCallback(async (combo: string) => {
+    const next = await ipc.setShortcut(combo);
+    setConfig(next);
+    return next;
+  }, []);
+
+  const setTheme = useCallback(async (theme: Theme) => {
+    const next = await ipc.setTheme(theme);
+    setConfig(next);
+    return next;
+  }, []);
+
+  const setLanguage = useCallback(async (language: Language) => {
+    const next = await ipc.setLanguage(language);
+    setConfig(next);
+    return next;
+  }, []);
+
+  return {
+    config,
+    loadError,
+    saveTab,
+    deleteTab,
+    setShortcut,
+    setTheme,
+    setLanguage,
+  };
 }

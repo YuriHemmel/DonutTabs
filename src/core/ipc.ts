@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Config } from "./types/Config";
 import type { Tab } from "./types/Tab";
+import type { Theme } from "./types/Theme";
+import type { Language } from "./types/Language";
 
 export type SettingsIntent = "new-tab";
 
@@ -14,6 +16,9 @@ export const ipc = {
     invoke<void>("open_settings", { intent: intent ?? null }),
   consumeSettingsIntent: () => invoke<string | null>("consume_settings_intent"),
   closeSettings: () => invoke<void>("close_settings"),
+  setShortcut: (combo: string) => invoke<Config>("set_shortcut", { combo }),
+  setTheme: (theme: Theme) => invoke<Config>("set_theme", { theme }),
+  setLanguage: (language: Language) => invoke<Config>("set_language", { language }),
 };
 
 export const CONFIG_CHANGED_EVENT = "config-changed";
