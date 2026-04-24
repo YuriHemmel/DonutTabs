@@ -17,18 +17,18 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
     <aside
       style={{
         width: 260,
-        borderRight: "1px solid #23304d",
+        borderRight: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         gap: 8,
         padding: 12,
-        background: "#0c1020",
+        background: "var(--panel)",
       }}
     >
       <header
         style={{
           fontSize: 13,
-          color: "#8ea",
+          color: "var(--muted)",
           textTransform: "uppercase",
           letterSpacing: 0.5,
         }}
@@ -39,9 +39,9 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
         type="button"
         onClick={onAdd}
         style={{
-          background: "#1d2a4a",
-          color: "#dde",
-          border: "1px solid #334",
+          background: "var(--hover-bg)",
+          color: "var(--fg)",
+          border: "1px solid var(--ghost-border)",
           borderRadius: 6,
           padding: "8px 10px",
           cursor: "pointer",
@@ -53,7 +53,7 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
       </button>
 
       {ordered.length === 0 ? (
-        <p style={{ color: "#889", fontSize: 13, lineHeight: 1.4 }}>
+        <p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>
           {t("settings.tabs.empty")}
         </p>
       ) : (
@@ -80,9 +80,11 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
                   style={{
                     width: "100%",
                     textAlign: "left",
-                    background: selected ? "#253e6b" : "transparent",
-                    color: "#dde",
-                    border: "1px solid " + (selected ? "#3e63a8" : "transparent"),
+                    background: selected ? "var(--selected-bg)" : "transparent",
+                    color: "var(--fg)",
+                    border:
+                      "1px solid " +
+                      (selected ? "var(--selected-border)" : "transparent"),
                     borderRadius: 6,
                     padding: "8px 10px",
                     cursor: "pointer",

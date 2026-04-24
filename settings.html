@@ -1,11 +1,54 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DonutTabs — Configurações</title>
     <style>
-      html, body { margin: 0; padding: 0; height: 100%; background: #0f1320; color: #dde; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      :root[data-theme="dark"] {
+        --bg: #0f1320;
+        --fg: #dde;
+        --muted: #889;
+        --panel: #0c1020;
+        --border: #23304d;
+        --input-bg: #12192c;
+        --input-border: #2a3557;
+        --hover-bg: #1d2a4a;
+        --selected-bg: #253e6b;
+        --selected-border: #3e63a8;
+        --accent-bg: #2a4a7d;
+        --accent-fg: #ffffff;
+        --ghost-border: #33405c;
+        --danger-fg: #f99;
+        --danger-border: #553322;
+        --code-bg: #12192c;
+      }
+      :root[data-theme="light"] {
+        --bg: #f4f4f8;
+        --fg: #1a1e2a;
+        --muted: #666a78;
+        --panel: #e8ebf1;
+        --border: #c8cdda;
+        --input-bg: #ffffff;
+        --input-border: #b8bfcf;
+        --hover-bg: #dce2ed;
+        --selected-bg: #c7d3ea;
+        --selected-border: #6c8ecc;
+        --accent-bg: #2a4a7d;
+        --accent-fg: #ffffff;
+        --ghost-border: #b0b7c5;
+        --danger-fg: #b32a2a;
+        --danger-border: #e4a6a6;
+        --code-bg: #ffffff;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
       #root { width: 100vw; height: 100vh; }
     </style>
   </head>

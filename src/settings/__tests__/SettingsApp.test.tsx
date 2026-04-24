@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { createI18n } from "../../core/i18n";
 import { SettingsApp } from "../SettingsApp";
@@ -36,6 +37,9 @@ vi.mock("../../core/ipc", () => ({
     openTab: vi.fn(),
     hideDonut: vi.fn(),
     consumeSettingsIntent: vi.fn().mockResolvedValue(null),
+    setShortcut: vi.fn(),
+    setTheme: vi.fn(),
+    setLanguage: vi.fn(),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",
@@ -98,6 +102,48 @@ describe("SettingsApp intent routing", () => {
     await waitFor(() => {
       expect(screen.getByText(/selecione uma aba/i)).toBeTruthy();
     });
+    act(() => {
+      (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
+        "settings-intent",
+        "new-tab",
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /nova aba/i })).toBeTruthy();
+    });
+  });
+
+  it("renders AppearanceSection when the Aparência tab is clicked", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText(/selecione uma aba/i)).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-appearance"));
+    expect(screen.getByRole("heading", { name: /aparência/i })).toBeTruthy();
+    expect(screen.queryByText(/selecione uma aba/i)).toBeNull();
+  });
+
+  it("renders ShortcutSection when the Atalho tab is clicked", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText(/selecione uma aba/i)).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-shortcut"));
+    expect(screen.getByRole("heading", { name: /atalho global/i })).toBeTruthy();
+  });
+
+  it("intent 'new-tab' also switches back to the tabs section when on another section", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText(/selecione uma aba/i)).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-appearance"));
     act(() => {
       (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
         "settings-intent",

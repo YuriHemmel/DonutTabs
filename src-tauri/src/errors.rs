@@ -68,7 +68,6 @@ impl AppError {
         }
     }
 
-    #[allow(dead_code)]
     pub fn shortcut(code: impl Into<String>, pairs: &[(&str, String)]) -> Self {
         AppError::Shortcut {
             code: code.into(),

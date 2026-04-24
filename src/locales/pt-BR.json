@@ -16,7 +16,8 @@
       "unknown": "Erro ao abrir aba: {{code}}"
     },
     "shortcut": {
-      "registrationFailed": "Não foi possível registrar o atalho: {{reason}}",
+      "shortcutRegistrationFailed": "Não foi possível registrar o atalho: {{reason}}",
+      "shortcutParseFailed": "Combinação inválida: {{reason}}",
       "unknown": "Erro de atalho: {{code}}"
     },
     "window": {
@@ -34,6 +35,32 @@
   },
   "settings": {
     "title": "Configurações",
+    "sections": {
+      "tabs": "Abas",
+      "appearance": "Aparência",
+      "shortcut": "Atalho"
+    },
+    "appearance": {
+      "sectionTitle": "Aparência",
+      "theme": "Tema",
+      "themeDark": "Escuro",
+      "themeLight": "Claro",
+      "themeAuto": "Automático (sistema)",
+      "language": "Idioma",
+      "languageAuto": "Automático (sistema)",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English"
+    },
+    "shortcut": {
+      "sectionTitle": "Atalho global",
+      "current": "Atalho atual:",
+      "record": "Gravar novo atalho",
+      "recording": "Pressione a combinação…",
+      "cancel": "Cancelar",
+      "hint": "Combinação precisa conter Ctrl, Alt, Shift ou Super + uma tecla não reservada (Enter/Esc/Tab são rejeitadas).",
+      "reservedKey": "Tecla reservada: {{key}}",
+      "noModifier": "Inclua um modificador (Ctrl/Alt/Shift/Super)."
+    },
     "tabs": {
       "sectionTitle": "Abas",
       "addTab": "Adicionar aba",

@@ -73,10 +73,7 @@ jobs:
 
       - name: cargo clippy
         working-directory: src-tauri
-        # Dead-code warnings intentionally allowed during Plano 1: types like
-        # AppError::Shortcut/Launcher/Window and AppState.config_path are wired
-        # up in Plano 2 (Settings UI). Tighten to -D warnings when Plano 2 lands.
-        run: cargo clippy --lib
+        run: cargo clippy --lib -- -D warnings
 
   test-linux:
     name: Rust test (Linux) + ts-rs drift
