@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { TabList } from "./TabList";
@@ -8,6 +8,7 @@ import { ShortcutSection } from "./ShortcutSection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { useConfig } from "./useConfig";
 import { ipc, SETTINGS_INTENT_EVENT } from "../core/ipc";
+import type { Config } from "../core/types/Config";
 import type { Tab } from "../core/types/Tab";
 
 type Selection =
@@ -17,12 +18,21 @@ type Selection =
 
 function applyIntent(
   intent: string | null,
+  config: { tabs: { id: string }[] } | null,
   setSection: (s: Section) => void,
   setSelection: (s: Selection) => void,
 ) {
   if (intent === "new-tab") {
     setSection("tabs");
     setSelection({ mode: "new" });
+    return;
+  }
+  if (intent && intent.startsWith("edit-tab:")) {
+    const tabId = intent.slice("edit-tab:".length);
+    if (config?.tabs.some((t) => t.id === tabId)) {
+      setSection("tabs");
+      setSelection({ mode: "edit", tabId });
+    }
   }
 }
 
@@ -32,18 +42,41 @@ export const SettingsApp: React.FC = () => {
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
 
+  // Ref para o config atual — usado pelo listener de intents para validar
+  // que a aba alvo (edit-tab:<id>) ainda existe quando o evento chega.
+  const configRef = useRef<Config | null>(config);
+  configRef.current = config;
+
+  // Intent pendente: chegou antes do config carregar. Reaplicado abaixo
+  // quando o config aparece.
+  const pendingIntentRef = useRef<string | null>(null);
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    const handle = (intent: string | null) => {
+      if (intent && intent.startsWith("edit-tab:") && !configRef.current) {
+        pendingIntentRef.current = intent;
+        return;
+      }
+      applyIntent(intent, configRef.current, setSection, setSelection);
+    };
     void listen<string>(SETTINGS_INTENT_EVENT, (e) => {
-      applyIntent(e.payload, setSection, setSelection);
+      handle(e.payload);
     }).then((fn) => {
       unlisten = fn;
-      void ipc.consumeSettingsIntent().then((intent) => {
-        applyIntent(intent, setSection, setSelection);
-      });
+      void ipc.consumeSettingsIntent().then(handle);
     });
     return () => unlisten?.();
   }, []);
+
+  // Re-aplica intent pendente quando o config termina de carregar.
+  useEffect(() => {
+    if (config && pendingIntentRef.current) {
+      const pending = pendingIntentRef.current;
+      pendingIntentRef.current = null;
+      applyIntent(pending, config, setSection, setSelection);
+    }
+  }, [config]);
 
   if (!config) {
     return <div style={{ padding: 24 }}>…</div>;

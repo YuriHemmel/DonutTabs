@@ -48,7 +48,9 @@ vi.mock("../../core/ipc", () => ({
 import { ipc } from "../../core/ipc";
 import * as events from "@tauri-apps/api/event";
 
-const makeConfig = () => ({
+const makeConfig = (
+  overrides: Partial<{ tabs: { id: string; name: string | null; icon: string | null; order: number; openMode: string; items: unknown[] }[] }> = {},
+) => ({
   version: 1,
   shortcut: "CommandOrControl+Shift+Space",
   appearance: { theme: "dark", language: "auto" },
@@ -60,6 +62,7 @@ const makeConfig = () => ({
   pagination: { itemsPerPage: 6, wheelDirection: "standard" },
   system: { autostart: false },
   tabs: [],
+  ...overrides,
 });
 
 async function renderApp() {
@@ -152,6 +155,73 @@ describe("SettingsApp intent routing", () => {
     });
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: /nova aba/i })).toBeTruthy();
+    });
+  });
+
+  it("opens the editor of the matching tab when intent is 'edit-tab:<id>'", async () => {
+    const cfg = makeConfig({
+      tabs: [
+        {
+          id: "abc",
+          name: "Trabalho",
+          icon: null,
+          order: 0,
+          openMode: "reuseOrNewWindow",
+          items: [{ kind: "url", value: "https://example.com" }],
+        },
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "edit-tab:abc",
+    );
+    await renderApp();
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/nome/i) as HTMLInputElement;
+      expect(nameInput.value).toBe("Trabalho");
+    });
+    expect(screen.queryByRole("heading", { name: /nova aba/i })).toBeNull();
+  });
+
+  it("ignores 'edit-tab:<id>' when the tab id does not exist", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "edit-tab:does-not-exist",
+    );
+    await renderApp();
+    await waitFor(() => {
+      // sem aba existente, fica no select-prompt
+      expect(screen.getByText(/selecione uma aba/i)).toBeTruthy();
+    });
+  });
+
+  it("switches to edit mode when receiving live edit-tab:<id> event", async () => {
+    const cfg = makeConfig({
+      tabs: [
+        {
+          id: "xyz",
+          name: "Estudo",
+          icon: null,
+          order: 0,
+          openMode: "reuseOrNewWindow",
+          items: [{ kind: "url", value: "https://example.com" }],
+        },
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText(/selecione uma aba/i)).toBeTruthy();
+    });
+    act(() => {
+      (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
+        "settings-intent",
+        "edit-tab:xyz",
+      );
+    });
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/nome/i) as HTMLInputElement;
+      expect(nameInput.value).toBe("Estudo");
     });
   });
 });
