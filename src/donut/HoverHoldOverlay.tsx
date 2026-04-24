@@ -151,18 +151,16 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
           onConfirmDelete();
         }}
       >
-        <circle cx={yesX} cy={yesY} r={18} fill="#2a9d4f" />
+        <circle cx={yesX} cy={yesY} r={20} fill="#c8382b" />
         <text
           x={yesX}
-          y={yesY}
+          y={yesY + 1}
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={20}
-          fontWeight={700}
-          fill="#fff"
           pointerEvents="none"
         >
-          ✓
+          🗑️
         </text>
       </g>
       <g
@@ -175,7 +173,7 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
           onCancelConfirm();
         }}
       >
-        <circle cx={noX} cy={noY} r={18} fill="#c8382b" />
+        <circle cx={noX} cy={noY} r={18} fill="#5a5f6e" />
         <text
           x={noX}
           y={noY}
