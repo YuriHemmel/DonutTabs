@@ -9,9 +9,10 @@ export interface DonutProps {
   tabs: Tab[];
   size: number;
   onSelect: (tabId: string) => void;
+  onOpenSettings?: () => void;
 }
 
-export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect }) => {
+export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect, onOpenSettings }) => {
   const cx = size / 2;
   const cy = size / 2;
   const outerR = size * 0.46;
@@ -52,7 +53,7 @@ export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect }) => {
           />
         );
       })}
-      <CenterCircle cx={cx} cy={cy} r={innerR * 0.85} />
+      <CenterCircle cx={cx} cy={cy} r={innerR * 0.85} onGearClick={onOpenSettings} />
     </svg>
   );
 };

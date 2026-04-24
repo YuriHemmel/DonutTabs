@@ -3,8 +3,9 @@ import { createRoot } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import i18next from "i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { Donut } from "../donut/Donut";
-import { ipc } from "../core/ipc";
+import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
 import { initI18n } from "../core/i18n";
 import { translateAppError } from "../core/errors";
 import type { Config } from "../core/types/Config";
@@ -45,6 +46,18 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     };
   }, []);
 
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<Config>(CONFIG_CHANGED_EVENT, (e) => {
+      setConfig(e.payload);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) void ipc.hideDonut();
   };
@@ -55,6 +68,14 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
       void ipc.hideDonut();
     } catch (err) {
       setErrorMsg(translateAppError(err, t));
+    }
+  };
+
+  const handleOpenSettings = async () => {
+    try {
+      await ipc.openSettings();
+    } finally {
+      void ipc.hideDonut();
     }
   };
 
@@ -70,7 +91,12 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
       onClick={handleBackdropClick}
     >
       {config && (
-        <Donut tabs={config.tabs} size={WINDOW_SIZE} onSelect={handleSelect} />
+        <Donut
+          tabs={config.tabs}
+          size={WINDOW_SIZE}
+          onSelect={handleSelect}
+          onOpenSettings={handleOpenSettings}
+        />
       )}
       {errorMsg && (
         <div
