@@ -1,0 +1,35 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage deve estar entre 4 e 8 (recebido: {{got}})",
+      "hoverHoldMsZero": "hoverHoldMs deve ser maior que 0",
+      "tabMissingNameAndIcon": "Aba {{id}} precisa de nome ou ícone",
+      "invalidUrl": "URL inválida na aba {{tabId}}: {{reason}}",
+      "duplicateTabId": "ID de aba duplicado: {{id}}",
+      "jsonParse": "Arquivo de configuração mal formado: {{reason}}",
+      "unknown": "Erro de configuração: {{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "Nenhum dos {{total}} links pôde ser aberto",
+      "partialFailure": "{{failed}} de {{total}} links não puderam ser abertos",
+      "tabNotFound": "Aba {{id}} não encontrada",
+      "unknown": "Erro ao abrir aba: {{code}}"
+    },
+    "shortcut": {
+      "registrationFailed": "Não foi possível registrar o atalho: {{reason}}",
+      "unknown": "Erro de atalho: {{code}}"
+    },
+    "window": {
+      "windowHideFailed": "Não foi possível esconder a janela: {{reason}}",
+      "unknown": "Erro de janela: {{code}}"
+    },
+    "io": {
+      "ioGeneric": "Erro de I/O: {{reason}}",
+      "unknown": "Erro de I/O: {{code}}"
+    },
+    "fallback": "Ocorreu um erro inesperado ({{kind}})"
+  },
+  "donut": {
+    "toastDismiss": "Fechar"
+  }
+}
