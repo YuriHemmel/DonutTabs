@@ -4,9 +4,15 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub fn register_from_config<R: Runtime>(app: &AppHandle<R>, shortcut_str: &str) -> AppResult<()> {
-    let shortcut: Shortcut = shortcut_str
-        .parse()
-        .map_err(|e| AppError::Shortcut(format!("{e}")))?;
+    let shortcut: Shortcut = shortcut_str.parse().map_err(|e| {
+        AppError::shortcut(
+            "shortcut_parse_failed",
+            &[
+                ("combo", shortcut_str.to_string()),
+                ("reason", format!("{e}")),
+            ],
+        )
+    })?;
 
     let app_for_handler = app.clone();
 
@@ -16,7 +22,15 @@ pub fn register_from_config<R: Runtime>(app: &AppHandle<R>, shortcut_str: &str) 
                 let _ = donut_window::show(&app_for_handler);
             }
         })
-        .map_err(|e| AppError::Shortcut(e.to_string()))?;
+        .map_err(|e| {
+            AppError::shortcut(
+                "shortcut_registration_failed",
+                &[
+                    ("combo", shortcut_str.to_string()),
+                    ("reason", e.to_string()),
+                ],
+            )
+        })?;
 
     Ok(())
 }

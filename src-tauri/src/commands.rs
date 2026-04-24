@@ -30,7 +30,7 @@ pub fn open_tab<R: tauri::Runtime>(
         .tabs
         .iter()
         .find(|t| t.id == tab_id)
-        .ok_or_else(|| AppError::Launcher(format!("tab {} não encontrada", tab_id)))?;
+        .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", tab_id.to_string())]))?;
     let opener = TauriOpener::new(&app);
     launch_tab(tab, &opener)?;
     Ok(())
@@ -39,7 +39,9 @@ pub fn open_tab<R: tauri::Runtime>(
 #[tauri::command]
 pub fn hide_donut<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), AppError> {
     if let Some(window) = app.get_webview_window("donut") {
-        window.hide().map_err(|e| AppError::Window(e.to_string()))?;
+        window
+            .hide()
+            .map_err(|e| AppError::window("window_hide_failed", &[("reason", e.to_string())]))?;
     }
     Ok(())
 }

@@ -8,10 +8,12 @@ const DONUT_SIZE: f64 = 420.0;
 pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     if let Some(window) = app.get_webview_window(DONUT_LABEL) {
         position_at_cursor(&window)?;
-        window.show().map_err(|e| AppError::Window(e.to_string()))?;
         window
-            .set_focus()
-            .map_err(|e| AppError::Window(e.to_string()))?;
+            .show()
+            .map_err(|e| AppError::window("window_show_failed", &[("reason", e.to_string())]))?;
+        window.set_focus().map_err(|e| {
+            AppError::window("window_set_focus_failed", &[("reason", e.to_string())])
+        })?;
         return Ok(());
     }
 
@@ -26,13 +28,15 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
         .visible(false)
         .shadow(false)
         .build()
-        .map_err(|e| AppError::Window(e.to_string()))?;
+        .map_err(|e| AppError::window("window_build_failed", &[("reason", e.to_string())]))?;
 
     position_at_cursor(&window)?;
-    window.show().map_err(|e| AppError::Window(e.to_string()))?;
+    window
+        .show()
+        .map_err(|e| AppError::window("window_show_failed", &[("reason", e.to_string())]))?;
     window
         .set_focus()
-        .map_err(|e| AppError::Window(e.to_string()))?;
+        .map_err(|e| AppError::window("window_set_focus_failed", &[("reason", e.to_string())]))?;
     Ok(())
 }
 
@@ -42,15 +46,17 @@ fn position_at_cursor<R: Runtime>(window: &tauri::WebviewWindow<R>) -> AppResult
         Mouse::Error => return Ok(()),
     };
 
-    let scale = window
-        .scale_factor()
-        .map_err(|e| AppError::Window(e.to_string()))?;
+    let scale = window.scale_factor().map_err(|e| {
+        AppError::window("window_scale_factor_failed", &[("reason", e.to_string())])
+    })?;
     let half = (DONUT_SIZE / 2.0) * scale;
     let x = (pos.0 - half).round() as i32;
     let y = (pos.1 - half).round() as i32;
 
     window
         .set_position(PhysicalPosition::new(x, y))
-        .map_err(|e| AppError::Window(e.to_string()))?;
+        .map_err(|e| {
+            AppError::window("window_set_position_failed", &[("reason", e.to_string())])
+        })?;
     Ok(())
 }

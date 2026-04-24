@@ -45,7 +45,7 @@ mod tests {
         let path = dir.path().join("config.json");
         std::fs::write(&path, "{ not json").unwrap();
         let err = load_from_path(&path).unwrap_err();
-        assert!(matches!(err, AppError::Config(_)), "got: {err:?}");
+        assert!(matches!(err, AppError::Config { .. }), "got: {err:?}");
     }
 
     #[test]
@@ -56,7 +56,7 @@ mod tests {
         cfg.pagination.items_per_page = 99;
         std::fs::write(&path, serde_json::to_string(&cfg).unwrap()).unwrap();
         let err = load_from_path(&path).unwrap_err();
-        assert!(matches!(err, AppError::Config(_)), "got: {err:?}");
+        assert!(matches!(err, AppError::Config { .. }), "got: {err:?}");
     }
 
     #[test]
@@ -77,6 +77,9 @@ mod tests {
         )
         .unwrap();
         let cfg = load_from_path(&path).unwrap();
-        assert_eq!(cfg.appearance.language, crate::config::schema::Language::Auto);
+        assert_eq!(
+            cfg.appearance.language,
+            crate::config::schema::Language::Auto
+        );
     }
 }

@@ -33,19 +33,14 @@ pub enum Theme {
     Auto,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub enum Language {
+    #[default]
     Auto,
     PtBr,
     En,
-}
-
-impl Default for Language {
-    fn default() -> Self {
-        Language::Auto
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
