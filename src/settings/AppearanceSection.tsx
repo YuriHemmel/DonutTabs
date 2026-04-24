@@ -39,7 +39,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
       <h2 style={{ margin: 0 }}>{t("settings.appearance.sectionTitle")}</h2>
 
       <fieldset
-        style={{ border: "1px solid #2a3557", borderRadius: 4, padding: 12 }}
+        style={{ border: "1px solid var(--input-border)", borderRadius: 4, padding: 12 }}
       >
         <legend style={{ padding: "0 6px" }}>{t("settings.appearance.theme")}</legend>
         {THEMES.map((opt) => (
@@ -66,9 +66,9 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           value={language}
           onChange={(e) => onLanguageChange(e.target.value as Language)}
           style={{
-            background: "#12192c",
-            color: "#dde",
-            border: "1px solid #2a3557",
+            background: "var(--input-bg)",
+            color: "var(--fg)",
+            border: "1px solid var(--input-border)",
             borderRadius: 4,
             padding: "6px 8px",
             font: "inherit",

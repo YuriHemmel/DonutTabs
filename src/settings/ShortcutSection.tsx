@@ -38,7 +38,7 @@ export const ShortcutSection: React.FC<ShortcutSectionProps> = ({
       <h2 style={{ margin: 0 }}>{t("settings.shortcut.sectionTitle")}</h2>
       <ShortcutRecorder current={current} onCapture={handleCapture} />
       {serverError && (
-        <div role="alert" style={{ color: "#f99" }}>
+        <div role="alert" style={{ color: "var(--danger-fg)" }}>
           {serverError}
         </div>
       )}

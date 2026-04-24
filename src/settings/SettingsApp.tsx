@@ -98,7 +98,7 @@ export const SettingsApp: React.FC = () => {
                 flex: 1,
                 display: "grid",
                 placeItems: "center",
-                color: "#889",
+                color: "var(--muted)",
                 padding: 24,
                 textAlign: "center",
               }}

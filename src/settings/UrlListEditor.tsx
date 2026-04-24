@@ -33,9 +33,9 @@ export const UrlListEditor: React.FC<UrlListEditorProps> = ({ values, onChange }
             placeholder={t("settings.editor.urlPlaceholder")}
             style={{
               flex: 1,
-              background: "#12192c",
-              color: "#dde",
-              border: "1px solid #2a3557",
+              background: "var(--input-bg)",
+              color: "var(--fg)",
+              border: "1px solid var(--input-border)",
               borderRadius: 4,
               padding: "6px 8px",
               font: "inherit",
@@ -47,8 +47,8 @@ export const UrlListEditor: React.FC<UrlListEditorProps> = ({ values, onChange }
             onClick={() => remove(i)}
             style={{
               background: "transparent",
-              color: "#a77",
-              border: "1px solid #532",
+              color: "var(--danger-fg)",
+              border: "1px solid var(--danger-border)",
               borderRadius: 4,
               padding: "4px 10px",
               cursor: "pointer",
@@ -64,8 +64,8 @@ export const UrlListEditor: React.FC<UrlListEditorProps> = ({ values, onChange }
         style={{
           alignSelf: "flex-start",
           background: "transparent",
-          color: "#8ea",
-          border: "1px dashed #355",
+          color: "var(--fg)",
+          border: "1px dashed var(--input-border)",
           borderRadius: 4,
           padding: "4px 10px",
           cursor: "pointer",

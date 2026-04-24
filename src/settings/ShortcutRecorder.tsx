@@ -51,8 +51,8 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
   }, [recording, t, onCapture]);
 
   const buttonStyle: React.CSSProperties = {
-    background: "#2a4a7d",
-    color: "#fff",
+    background: "var(--accent-bg)",
+    color: "var(--accent-fg)",
     border: 0,
     borderRadius: 4,
     padding: "8px 16px",
@@ -61,8 +61,8 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
 
   const cancelStyle: React.CSSProperties = {
     background: "transparent",
-    color: "#dde",
-    border: "1px solid #334",
+    color: "var(--fg)",
+    border: "1px solid var(--ghost-border)",
     borderRadius: 4,
     padding: "8px 16px",
     cursor: "pointer",
@@ -74,8 +74,8 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
         <span>{t("settings.shortcut.current")}</span>
         <code
           style={{
-            background: "#12192c",
-            border: "1px solid #2a3557",
+            background: "var(--code-bg)",
+            border: "1px solid var(--input-border)",
             borderRadius: 4,
             padding: "4px 8px",
             fontFamily: "ui-monospace, Consolas, monospace",
@@ -107,10 +107,10 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
         </div>
       )}
 
-      <small style={{ color: "#889" }}>{t("settings.shortcut.hint")}</small>
+      <small style={{ color: "var(--muted)" }}>{t("settings.shortcut.hint")}</small>
 
       {error && (
-        <div role="alert" style={{ color: "#f99" }}>
+        <div role="alert" style={{ color: "var(--danger-fg)" }}>
           {error}
         </div>
       )}

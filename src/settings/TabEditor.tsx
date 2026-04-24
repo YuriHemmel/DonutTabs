@@ -161,9 +161,9 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     mode === "new" ? t("settings.editor.newTabTitle") : state.name || state.icon || "";
 
   const inputStyle: React.CSSProperties = {
-    background: "#12192c",
-    color: "#dde",
-    border: "1px solid #2a3557",
+    background: "var(--input-bg)",
+    color: "var(--fg)",
+    border: "1px solid var(--input-border)",
     borderRadius: 4,
     padding: "6px 8px",
     font: "inherit",
@@ -206,7 +206,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             style={{ ...inputStyle, width: 80 }}
           />
         </label>
-        <small style={{ color: "#889" }}>{t("settings.editor.iconHint")}</small>
+        <small style={{ color: "var(--muted)" }}>{t("settings.editor.iconHint")}</small>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -215,12 +215,12 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       </div>
 
       {validation && (
-        <div role="alert" style={{ color: "#f99" }}>
+        <div role="alert" style={{ color: "var(--danger-fg)" }}>
           {validation}
         </div>
       )}
       {serverError && (
-        <div role="alert" style={{ color: "#f99" }}>
+        <div role="alert" style={{ color: "var(--danger-fg)" }}>
           {serverError}
         </div>
       )}
@@ -231,8 +231,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           disabled={saving}
           onClick={submit}
           style={{
-            background: "#2a4a7d",
-            color: "#fff",
+            background: "var(--accent-bg)",
+            color: "var(--accent-fg)",
             border: 0,
             borderRadius: 4,
             padding: "8px 16px",
@@ -246,8 +246,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           onClick={onCancel}
           style={{
             background: "transparent",
-            color: "#dde",
-            border: "1px solid #334",
+            color: "var(--fg)",
+            border: "1px solid var(--ghost-border)",
             borderRadius: 4,
             padding: "8px 16px",
             cursor: "pointer",
@@ -262,8 +262,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             style={{
               marginLeft: "auto",
               background: "transparent",
-              color: "#f99",
-              border: "1px solid #532",
+              color: "var(--danger-fg)",
+              border: "1px solid var(--danger-border)",
               borderRadius: 4,
               padding: "8px 16px",
               cursor: "pointer",

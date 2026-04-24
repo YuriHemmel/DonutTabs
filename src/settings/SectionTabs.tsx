@@ -19,8 +19,8 @@ export const SectionTabs: React.FC<SectionTabsProps> = ({ active, onChange }) =>
         display: "flex",
         gap: 4,
         padding: "12px 16px",
-        borderBottom: "1px solid var(--border, #23304d)",
-        background: "var(--panel, #0c1020)",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--panel)",
       }}
     >
       {SECTIONS.map((s) => {
@@ -34,9 +34,10 @@ export const SectionTabs: React.FC<SectionTabsProps> = ({ active, onChange }) =>
             data-testid={`section-${s}`}
             onClick={() => onChange(s)}
             style={{
-              background: selected ? "#253e6b" : "transparent",
-              color: "#dde",
-              border: "1px solid " + (selected ? "#3e63a8" : "transparent"),
+              background: selected ? "var(--selected-bg)" : "transparent",
+              color: "var(--fg)",
+              border:
+                "1px solid " + (selected ? "var(--selected-border)" : "transparent"),
               borderRadius: 6,
               padding: "6px 14px",
               cursor: "pointer",
