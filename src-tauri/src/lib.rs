@@ -3,6 +3,7 @@ mod config;
 mod donut_window;
 mod errors;
 mod launcher;
+mod settings_window;
 mod shortcut;
 mod tray;
 
