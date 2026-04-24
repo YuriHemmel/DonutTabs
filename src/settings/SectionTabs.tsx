@@ -19,8 +19,8 @@ export const SectionTabs: React.FC<SectionTabsProps> = ({ active, onChange }) =>
         display: "flex",
         gap: 4,
         padding: "12px 16px",
-        borderBottom: "1px solid #23304d",
-        background: "#0c1020",
+        borderBottom: "1px solid var(--border, #23304d)",
+        background: "var(--panel, #0c1020)",
       }}
     >
       {SECTIONS.map((s) => {

@@ -6,7 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { Donut } from "../donut/Donut";
 import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
-import { initI18n } from "../core/i18n";
+import { initI18n, changeLanguage } from "../core/i18n";
 import { translateAppError } from "../core/errors";
 import type { Config } from "../core/types/Config";
 
@@ -50,6 +50,9 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     let unlisten: (() => void) | undefined;
     void listen<Config>(CONFIG_CHANGED_EVENT, (e) => {
       setConfig(e.payload);
+      // Troca o idioma em runtime para espelhar o que a Settings aplicou;
+      // strings do toast (erro de openTab) já refletem na próxima abertura.
+      void changeLanguage(e.payload.appearance.language);
     }).then((fn) => {
       unlisten = fn;
     });

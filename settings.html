@@ -1,11 +1,30 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DonutTabs — Configurações</title>
     <style>
-      html, body { margin: 0; padding: 0; height: 100%; background: #0f1320; color: #dde; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      :root[data-theme="dark"] {
+        --bg: #0f1320;
+        --fg: #dde;
+        --panel: #0c1020;
+        --border: #23304d;
+      }
+      :root[data-theme="light"] {
+        --bg: #f4f4f8;
+        --fg: #1a1e2a;
+        --panel: #e8ebf1;
+        --border: #c8cdda;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
       #root { width: 100vw; height: 100vh; }
     </style>
   </head>
