@@ -27,6 +27,12 @@ function randomUuid(): string {
   return crypto.randomUUID();
 }
 
+function stripLetters(s: string): string {
+  // \p{L} cobre letras de qualquer script (Latin, Cyrillic, CJK, etc.).
+  // Emojis ficam em \p{So}, ZWJ em \p{Cf}, modifiers em \p{Sk} — passam intactos.
+  return s.replace(/\p{L}/gu, "");
+}
+
 function graphemeCount(s: string): number {
   // Intl.Segmenter cobre emojis compostos (ZWJ, skin tone, bandeiras).
   // Fallback para contagem de codepoints em runtimes sem Segmenter.
@@ -191,7 +197,9 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           <span>{t("settings.editor.icon")}</span>
           <input
             value={state.icon}
-            onChange={(e) => setState({ ...state, icon: e.target.value })}
+            onChange={(e) =>
+              setState({ ...state, icon: stripLetters(e.target.value) })
+            }
             placeholder={t("settings.editor.iconPlaceholder")}
             maxLength={16}
             size={4}

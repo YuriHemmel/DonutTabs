@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import type { ComponentProps } from "react";
@@ -109,7 +109,10 @@ describe("TabEditor", () => {
   it("rejects an icon with more than one grapheme", async () => {
     const user = userEvent.setup();
     const { props } = await renderEditor();
-    await user.type(screen.getByLabelText(/ícone/i), "ab");
+    // dois emojis passam pelo filtro de letras mas falham na contagem de grafemas
+    fireEvent.change(screen.getByLabelText(/ícone/i), {
+      target: { value: "💼📝" },
+    });
     await user.type(screen.getByLabelText(/url 1/i), "https://a.test");
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     expect(screen.getByText(/único caractere ou emoji/i)).toBeTruthy();
@@ -135,5 +138,29 @@ describe("TabEditor", () => {
   it("does not render the open-mode selector", async () => {
     await renderEditor();
     expect(screen.queryByText(/modo de abertura/i)).toBeNull();
+  });
+
+  it("does not let letters appear in the icon input as they are typed", async () => {
+    const user = userEvent.setup();
+    await renderEditor();
+    const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
+    await user.type(iconInput, "abc");
+    expect(iconInput.value).toBe("");
+  });
+
+  it("strips letters but keeps emoji when the value is set from a paste", async () => {
+    await renderEditor();
+    const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
+    fireEvent.change(iconInput, { target: { value: "💼Work" } });
+    expect(iconInput.value).toBe("💼");
+  });
+
+  it("keeps non-letter symbols like '★' and '→'", async () => {
+    await renderEditor();
+    const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
+    fireEvent.change(iconInput, { target: { value: "★" } });
+    expect(iconInput.value).toBe("★");
+    fireEvent.change(iconInput, { target: { value: "→" } });
+    expect(iconInput.value).toBe("→");
   });
 });
