@@ -34,6 +34,32 @@
   },
   "settings": {
     "title": "Settings",
+    "sections": {
+      "tabs": "Tabs",
+      "appearance": "Appearance",
+      "shortcut": "Shortcut"
+    },
+    "appearance": {
+      "sectionTitle": "Appearance",
+      "theme": "Theme",
+      "themeDark": "Dark",
+      "themeLight": "Light",
+      "themeAuto": "System",
+      "language": "Language",
+      "languageAuto": "System",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English"
+    },
+    "shortcut": {
+      "sectionTitle": "Global shortcut",
+      "current": "Current shortcut:",
+      "record": "Record new shortcut",
+      "recording": "Press the key combination…",
+      "cancel": "Cancel",
+      "hint": "The combo must include Ctrl, Alt, Shift or Super plus a non-reserved key (Enter/Esc/Tab are rejected).",
+      "reservedKey": "Reserved key: {{key}}",
+      "noModifier": "Include a modifier (Ctrl/Alt/Shift/Super)."
+    },
     "tabs": {
       "sectionTitle": "Tabs",
       "addTab": "Add tab",
