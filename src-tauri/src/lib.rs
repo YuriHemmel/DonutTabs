@@ -37,6 +37,12 @@ pub fn run() {
                 let _ = w.hide();
             }
 
+            // Pré-aquece a janela Settings oculta. Criar janelas a partir de
+            // comandos tardiamente trava o build do WebView2 em alguns
+            // ambientes Windows; criar durante o setup garante inicialização
+            // limpa e abertura instantânea depois.
+            settings_window::prewarm(app.handle()).map_err(|e| format!("prewarm settings: {e}"))?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
