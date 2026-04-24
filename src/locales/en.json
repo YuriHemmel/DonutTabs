@@ -61,6 +61,7 @@
       "delete": "Delete",
       "confirmDelete": "Delete tab \"{{label}}\"? This cannot be undone.",
       "validationNameOrIcon": "Provide a name or an icon.",
+      "validationIconTooLong": "The icon must be a single character or emoji.",
       "validationAtLeastOneUrl": "Add at least one URL.",
       "validationInvalidUrl": "Invalid URL: {{value}}"
     }

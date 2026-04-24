@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UrlListEditor } from "./UrlListEditor";
 import { translateAppError } from "../core/errors";
@@ -23,10 +23,29 @@ interface FormState {
   urls: string[];
 }
 
-const OPEN_MODES: OpenMode[] = ["reuseOrNewWindow", "newWindow", "newTab"];
-
 function randomUuid(): string {
   return crypto.randomUUID();
+}
+
+function graphemeCount(s: string): number {
+  // Intl.Segmenter cobre emojis compostos (ZWJ, skin tone, bandeiras).
+  // Fallback para contagem de codepoints em runtimes sem Segmenter.
+  const IntlAny = Intl as unknown as {
+    Segmenter?: new (
+      locale: string,
+      opts: { granularity: "grapheme" },
+    ) => { segment: (s: string) => Iterable<unknown> };
+  };
+  if (IntlAny.Segmenter) {
+    let count = 0;
+    for (const _ of new IntlAny.Segmenter("pt-BR", { granularity: "grapheme" }).segment(
+      s,
+    )) {
+      count++;
+    }
+    return count;
+  }
+  return [...s].length;
 }
 
 function fromTab(tab: Tab | null): FormState {
@@ -69,15 +88,6 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     setServerError(null);
   }, [initial, mode]);
 
-  const openModeLabels = useMemo<Record<OpenMode, string>>(
-    () => ({
-      reuseOrNewWindow: t("settings.editor.openModeReuseOrNewWindow"),
-      newWindow: t("settings.editor.openModeNewWindow"),
-      newTab: t("settings.editor.openModeNewTab"),
-    }),
-    [t],
-  );
-
   const submit = async () => {
     setServerError(null);
 
@@ -85,6 +95,11 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     const icon = state.icon.trim();
     if (!name && !icon) {
       setValidation(t("settings.editor.validationNameOrIcon"));
+      return;
+    }
+
+    if (icon && graphemeCount(icon) > 1) {
+      setValidation(t("settings.editor.validationIconTooLong"));
       return;
     }
 
@@ -178,26 +193,13 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             value={state.icon}
             onChange={(e) => setState({ ...state, icon: e.target.value })}
             placeholder={t("settings.editor.iconPlaceholder")}
-            style={{ ...inputStyle, width: 120 }}
+            maxLength={16}
+            size={4}
+            style={{ ...inputStyle, width: 80 }}
           />
         </label>
         <small style={{ color: "#889" }}>{t("settings.editor.iconHint")}</small>
       </div>
-
-      <fieldset style={{ border: "1px solid #2a3557", borderRadius: 4, padding: 12 }}>
-        <legend style={{ padding: "0 6px" }}>{t("settings.editor.openMode")}</legend>
-        {OPEN_MODES.map((m) => (
-          <label key={m} style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}>
-            <input
-              type="radio"
-              name="openMode"
-              checked={state.openMode === m}
-              onChange={() => setState({ ...state, openMode: m })}
-            />
-            {openModeLabels[m]}
-          </label>
-        ))}
-      </fieldset>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span>{t("settings.editor.urls")}</span>

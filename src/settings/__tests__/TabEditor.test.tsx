@@ -105,4 +105,35 @@ describe("TabEditor", () => {
     await renderEditor({ mode: "new" });
     expect(screen.queryByRole("button", { name: /^excluir$/i })).toBeNull();
   });
+
+  it("rejects an icon with more than one grapheme", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/ícone/i), "ab");
+    await user.type(screen.getByLabelText(/url 1/i), "https://a.test");
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    expect(screen.getByText(/único caractere ou emoji/i)).toBeTruthy();
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it("accepts a compound emoji as a single grapheme", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    // bandeira do Brasil: 2 codepoints, 1 grafema
+    await user.type(screen.getByLabelText(/ícone/i), "🇧🇷");
+    await user.type(screen.getByLabelText(/url 1/i), "https://a.test");
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("icon input caps UTF-16 length at 16", async () => {
+    await renderEditor();
+    const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
+    expect(iconInput.maxLength).toBe(16);
+  });
+
+  it("does not render the open-mode selector", async () => {
+    await renderEditor();
+    expect(screen.queryByText(/modo de abertura/i)).toBeNull();
+  });
 });

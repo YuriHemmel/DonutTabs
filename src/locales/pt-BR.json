@@ -61,6 +61,7 @@
       "delete": "Excluir",
       "confirmDelete": "Excluir aba \"{{label}}\"? Essa ação não pode ser desfeita.",
       "validationNameOrIcon": "Preencha nome ou ícone.",
+      "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone.",
       "validationAtLeastOneUrl": "Adicione ao menos uma URL.",
       "validationInvalidUrl": "URL inválida: {{value}}"
     }
