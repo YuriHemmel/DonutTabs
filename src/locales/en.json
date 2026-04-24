@@ -35,9 +35,8 @@
     "hoverHold": {
       "edit": "Edit",
       "delete": "Delete",
-      "confirmDelete": "Delete tab?",
-      "yes": "Yes",
-      "no": "No"
+      "yes": "Confirm deletion",
+      "no": "Cancel"
     }
   },
   "settings": {

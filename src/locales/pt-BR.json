@@ -35,9 +35,8 @@
     "hoverHold": {
       "edit": "Editar",
       "delete": "Excluir",
-      "confirmDelete": "Excluir aba?",
-      "yes": "Sim",
-      "no": "Não"
+      "yes": "Confirmar exclusão",
+      "no": "Cancelar"
     }
   },
   "settings": {

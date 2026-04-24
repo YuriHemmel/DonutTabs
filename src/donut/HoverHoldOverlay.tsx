@@ -129,81 +129,64 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
     );
   }
 
-  // confirming: prompt + Sim/Não inline na metade direita
-  const yesAngle = mid + (endAngle - mid) * 0.35;
-  const noAngle = mid + (endAngle - mid) * 0.75;
+  // confirming: ✓ verde (esquerda, confirmar) / ✕ vermelho (direita, cancelar)
+  const yesAngle = startAngle + (endAngle - startAngle) * 0.3;
+  const noAngle = startAngle + (endAngle - startAngle) * 0.7;
   const yesX = cx + labelR * Math.cos(yesAngle);
   const yesY = cy + labelR * Math.sin(yesAngle);
   const noX = cx + labelR * Math.cos(noAngle);
   const noY = cy + labelR * Math.sin(noAngle);
+  const slicePath = arcPath({ cx, cy, innerR, outerR, startAngle, endAngle });
 
   return (
     <g data-testid="hover-hold-confirm">
-      <path
-        d={editPath}
-        fill="rgba(40, 50, 70, 0.65)"
-        style={{ cursor: "pointer" }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onCancelConfirm();
-        }}
-      />
-      <path
-        d={deletePath}
-        fill="rgba(200, 60, 60, 0.55)"
-        pointerEvents="none"
-      />
-      <text
-        x={cx + (innerR + 8) * Math.cos(mid)}
-        y={cy + (innerR + 8) * Math.sin(mid)}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={11}
-        fill="#fff"
-        pointerEvents="none"
-      >
-        {t("donut.hoverHold.confirmDelete")}
-      </text>
+      <path d={slicePath} fill="rgba(20, 25, 40, 0.55)" pointerEvents="none" />
       <g
         data-testid="hover-hold-confirm-yes"
+        aria-label={t("donut.hoverHold.yes")}
+        role="button"
         style={{ cursor: "pointer" }}
         onClick={(e) => {
           e.stopPropagation();
           onConfirmDelete();
         }}
       >
-        <circle cx={yesX} cy={yesY} r={16} fill="rgba(220, 80, 80, 0.85)" />
+        <circle cx={yesX} cy={yesY} r={18} fill="#2a9d4f" />
         <text
           x={yesX}
           y={yesY}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={11}
+          fontSize={20}
+          fontWeight={700}
           fill="#fff"
           pointerEvents="none"
         >
-          {t("donut.hoverHold.yes")}
+          ✓
         </text>
       </g>
       <g
         data-testid="hover-hold-confirm-no"
+        aria-label={t("donut.hoverHold.no")}
+        role="button"
         style={{ cursor: "pointer" }}
         onClick={(e) => {
           e.stopPropagation();
           onCancelConfirm();
         }}
       >
-        <circle cx={noX} cy={noY} r={16} fill="rgba(100, 100, 110, 0.85)" />
+        <circle cx={noX} cy={noY} r={18} fill="#c8382b" />
         <text
           x={noX}
           y={noY}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={11}
+          fontSize={18}
+          fontWeight={700}
           fill="#fff"
           pointerEvents="none"
         >
-          {t("donut.hoverHold.no")}
+          ✕
         </text>
       </g>
     </g>
