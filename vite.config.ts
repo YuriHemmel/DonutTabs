@@ -13,6 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         donut: resolve(__dirname, "donut.html"),
+        settings: resolve(__dirname, "settings.html"),
       },
     },
   },
