@@ -1,7 +1,8 @@
 use crate::config::io::{load_from_path, save_atomic};
-use crate::config::schema::{Config, Tab};
+use crate::config::schema::{Config, Language, Tab, Theme};
 use crate::errors::{AppError, AppResult};
 use crate::launcher::{launch_tab, TauriOpener};
+use crate::shortcut::ActiveShortcut;
 use std::path::PathBuf;
 use std::sync::{Mutex, RwLock};
 use tauri::{Emitter, Manager};
@@ -18,6 +19,9 @@ pub struct AppState {
     /// comando `open_settings` é invocado (evento de listen ainda não
     /// registrado).
     pub pending_settings_intent: Mutex<Option<String>>,
+    /// Atalho global atualmente registrado. Permite ao comando `set_shortcut`
+    /// fazer swap conflict-aware (registra o novo antes de largar o antigo).
+    pub active_shortcut: ActiveShortcut,
 }
 
 #[tauri::command]
@@ -130,12 +134,83 @@ pub fn close_settings<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(),
     crate::settings_window::close(&app)
 }
 
+#[tauri::command]
+pub fn set_shortcut<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    combo: String,
+) -> Result<Config, AppError> {
+    // 1. Registra o novo antes de largar o antigo. Se falhar aqui, o atalho
+    //    atual permanece em vigor e o erro propaga intacto para o frontend.
+    crate::shortcut::set_from_config(&app, &state.active_shortcut, &combo)?;
+
+    // 2. Persiste. Se o disco falhar, precisamos desfazer o registro (voltar
+    //    ao antigo) para manter a coerência memória-disco-atalho.
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let old_combo = cfg.shortcut.clone();
+        cfg.shortcut = combo;
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            let _ = crate::shortcut::set_from_config(&app, &state.active_shortcut, &old_combo);
+            cfg.shortcut = old_combo;
+            return Err(e);
+        }
+        cfg.clone()
+    };
+
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+pub fn set_theme<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    theme: Theme,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_theme(&mut cfg, theme);
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            if let Ok(fresh) = load_from_path(&state.config_path) {
+                *cfg = fresh;
+            }
+            return Err(e);
+        }
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+pub fn set_language<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    language: Language,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_language(&mut cfg, language);
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            if let Ok(fresh) = load_from_path(&state.config_path) {
+                *cfg = fresh;
+            }
+            return Err(e);
+        }
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
     let cfg = load_from_path(&config_path)?;
     Ok(AppState {
         config: RwLock::new(cfg),
         config_path,
         pending_settings_intent: Mutex::new(None),
+        active_shortcut: ActiveShortcut::default(),
     })
 }
 
@@ -154,6 +229,14 @@ fn apply_delete(cfg: &mut Config, id: Uuid) {
     for (i, t) in cfg.tabs.iter_mut().enumerate() {
         t.order = i as u32;
     }
+}
+
+fn apply_theme(cfg: &mut Config, theme: Theme) {
+    cfg.appearance.theme = theme;
+}
+
+fn apply_language(cfg: &mut Config, language: Language) {
+    cfg.appearance.language = language;
 }
 
 #[cfg(test)]
@@ -240,5 +323,23 @@ mod tests {
         apply_delete(&mut cfg, Uuid::new_v4());
 
         assert_eq!(cfg.tabs.len(), before);
+    }
+
+    #[test]
+    fn apply_theme_updates_appearance() {
+        let mut cfg = Config::default();
+        apply_theme(&mut cfg, Theme::Light);
+        assert_eq!(cfg.appearance.theme, Theme::Light);
+        apply_theme(&mut cfg, Theme::Auto);
+        assert_eq!(cfg.appearance.theme, Theme::Auto);
+    }
+
+    #[test]
+    fn apply_language_updates_appearance() {
+        let mut cfg = Config::default();
+        apply_language(&mut cfg, Language::En);
+        assert_eq!(cfg.appearance.language, Language::En);
+        apply_language(&mut cfg, Language::PtBr);
+        assert_eq!(cfg.appearance.language, Language::PtBr);
     }
 }

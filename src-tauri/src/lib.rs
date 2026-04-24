@@ -33,10 +33,17 @@ pub fn run() {
             // em dev, depois de um HMR de Rust) é o processo antigo ainda
             // estar segurando o atalho quando o novo sobe. Seguimos em frente
             // — tray e janelas continuam acessíveis.
-            if let Err(e) = shortcut::register_from_config(app.handle(), &shortcut_str) {
-                eprintln!(
-                    "[setup] shortcut registration failed ({e:?}); the global shortcut will be unavailable until the app is restarted"
-                );
+            {
+                let state: tauri::State<'_, commands::AppState> = app.state();
+                if let Err(e) = shortcut::register_from_config(
+                    app.handle(),
+                    &state.active_shortcut,
+                    &shortcut_str,
+                ) {
+                    eprintln!(
+                        "[setup] shortcut registration failed ({e:?}); the global shortcut will be unavailable until the app is restarted"
+                    );
+                }
             }
 
             let _ = donut_window::show(app.handle());
@@ -66,6 +73,9 @@ pub fn run() {
             commands::open_settings,
             commands::consume_settings_intent,
             commands::close_settings,
+            commands::set_shortcut,
+            commands::set_theme,
+            commands::set_language,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
