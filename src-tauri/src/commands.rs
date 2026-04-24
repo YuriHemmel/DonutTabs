@@ -8,6 +8,9 @@ use uuid::Uuid;
 
 pub struct AppState {
     pub config: RwLock<Config>,
+    /// Caminho para o arquivo de config em disco. Reservado para o Plano 2,
+    /// quando `save_tab`/`delete_tab` farão write atômica de volta ao disco.
+    #[allow(dead_code)]
     pub config_path: PathBuf,
 }
 

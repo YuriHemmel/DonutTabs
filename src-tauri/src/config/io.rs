@@ -1,6 +1,6 @@
 use super::schema::Config;
 use super::validate::validate;
-use crate::errors::{AppError, AppResult};
+use crate::errors::AppResult;
 use std::path::Path;
 
 /// Lê a config do caminho dado. Se o arquivo não existe, retorna `Config::default()`.
@@ -18,6 +18,7 @@ pub fn load_from_path(path: &Path) -> AppResult<Config> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::AppError;
     use tempfile::TempDir;
 
     #[test]
