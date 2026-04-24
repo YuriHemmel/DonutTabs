@@ -20,6 +20,8 @@ pub struct Config {
 #[serde(rename_all = "camelCase")]
 pub struct Appearance {
     pub theme: Theme,
+    #[serde(default)]
+    pub language: Language,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
@@ -29,6 +31,16 @@ pub enum Theme {
     Dark,
     Light,
     Auto,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub enum Language {
+    #[default]
+    Auto,
+    PtBr,
+    En,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -114,7 +126,10 @@ impl Default for Config {
         Self {
             version: 1,
             shortcut: "CommandOrControl+Shift+Space".into(),
-            appearance: Appearance { theme: Theme::Dark },
+            appearance: Appearance {
+                theme: Theme::Dark,
+                language: Language::Auto,
+            },
             interaction: Interaction {
                 spawn_position: SpawnPosition::Cursor,
                 selection_mode: SelectionMode::ClickOrRelease,
@@ -165,5 +180,18 @@ mod tests {
         let json = serde_json::to_string(&cfg).unwrap();
         assert!(json.contains("hoverHoldMs"));
         assert!(json.contains("itemsPerPage"));
+    }
+
+    #[test]
+    fn appearance_has_language_default_auto() {
+        let cfg = Config::default();
+        assert_eq!(cfg.appearance.language, Language::Auto);
+    }
+
+    #[test]
+    fn language_wire_format() {
+        assert_eq!(serde_json::to_string(&Language::PtBr).unwrap(), "\"ptBr\"");
+        assert_eq!(serde_json::to_string(&Language::En).unwrap(), "\"en\"");
+        assert_eq!(serde_json::to_string(&Language::Auto).unwrap(), "\"auto\"");
     }
 }

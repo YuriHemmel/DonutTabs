@@ -1,0 +1,35 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage must be between 4 and 8 (got {{got}})",
+      "hoverHoldMsZero": "hoverHoldMs must be greater than 0",
+      "tabMissingNameAndIcon": "Tab {{id}} needs a name or an icon",
+      "invalidUrl": "Invalid URL in tab {{tabId}}: {{reason}}",
+      "duplicateTabId": "Duplicate tab id: {{id}}",
+      "jsonParse": "Malformed configuration file: {{reason}}",
+      "unknown": "Config error: {{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "None of the {{total}} links could be opened",
+      "partialFailure": "{{failed}} of {{total}} links could not be opened",
+      "tabNotFound": "Tab {{id}} not found",
+      "unknown": "Failed to open tab: {{code}}"
+    },
+    "shortcut": {
+      "registrationFailed": "Could not register the shortcut: {{reason}}",
+      "unknown": "Shortcut error: {{code}}"
+    },
+    "window": {
+      "windowHideFailed": "Could not hide the window: {{reason}}",
+      "unknown": "Window error: {{code}}"
+    },
+    "io": {
+      "ioGeneric": "I/O error: {{reason}}",
+      "unknown": "I/O error: {{code}}"
+    },
+    "fallback": "An unexpected error occurred ({{kind}})"
+  },
+  "donut": {
+    "toastDismiss": "Close"
+  }
+}

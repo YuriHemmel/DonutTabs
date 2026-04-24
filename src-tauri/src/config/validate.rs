@@ -2,17 +2,17 @@ use super::schema::*;
 use crate::errors::{AppError, AppResult};
 
 /// Retorna `Ok(())` se a config é semanticamente válida.
-/// Retorna `Err(AppError::Config(mensagem))` com descrição da primeira violação.
+/// Retorna `Err(AppError::Config { code, context })` com o primeiro erro encontrado.
 pub fn validate(config: &Config) -> AppResult<()> {
     if !(4..=8).contains(&config.pagination.items_per_page) {
-        return Err(AppError::Config(format!(
-            "itemsPerPage deve estar entre 4 e 8 (got {})",
-            config.pagination.items_per_page
-        )));
+        return Err(AppError::config(
+            "items_per_page_out_of_range",
+            &[("got", config.pagination.items_per_page.to_string())],
+        ));
     }
 
     if config.interaction.hover_hold_ms == 0 {
-        return Err(AppError::Config("hoverHoldMs deve ser > 0".into()));
+        return Err(AppError::config("hover_hold_ms_zero", &[]));
     }
 
     for tab in &config.tabs {
@@ -27,10 +27,10 @@ pub fn validate(config: &Config) -> AppResult<()> {
             .map(|s| !s.trim().is_empty())
             .unwrap_or(false);
         if !has_name && !has_icon {
-            return Err(AppError::Config(format!(
-                "tab {} sem nome e sem ícone",
-                tab.id
-            )));
+            return Err(AppError::config(
+                "tab_missing_name_and_icon",
+                &[("id", tab.id.to_string())],
+            ));
         }
     }
 
@@ -39,7 +39,10 @@ pub fn validate(config: &Config) -> AppResult<()> {
             match item {
                 Item::Url { value } => {
                     url::Url::parse(value).map_err(|e| {
-                        AppError::Config(format!("URL inválida em tab {}: {}", tab.id, e))
+                        AppError::config(
+                            "invalid_url",
+                            &[("tabId", tab.id.to_string()), ("reason", e.to_string())],
+                        )
                     })?;
                 }
             }
@@ -49,7 +52,10 @@ pub fn validate(config: &Config) -> AppResult<()> {
     let mut seen = std::collections::HashSet::new();
     for tab in &config.tabs {
         if !seen.insert(tab.id) {
-            return Err(AppError::Config(format!("ID de tab duplicado: {}", tab.id)));
+            return Err(AppError::config(
+                "duplicate_tab_id",
+                &[("id", tab.id.to_string())],
+            ));
         }
     }
 
@@ -76,6 +82,13 @@ mod tests {
         Config::default()
     }
 
+    fn assert_config_code(err: AppError, expected_code: &str) {
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, expected_code),
+            other => panic!("expected Config error with code {expected_code}, got {other:?}"),
+        }
+    }
+
     #[test]
     fn default_is_valid() {
         assert!(validate(&base_config()).is_ok());
@@ -99,23 +112,30 @@ mod tests {
     fn tab_without_name_or_icon_is_invalid() {
         let mut cfg = base_config();
         cfg.tabs.push(tab_with(None, None, vec![]));
-        assert!(validate(&cfg).is_err());
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_missing_name_and_icon");
     }
 
     #[test]
     fn tab_with_empty_strings_is_invalid() {
         let mut cfg = base_config();
         cfg.tabs.push(tab_with(Some(""), Some("   "), vec![]));
-        assert!(validate(&cfg).is_err());
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_missing_name_and_icon");
     }
 
     #[test]
     fn items_per_page_out_of_range_is_invalid() {
         let mut cfg = base_config();
         cfg.pagination.items_per_page = 3;
-        assert!(validate(&cfg).is_err());
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "items_per_page_out_of_range");
+                assert_eq!(context.get("got").map(String::as_str), Some("3"));
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+
         cfg.pagination.items_per_page = 9;
-        assert!(validate(&cfg).is_err());
+        assert_config_code(validate(&cfg).unwrap_err(), "items_per_page_out_of_range");
     }
 
     #[test]
@@ -128,7 +148,14 @@ mod tests {
                 value: "not a url".into(),
             }],
         ));
-        assert!(validate(&cfg).is_err());
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "invalid_url");
+                assert!(context.contains_key("tabId"));
+                assert!(context.contains_key("reason"));
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
     }
 
     #[test]
@@ -141,6 +168,15 @@ mod tests {
         t2.id = id;
         cfg.tabs.push(t1);
         cfg.tabs.push(t2);
-        assert!(validate(&cfg).is_err());
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "duplicate_tab_id");
+                assert_eq!(
+                    context.get("id").map(String::as_str),
+                    Some(id.to_string().as_str())
+                );
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
     }
 }

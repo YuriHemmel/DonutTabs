@@ -28,10 +28,10 @@ pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
         }
     }
     if outcome.failures.len() == outcome.total && outcome.total > 0 {
-        return Err(AppError::Launcher(format!(
-            "todos os {} items falharam",
-            outcome.total
-        )));
+        return Err(AppError::launcher(
+            "all_items_failed",
+            &[("total", outcome.total.to_string())],
+        ));
     }
     Ok(outcome)
 }
@@ -129,7 +129,13 @@ mod tests {
             fail_on: vec!["https://a".into(), "https://b".into()],
         };
         let tab = tab_with(&["https://a", "https://b"]);
-        assert!(launch_tab(&tab, &opener).is_err());
+        match launch_tab(&tab, &opener).unwrap_err() {
+            AppError::Launcher { code, context } => {
+                assert_eq!(code, "all_items_failed");
+                assert_eq!(context.get("total").map(String::as_str), Some("2"));
+            }
+            other => panic!("expected Launcher error, got {other:?}"),
+        }
     }
 
     #[test]
