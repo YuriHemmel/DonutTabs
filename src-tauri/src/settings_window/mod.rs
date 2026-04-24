@@ -55,11 +55,17 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     Ok(())
 }
 
+/// Oculta a janela em vez de destruí-la: a janela é pré-aquecida no `setup()`
+/// para contornar o travamento do build do WebView2 em tempo de execução no
+/// Windows (ver `prewarm`). Destruí-la aqui forçaria recriação no próximo
+/// `show`, caindo no fallback `run_on_main_thread` — com o mesmo risco de
+/// trave. Do ponto de vista do usuário a janela some; internamente fica
+/// pronta para reabrir instantaneamente.
 pub fn close<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     if let Some(window) = app.get_webview_window(SETTINGS_LABEL) {
         window
-            .close()
-            .map_err(|e| AppError::window("window_close_failed", &[("reason", e.to_string())]))?;
+            .hide()
+            .map_err(|e| AppError::window("window_hide_failed", &[("reason", e.to_string())]))?;
     }
     Ok(())
 }
