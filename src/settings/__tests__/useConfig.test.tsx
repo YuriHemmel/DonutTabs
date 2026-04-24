@@ -18,6 +18,9 @@ vi.mock("@tauri-apps/api/event", () => {
     __emit: (name: string, payload: unknown) => {
       listeners.get(name)?.forEach((cb) => cb({ payload }));
     },
+    __reset: () => {
+      listeners.clear();
+    },
   };
 });
 
@@ -57,6 +60,7 @@ const makeConfig = (overrides: Partial<{ tabs: unknown[] }> = {}) => ({
 describe("useConfig", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (events as unknown as { __reset: () => void }).__reset();
   });
 
   it("loads config on mount", async () => {

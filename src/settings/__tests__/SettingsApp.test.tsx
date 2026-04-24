@@ -20,6 +20,9 @@ vi.mock("@tauri-apps/api/event", () => {
     __emit: (name: string, payload: unknown) => {
       listeners.get(name)?.forEach((cb) => cb({ payload }));
     },
+    __reset: () => {
+      listeners.clear();
+    },
   };
 });
 
@@ -67,6 +70,7 @@ async function renderApp() {
 describe("SettingsApp intent routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (events as unknown as { __reset: () => void }).__reset();
     (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(null);
   });
 
