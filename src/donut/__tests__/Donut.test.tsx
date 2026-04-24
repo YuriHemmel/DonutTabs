@@ -15,17 +15,54 @@ function makeTab(id: string, name: string): Tab {
 }
 
 describe("Donut", () => {
-  it("renders one slice per tab", () => {
+  it("renders one slice per tab plus a trailing '+' slice", () => {
     const tabs = [makeTab("1", "A"), makeTab("2", "B"), makeTab("3", "C")];
     const { container } = render(<Donut tabs={tabs} size={400} onSelect={() => {}} />);
     const paths = container.querySelectorAll('[data-testid="donut-slice"]');
-    expect(paths.length).toBe(3);
+    expect(paths.length).toBe(4);
   });
 
-  it("renders empty donut when no tabs", () => {
+  it("renders a single '+' slice when no tabs are registered", () => {
     const { container } = render(<Donut tabs={[]} size={400} onSelect={() => {}} />);
     const paths = container.querySelectorAll('[data-testid="donut-slice"]');
-    expect(paths.length).toBe(0);
+    expect(paths.length).toBe(1);
+  });
+
+  it("clicking the '+' slice calls onOpenSettings", () => {
+    const onOpenSettings = vi.fn();
+    const onSelect = vi.fn();
+    const { container } = render(
+      <Donut
+        tabs={[]}
+        size={400}
+        onSelect={onSelect}
+        onOpenSettings={onOpenSettings}
+      />,
+    );
+    const plusSlice = container.querySelector(
+      '[data-testid="donut-slice"]',
+    ) as SVGPathElement;
+    fireEvent.click(plusSlice);
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("clicking a tab slice calls onSelect with the tab id", () => {
+    const onOpenSettings = vi.fn();
+    const onSelect = vi.fn();
+    const { container } = render(
+      <Donut
+        tabs={[makeTab("abc", "A")]}
+        size={400}
+        onSelect={onSelect}
+        onOpenSettings={onOpenSettings}
+      />,
+    );
+    const slices = container.querySelectorAll('[data-testid="donut-slice"]');
+    // slices[0] = tab "A", slices[1] = "+"
+    fireEvent.click(slices[0]);
+    expect(onSelect).toHaveBeenCalledWith("abc");
+    expect(onOpenSettings).not.toHaveBeenCalled();
   });
 
   it("does not render a gear hit area when onOpenSettings is not provided", () => {

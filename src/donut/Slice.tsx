@@ -24,6 +24,7 @@ export const Slice: React.FC<SliceProps> = (p) => {
         data-testid="donut-slice"
         d={d}
         fill={p.highlighted ? "#2a3b5a" : "#1b2436"}
+        fillRule="evenodd"
         stroke="#3a4968"
         strokeWidth={1}
       />

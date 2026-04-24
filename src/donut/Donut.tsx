@@ -12,6 +12,8 @@ export interface DonutProps {
   onOpenSettings?: () => void;
 }
 
+const PLUS_KEY = "__plus__";
+
 export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect, onOpenSettings }) => {
   const cx = size / 2;
   const cy = size / 2;
@@ -19,10 +21,12 @@ export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect, onOpenSettin
   const innerR = size * 0.22;
 
   const ordered = [...tabs].sort((a, b) => a.order - b.order);
+  const total = ordered.length + 1; // +1 para a fatia "+"
+  const plusIndex = ordered.length;
 
   const { highlighted, onMouseMove, onMouseLeave } = useSliceHighlight({
     center: { x: cx, y: cy },
-    slices: ordered.length,
+    slices: total,
     innerRadius: innerR,
     outerRadius: outerR,
   });
@@ -36,7 +40,7 @@ export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect, onOpenSettin
       onMouseLeave={onMouseLeave}
     >
       {ordered.map((tab, i) => {
-        const { start, end } = sliceAngleRange(i, ordered.length);
+        const { start, end } = sliceAngleRange(i, total);
         return (
           <Slice
             key={tab.id}
@@ -53,6 +57,23 @@ export const Donut: React.FC<DonutProps> = ({ tabs, size, onSelect, onOpenSettin
           />
         );
       })}
+      {(() => {
+        const { start, end } = sliceAngleRange(plusIndex, total);
+        return (
+          <Slice
+            key={PLUS_KEY}
+            cx={cx}
+            cy={cy}
+            innerR={innerR}
+            outerR={outerR}
+            startAngle={start}
+            endAngle={end}
+            icon="+"
+            highlighted={highlighted === plusIndex}
+            onClick={() => onOpenSettings?.()}
+          />
+        );
+      })()}
       <CenterCircle cx={cx} cy={cy} r={innerR * 0.85} onGearClick={onOpenSettings} />
     </svg>
   );
