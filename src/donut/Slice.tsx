@@ -21,6 +21,7 @@ export const Slice: React.FC<SliceProps> = (p) => {
   return (
     <g onClick={p.onClick} style={{ cursor: "pointer" }}>
       <path
+        data-testid="donut-slice"
         d={d}
         fill={p.highlighted ? "#2a3b5a" : "#1b2436"}
         stroke="#3a4968"
