@@ -14,6 +14,7 @@ Before making non-trivial changes, read:
 
 - [docs/Plano.md](docs/Plano.md) — design spec with the "why" of every architectural decision, the phased roadmap, and extensibility hooks in the schema
 - [docs/plans/01-fundacao.md](docs/plans/01-fundacao.md) — the executed implementation plan for the current MVP (Plano 1)
+- [docs/plans/02-i18n.md](docs/plans/02-i18n.md) — the executed implementation plan for i18n + structured AppError (Plano 2)
 - [docs/qa-smoke.md](docs/qa-smoke.md) — manual smoke checklist for the three OSes
 
 The user speaks Portuguese; all docs, commit messages, and user-facing strings in the app should be in Portuguese.
@@ -59,7 +60,7 @@ Single process with **three logical pieces**:
 
 1. **Rust core** (`src-tauri/src/`) — all OS-level concerns: global shortcut, tray icon, window creation (transparent/undecorated/always-on-top), URL opening, config IO. Never draws UI.
 2. **Donut webview** (`src/entry/donut.tsx` → `src/donut/*`) — transparent window rendered at cursor position, shows the SVG donut, captures hover/click, calls Rust commands via IPC.
-3. **Settings webview** (not yet implemented — Plano 2) — normal decorated window with the CRUD UI for tabs and preferences.
+3. **Settings webview** (not yet implemented — Plano 3) — normal decorated window with the CRUD UI for tabs and preferences.
 
 Rust and frontend communicate via **typed Tauri commands** through `src/core/ipc.ts`. Types in `src/core/types/` are **auto-generated** from Rust by `ts-rs` — never hand-edit them.
 
@@ -67,23 +68,25 @@ The golden fence: **Rust never draws UI; frontend never touches disk or OS APIs.
 
 ### Rust module responsibilities
 
-- `config/schema.rs` — `Config`, `Tab`, `Item`, the enums. All derive `Serialize + Deserialize + PartialEq + TS` with `#[serde(rename_all = "camelCase")]`. `Item` is a **tagged union** (`#[serde(tag = "kind")]`) designed for future `kind: "file" | "app" | "script" | "folder"` variants (Fase 3). Do **not** flatten it into an untagged enum.
-- `config/validate.rs` — semantic rules: items_per_page range, at least one of `name`/`icon` per tab, URL parseability, unique ids. First-error semantics (not accumulating). Logic-level tests.
-- `config/io.rs` — read-only in Plano 1 (`load_from_path` with default fallback, recovery errors on malformed JSON). Plano 2 adds atomic writes.
-- `launcher/` — `Opener` trait for testability + `TauriOpener<'a, R>` impl that delegates to the `opener` plugin. `launch_tab` accumulates per-URL failures and only errors if **all** items failed.
+- `config/schema.rs` — `Config`, `Tab`, `Item`, the enums. All derive `Serialize + Deserialize + PartialEq + TS` with `#[serde(rename_all = "camelCase")]`. `Item` is a **tagged union** (`#[serde(tag = "kind")]`) designed for future `kind: "file" | "app" | "script" | "folder"` variants (Fase 3). Do **not** flatten it into an untagged enum. `Appearance.language` is `Language::{Auto, PtBr, En}`, consumed by `src/core/i18n.ts` at bootstrap.
+- `config/validate.rs` — semantic rules: items_per_page range, at least one of `name`/`icon` per tab, URL parseability, unique ids. First-error semantics (not accumulating). Logic-level tests. Errors emit structured codes (e.g. `items_per_page_out_of_range`, `invalid_url`), never free-form strings.
+- `config/io.rs` — read-only today (`load_from_path` with default fallback, recovery errors on malformed JSON). `appearance.language` uses `#[serde(default)]` so configs written before Plano 2 still load. Plano 3 adds atomic writes.
+- `launcher/` — `Opener` trait for testability + `TauriOpener<'a, R>` impl that delegates to the `opener` plugin. `launch_tab` accumulates per-URL failures and only errors if **all** items failed (`all_items_failed` code).
 - `tray/` — tray icon with "Abrir donut" / "Sair" menu. Triggers `donut_window::show` on menu click.
 - `shortcut/` — registers the global shortcut from config; its handler calls `donut_window::show`.
 - `donut_window/` — creates the window (transparent, undecorated, always-on-top, `skip_taskbar`, no shadow) and positions it at the cursor using the `mouse_position` crate, taking DPI into account via `scale_factor()`. Caches the window after first creation so subsequent `show` calls are instant.
-- `commands.rs` — `AppState { config: RwLock<Config>, config_path }` + the three Tauri commands (`get_config`, `open_tab`, `hide_donut`). `config_path` is marked `#[allow(dead_code)]` — reserved for Plano 2 save/delete.
-- `errors.rs` — `AppError` with `#[serde(tag = "kind", content = "message")]` so the frontend receives discriminated errors. **This shape changes in Plano 2** (see i18n note below).
+- `commands.rs` — `AppState { config: RwLock<Config>, config_path }` + the three Tauri commands (`get_config`, `open_tab`, `hide_donut`). `config_path` is marked `#[allow(dead_code)]` — reserved for Plano 3 save/delete.
+- `errors.rs` — `AppError` with `#[serde(tag = "kind", content = "message")]`, content shape `{ code: String, context: BTreeMap<String, String> }`. Helpers `AppError::config/launcher/window/shortcut("code", &[("k", v)])` for ergonomic construction. Frontend maps `code` → translation key via `src/core/errors.ts`.
 - `lib.rs` — orchestration: loads config, registers commands, sets up tray + shortcut, pre-warms the donut window.
 
 ### Frontend architecture
 
 - `src/donut/geometry.ts` — pure math (SVG arc paths, polar→slice hit-testing). No React, fully unit-testable.
 - `src/donut/useSliceHighlight.ts` — hook converting `MouseEvent` into the currently-hovered slice index, or `null` if in the center dead zone or beyond the outer ring.
-- `src/donut/{Slice,CenterCircle,Donut}.tsx` — presentational SVG components. `CenterCircle` currently shows a gear ⚙ (will open Settings in Plano 2) and a profile glyph 👤 (right half reserved for the profile switcher — see Fase 2 in `Plano.md`).
-- `src/entry/donut.tsx` — window entrypoint: fetches config via IPC, wires ESC / click-outside / window-blur → `hideDonut`, and delegates selection to `openTab`.
+- `src/donut/{Slice,CenterCircle,Donut}.tsx` — presentational SVG components. `CenterCircle` currently shows a gear ⚙ (will open Settings in Plano 3) and a profile glyph 👤 (right half reserved for the profile switcher — see Fase 2 in `Plano.md`).
+- `src/core/i18n.ts` — `react-i18next` init. `resolveLanguage()` combines `appearance.language` from config with `navigator.language`; `initI18n()` bootstraps the global instance; `createI18n()` creates isolated instances for tests. Locale JSON lives in `src/locales/{pt-BR,en}.json`.
+- `src/core/errors.ts` — `translateAppError(err, t)` converts the Rust `AppError` payload into a localized string, trying `errors.{kind}.{camelCode}` → `errors.{kind}.unknown` → `errors.fallback`.
+- `src/entry/donut.tsx` — window entrypoint: bootstraps i18next from config before React mounts, wires ESC / click-outside / window-blur → `hideDonut`, delegates selection to `openTab`, and surfaces launch failures as a dismissible localized toast.
 
 ### Tauri config gotchas (already applied — do not undo)
 
@@ -96,8 +99,8 @@ The golden fence: **Rust never draws UI; frontend never touches disk or OS APIs.
 - **TDD** for pure logic (`config/*`, `launcher`, `geometry`, `useSliceHighlight`, `Donut`). Write the failing test first, then the minimum code to pass. Don't backfill tests onto already-written code unless the task says so.
 - **Small commits with scoped messages**: `feat(config): ...`, `chore(tray): ...`, `fix(config): ...`, `ci: ...`, `docs(plan): ...`. One task = one logical concern = one commit (Cargo.lock updates piggy-back on the commit that changed Cargo.toml).
 - **Schema-first, IPC-typed**: any new frontend↔Rust data shape lives as a Rust struct with `#[derive(TS)]`, generated into TS, and consumed through `src/core/ipc.ts`. Don't duplicate types by hand.
-- **Config file is the source of truth** at startup. The app reads `%APPDATA%\DonutTabs\config.json` (Windows), `~/Library/Application Support/DonutTabs/config.json` (macOS), or `~/.config/DonutTabs/config.json` (Linux). Plano 2 adds write-back with atomic rename (`config.json.tmp` → `rename`).
-- **Text in code vs in UI**: internal logs and dev-facing error context can be in English; anything the user reads (Portuguese today, i18n-ready in Plano 2) must go through a translation layer. Do not hardcode Portuguese strings in JSX starting in Plano 2.
+- **Config file is the source of truth** at startup. The app reads `%APPDATA%\DonutTabs\config.json` (Windows), `~/Library/Application Support/DonutTabs/config.json` (macOS), or `~/.config/DonutTabs/config.json` (Linux). Plano 3 adds write-back with atomic rename (`config.json.tmp` → `rename`).
+- **Text in code vs in UI**: internal logs and dev-facing error context stay in English technical form; anything the user reads goes through `t()` from `react-i18next`. No hardcoded Portuguese (or English) UI strings in JSX or in `AppError` payloads. New Rust errors use `AppError::config/launcher/window/shortcut` with `snake_case` codes and a matching entry in both `src/locales/pt-BR.json` and `src/locales/en.json` (under `errors.{kind}.{camelCode}`).
 
 ## CI
 
@@ -111,14 +114,15 @@ The golden fence: **Rust never draws UI; frontend never touches disk or OS APIs.
 
 Docs-only changes are skipped via `paths-ignore` (`**/*.md`, `docs/**`, `LICENSE*`, `.gitignore`). Linux is the primary test target; macOS/Windows mainly verify cross-platform compilation of the same tests.
 
-**Clippy is currently run without `-D warnings`** because the MVP intentionally leaves some dead-code warnings for items consumed in Plano 2 (e.g., `AppState::config_path`). When Plano 2 wires these up, tighten to `-D warnings`.
+**Clippy is currently run without `-D warnings`** because the MVP intentionally leaves some dead-code warnings for items consumed in Plano 3 (e.g., `AppState::config_path`, `AppError::shortcut` helper). When Plano 3 wires these up, tighten to `-D warnings`.
 
-## Looking ahead to Plano 2
+## Looking ahead to Plano 3 and beyond
 
-Read `Plano.md` section 8.2 and `Plano.md` section 6.7 before starting. Key decisions already made:
+Plano 2 is done: i18n (`react-i18next` with `pt-BR` + `en`), `appearance.language` active, and `AppError` is fully structured (`code` + `context`). Plano 3 builds on this base.
 
-1. **i18n comes first** in Plano 2, **before** the Settings UI. Any string the UI of Plano 2 adds must already be translation-ready (`react-i18next`, JSON files in `src/locales/{pt-BR,en}.json`, fallback `en`).
-2. **`AppError` evolves** from free-form Portuguese strings to structured codes + context (e.g., `AppError::Config { code: "items_per_page_out_of_range", context: { got: 99 } }`). The frontend maps codes to translated strings. This is a breaking change in the IPC shape and requires updating all `AppError` call sites in `config/validate.rs` and `launcher/mod.rs`.
-3. **`appearance.language`** is already reserved in the schema (`"pt-BR" | "en" | "auto"`, default `"auto"` which uses `navigator.language` with `en` fallback). Currently ignored; Plano 2 activates it.
-4. **The right half of the center circle** becomes the **profile switcher**, not a generic "close" button. Clicking it enters "profile mode" where the outer slices become profiles.
-5. **The `+` slice** (last position of last page) opens Settings in "new tab" mode.
+Read `Plano.md` section 8.2 before starting. Key decisions still pending:
+
+1. **Settings window** (`src/entry/settings.tsx` + `src/settings/*`): `<TabList>`, `<TabEditor>`, `<ShortcutRecorder>`, `<AppearanceSection>` (including a language selector that calls `changeLanguage` from `src/core/i18n.ts`). New Rust commands: `save_tab`, `delete_tab`, `set_shortcut`. `config/io.rs` gains atomic write (`config.json.tmp` → `rename`). Event `config-changed` emits from Rust so the donut re-reads state when Settings mutates.
+2. **Fatia "+"** on the donut, pagination + hover-hold → editar/excluir, per Seção 5 of `Plano.md`.
+3. **Perfis** (Plano 4, already designed): right half of the center circle becomes a profile switcher; schema gains `profiles[]` with a v1→v2 migration.
+4. Any new user-facing string must have keys in both locale files; any new `AppError` code must have a translation under `errors.{kind}.{camelCode}`. The `errors.{kind}.unknown` fallback exists precisely to catch missed ones — if you see it surfaced in dev, add the specific key before merging.
