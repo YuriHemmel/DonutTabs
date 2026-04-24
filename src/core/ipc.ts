@@ -4,7 +4,7 @@ import type { Tab } from "./types/Tab";
 import type { Theme } from "./types/Theme";
 import type { Language } from "./types/Language";
 
-export type SettingsIntent = "new-tab";
+export type SettingsIntent = "new-tab" | `edit-tab:${string}`;
 
 export const ipc = {
   getConfig: () => invoke<Config>("get_config"),
