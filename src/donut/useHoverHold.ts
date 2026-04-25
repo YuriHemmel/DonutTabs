@@ -18,6 +18,7 @@ export interface UseHoverHoldResult {
   cancel: () => void;
   requestDelete: () => void;
   confirmDelete: () => void;
+  reset: () => void;
 }
 
 /**
@@ -135,5 +136,13 @@ export function useHoverHold(opts: UseHoverHoldOpts): UseHoverHoldResult {
     }
   }, []);
 
-  return { state, cancel, requestDelete, confirmDelete };
+  // Hard reset para qualquer phase → idle. Usado quando o contexto que
+  // ancorava o gesto desaparece (ex.: a página do donut mudou e o
+  // sliceIndex agora aponta para outra aba).
+  const reset = useCallback(() => {
+    stopTimer();
+    if (stateRef.current.phase !== "idle") setState({ phase: "idle" });
+  }, [stopTimer]);
+
+  return { state, cancel, requestDelete, confirmDelete, reset };
 }

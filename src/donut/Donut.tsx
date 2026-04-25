@@ -86,13 +86,23 @@ export const Donut: React.FC<DonutProps> = ({
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, [hoverHold.state.phase, hoverHold]);
 
+  const changePage = (next: number) => {
+    setPage((p) => {
+      const clamped = Math.max(0, Math.min(pages.length - 1, next));
+      // Mudou de página: o sliceIndex do hover-hold passa a referenciar outra
+      // aba. Resetar evita disparar edit/delete no alvo errado.
+      if (clamped !== p && hoverHold.state.phase !== "idle") {
+        hoverHold.reset();
+      }
+      return clamped;
+    });
+  };
+
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     if (pages.length <= 1) return;
     const direction = wheelDirection === "inverted" ? -1 : 1;
     const delta = e.deltaY > 0 ? 1 : -1;
-    setPage((p) =>
-      Math.max(0, Math.min(pages.length - 1, p + delta * direction)),
-    );
+    changePage(safePage + delta * direction);
   };
 
   const activeSliceIndex =
@@ -188,7 +198,7 @@ export const Donut: React.FC<DonutProps> = ({
         active={safePage}
         cx={cx}
         cy={size * 0.94}
-        onChange={setPage}
+        onChange={changePage}
       />
     </svg>
   );
