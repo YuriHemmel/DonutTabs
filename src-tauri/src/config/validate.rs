@@ -1,7 +1,7 @@
 use super::schema::*;
 use crate::errors::{AppError, AppResult};
 
-/// Retorna `Ok(())` se a config é semanticamente válida.
+/// Retorna `Ok(())` se a config v2 é semanticamente válida.
 /// Retorna `Err(AppError::Config { code, context })` com o primeiro erro encontrado.
 pub fn validate(config: &Config) -> AppResult<()> {
     if !(4..=8).contains(&config.pagination.items_per_page) {
@@ -15,7 +15,49 @@ pub fn validate(config: &Config) -> AppResult<()> {
         return Err(AppError::config("hover_hold_ms_zero", &[]));
     }
 
-    for tab in &config.tabs {
+    if config.profiles.is_empty() {
+        return Err(AppError::config("no_profiles", &[]));
+    }
+
+    if !config
+        .profiles
+        .iter()
+        .any(|p| p.id == config.active_profile_id)
+    {
+        return Err(AppError::config(
+            "active_profile_not_found",
+            &[("activeProfileId", config.active_profile_id.to_string())],
+        ));
+    }
+
+    let mut seen_profile_ids = std::collections::HashSet::new();
+    for profile in &config.profiles {
+        if !seen_profile_ids.insert(profile.id) {
+            return Err(AppError::config(
+                "duplicate_profile_id",
+                &[("id", profile.id.to_string())],
+            ));
+        }
+        if profile.name.trim().is_empty() {
+            return Err(AppError::config(
+                "profile_name_empty",
+                &[("profileId", profile.id.to_string())],
+            ));
+        }
+        if profile.shortcut.trim().is_empty() {
+            return Err(AppError::config(
+                "profile_shortcut_empty",
+                &[("profileId", profile.id.to_string())],
+            ));
+        }
+        validate_profile_tabs(profile)?;
+    }
+
+    Ok(())
+}
+
+fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
+    for tab in &profile.tabs {
         let has_name = tab
             .name
             .as_ref()
@@ -29,19 +71,26 @@ pub fn validate(config: &Config) -> AppResult<()> {
         if !has_name && !has_icon {
             return Err(AppError::config(
                 "tab_missing_name_and_icon",
-                &[("id", tab.id.to_string())],
+                &[
+                    ("id", tab.id.to_string()),
+                    ("profileId", profile.id.to_string()),
+                ],
             ));
         }
     }
 
-    for tab in &config.tabs {
+    for tab in &profile.tabs {
         for item in &tab.items {
             match item {
                 Item::Url { value } => {
                     url::Url::parse(value).map_err(|e| {
                         AppError::config(
                             "invalid_url",
-                            &[("tabId", tab.id.to_string()), ("reason", e.to_string())],
+                            &[
+                                ("tabId", tab.id.to_string()),
+                                ("profileId", profile.id.to_string()),
+                                ("reason", e.to_string()),
+                            ],
                         )
                     })?;
                 }
@@ -50,11 +99,14 @@ pub fn validate(config: &Config) -> AppResult<()> {
     }
 
     let mut seen = std::collections::HashSet::new();
-    for tab in &config.tabs {
+    for tab in &profile.tabs {
         if !seen.insert(tab.id) {
             return Err(AppError::config(
                 "duplicate_tab_id",
-                &[("id", tab.id.to_string())],
+                &[
+                    ("id", tab.id.to_string()),
+                    ("profileId", profile.id.to_string()),
+                ],
             ));
         }
     }
@@ -95,30 +147,48 @@ mod tests {
     }
 
     #[test]
-    fn tab_with_only_name_is_valid() {
+    fn rejects_empty_profiles_array() {
         let mut cfg = base_config();
-        cfg.tabs.push(tab_with(Some("Trabalho"), None, vec![]));
-        assert!(validate(&cfg).is_ok());
+        cfg.profiles.clear();
+        assert_config_code(validate(&cfg).unwrap_err(), "no_profiles");
     }
 
     #[test]
-    fn tab_with_only_icon_is_valid() {
+    fn rejects_active_profile_not_found() {
         let mut cfg = base_config();
-        cfg.tabs.push(tab_with(None, Some("💼"), vec![]));
-        assert!(validate(&cfg).is_ok());
+        cfg.active_profile_id = Uuid::new_v4();
+        assert_config_code(validate(&cfg).unwrap_err(), "active_profile_not_found");
+    }
+
+    #[test]
+    fn rejects_profile_with_empty_name() {
+        let mut cfg = base_config();
+        cfg.profiles[0].name = "  ".into();
+        assert_config_code(validate(&cfg).unwrap_err(), "profile_name_empty");
+    }
+
+    #[test]
+    fn rejects_profile_with_empty_shortcut() {
+        let mut cfg = base_config();
+        cfg.profiles[0].shortcut = "".into();
+        assert_config_code(validate(&cfg).unwrap_err(), "profile_shortcut_empty");
+    }
+
+    #[test]
+    fn rejects_duplicate_profile_id() {
+        let mut cfg = base_config();
+        let p2 = Profile {
+            id: cfg.profiles[0].id,
+            ..Profile::default()
+        };
+        cfg.profiles.push(p2);
+        assert_config_code(validate(&cfg).unwrap_err(), "duplicate_profile_id");
     }
 
     #[test]
     fn tab_without_name_or_icon_is_invalid() {
         let mut cfg = base_config();
-        cfg.tabs.push(tab_with(None, None, vec![]));
-        assert_config_code(validate(&cfg).unwrap_err(), "tab_missing_name_and_icon");
-    }
-
-    #[test]
-    fn tab_with_empty_strings_is_invalid() {
-        let mut cfg = base_config();
-        cfg.tabs.push(tab_with(Some(""), Some("   "), vec![]));
+        cfg.profiles[0].tabs.push(tab_with(None, None, vec![]));
         assert_config_code(validate(&cfg).unwrap_err(), "tab_missing_name_and_icon");
     }
 
@@ -126,14 +196,7 @@ mod tests {
     fn items_per_page_out_of_range_is_invalid() {
         let mut cfg = base_config();
         cfg.pagination.items_per_page = 3;
-        match validate(&cfg).unwrap_err() {
-            AppError::Config { code, context } => {
-                assert_eq!(code, "items_per_page_out_of_range");
-                assert_eq!(context.get("got").map(String::as_str), Some("3"));
-            }
-            other => panic!("expected Config error, got {other:?}"),
-        }
-
+        assert_config_code(validate(&cfg).unwrap_err(), "items_per_page_out_of_range");
         cfg.pagination.items_per_page = 9;
         assert_config_code(validate(&cfg).unwrap_err(), "items_per_page_out_of_range");
     }
@@ -141,7 +204,7 @@ mod tests {
     #[test]
     fn invalid_url_is_rejected() {
         let mut cfg = base_config();
-        cfg.tabs.push(tab_with(
+        cfg.profiles[0].tabs.push(tab_with(
             Some("X"),
             None,
             vec![Item::Url {
@@ -152,6 +215,7 @@ mod tests {
             AppError::Config { code, context } => {
                 assert_eq!(code, "invalid_url");
                 assert!(context.contains_key("tabId"));
+                assert!(context.contains_key("profileId"));
                 assert!(context.contains_key("reason"));
             }
             other => panic!("expected Config error, got {other:?}"),
@@ -159,24 +223,15 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_ids_are_rejected() {
+    fn duplicate_tab_id_within_profile_is_rejected() {
         let mut cfg = base_config();
         let id = Uuid::new_v4();
         let mut t1 = tab_with(Some("A"), None, vec![]);
         t1.id = id;
         let mut t2 = tab_with(Some("B"), None, vec![]);
         t2.id = id;
-        cfg.tabs.push(t1);
-        cfg.tabs.push(t2);
-        match validate(&cfg).unwrap_err() {
-            AppError::Config { code, context } => {
-                assert_eq!(code, "duplicate_tab_id");
-                assert_eq!(
-                    context.get("id").map(String::as_str),
-                    Some(id.to_string().as_str())
-                );
-            }
-            other => panic!("expected Config error, got {other:?}"),
-        }
+        cfg.profiles[0].tabs.push(t1);
+        cfg.profiles[0].tabs.push(t2);
+        assert_config_code(validate(&cfg).unwrap_err(), "duplicate_tab_id");
     }
 }

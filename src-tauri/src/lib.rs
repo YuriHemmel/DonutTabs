@@ -24,7 +24,15 @@ pub fn run() {
 
             let state =
                 commands::initial_load(config_path).map_err(|e| format!("carregar config: {e}"))?;
-            let shortcut_str = state.config.read().unwrap().shortcut.clone();
+            let shortcut_str = {
+                let cfg = state.config.read().unwrap();
+                let active_id = cfg.active_profile_id;
+                cfg.profiles
+                    .iter()
+                    .find(|p| p.id == active_id)
+                    .map(|p| p.shortcut.clone())
+                    .unwrap_or_else(|| "CommandOrControl+Shift+Space".into())
+            };
             app.manage(state);
 
             tray::setup(app).map_err(|e| format!("tray: {e}"))?;
@@ -76,6 +84,10 @@ pub fn run() {
             commands::set_shortcut,
             commands::set_theme,
             commands::set_language,
+            commands::set_active_profile,
+            commands::create_profile,
+            commands::delete_profile,
+            commands::update_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
