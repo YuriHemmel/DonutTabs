@@ -26,20 +26,7 @@ describe("useHoverHold", () => {
   });
 
   it("transitions to holding when a tab slice is hovered", () => {
-    const { result } = renderHook(
-      ({ hovered }: { hovered: number | null }) =>
-        useHoverHold({
-          hoveredSlice: hovered,
-          isTabSlice: () => true,
-          holdMs: HOLD_MS,
-          onComplete: vi.fn(),
-        }),
-      { initialProps: { hovered: null } },
-    );
-    act(() => {
-      // re-render with a hovered slice
-    });
-    const { rerender } = renderHook(
+    const { result, rerender } = renderHook(
       ({ hovered }: { hovered: number | null }) =>
         useHoverHold({
           hoveredSlice: hovered,
@@ -49,9 +36,15 @@ describe("useHoverHold", () => {
         }),
       { initialProps: { hovered: null as number | null } },
     );
-    rerender({ hovered: 0 });
-    // (no assertion — the hooks above are just to avoid TS complaining about result)
     expect(result.current.state.phase).toBe("idle");
+
+    rerender({ hovered: 0 });
+
+    expect(result.current.state.phase).toBe("holding");
+    if (result.current.state.phase === "holding") {
+      expect(result.current.state.sliceIndex).toBe(0);
+      expect(result.current.state.progress).toBe(0);
+    }
   });
 
   it("reaches actionable after holdMs and fires onComplete once", () => {
