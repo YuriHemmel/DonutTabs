@@ -6,9 +6,11 @@ import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
 import { SectionTabs, type Section } from "./SectionTabs";
+import { ProfilePicker } from "./ProfilePicker";
 import { useConfig } from "./useConfig";
 import { ipc, SETTINGS_INTENT_EVENT } from "../core/ipc";
 import type { Config } from "../core/types/Config";
+import type { Profile } from "../core/types/Profile";
 import type { Tab } from "../core/types/Tab";
 
 type Selection =
@@ -16,40 +18,73 @@ type Selection =
   | { mode: "new" }
   | { mode: "edit"; tabId: string };
 
-function applyIntent(
+interface IntentTarget {
+  section: Section;
+  selection: Selection;
+  selectedProfileId?: string;
+}
+
+/**
+ * Resolve um intent (`new-tab`, `edit-tab:<id>`, `new-profile`) em uma
+ * mudança de seção/seleção. Para `edit-tab:<id>`, busca a aba em **todos**
+ * os perfis e ajusta também o `selectedProfileId` para o perfil dono. Se
+ * não encontrar, retorna `null` (ignora).
+ */
+function resolveIntent(
   intent: string | null,
-  config: { tabs: { id: string }[] } | null,
-  setSection: (s: Section) => void,
-  setSelection: (s: Selection) => void,
-) {
+  config: Config | null,
+): IntentTarget | null {
   if (intent === "new-tab") {
-    setSection("tabs");
-    setSelection({ mode: "new" });
-    return;
+    return { section: "tabs", selection: { mode: "new" } };
+  }
+  if (intent === "new-profile") {
+    return { section: "tabs", selection: { mode: "empty" } };
+    // ProfilePicker fica visível em todas as seções; o entrypoint do donut
+    // pode posteriormente disparar prompt de criação aqui.
   }
   if (intent && intent.startsWith("edit-tab:")) {
     const tabId = intent.slice("edit-tab:".length);
-    if (config?.tabs.some((t) => t.id === tabId)) {
-      setSection("tabs");
-      setSelection({ mode: "edit", tabId });
+    const owner = config?.profiles.find((p) =>
+      p.tabs.some((t) => t.id === tabId),
+    );
+    if (owner) {
+      return {
+        section: "tabs",
+        selection: { mode: "edit", tabId },
+        selectedProfileId: owner.id,
+      };
     }
   }
+  return null;
 }
 
 export const SettingsApp: React.FC = () => {
   const { t } = useTranslation();
-  const { config, saveTab, deleteTab, setShortcut, setTheme, setLanguage } = useConfig();
+  const {
+    config,
+    saveTab,
+    deleteTab,
+    setShortcut,
+    setTheme,
+    setLanguage,
+    setActiveProfile,
+    createProfile,
+    deleteProfile,
+  } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
+  // Perfil sob edição. Default = ativo do config quando ele carrega.
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
-  // Ref para o config atual — usado pelo listener de intents para validar
-  // que a aba alvo (edit-tab:<id>) ainda existe quando o evento chega.
   const configRef = useRef<Config | null>(config);
   configRef.current = config;
-
-  // Intent pendente: chegou antes do config carregar. Reaplicado abaixo
-  // quando o config aparece.
   const pendingIntentRef = useRef<string | null>(null);
+
+  const apply = (target: IntentTarget) => {
+    setSection(target.section);
+    setSelection(target.selection);
+    if (target.selectedProfileId) setSelectedProfileId(target.selectedProfileId);
+  };
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -58,7 +93,8 @@ export const SettingsApp: React.FC = () => {
         pendingIntentRef.current = intent;
         return;
       }
-      applyIntent(intent, configRef.current, setSection, setSelection);
+      const target = resolveIntent(intent, configRef.current);
+      if (target) apply(target);
     };
     void listen<string>(SETTINGS_INTENT_EVENT, (e) => {
       handle(e.payload);
@@ -69,12 +105,25 @@ export const SettingsApp: React.FC = () => {
     return () => unlisten?.();
   }, []);
 
-  // Re-aplica intent pendente quando o config termina de carregar.
+  // Quando o config carrega, decide o `selectedProfileId` inicial:
+  //   1) Se há intent pendente que resolve para um perfil específico, aplica.
+  //   2) Caso contrário, default = perfil ativo.
+  // Colapsado em um único effect pra evitar race entre "replay pending" e
+  // "default to active" (a ordem de execução das effects dependentes de
+  // `config` causaria o default sobrescrever o apply).
   useEffect(() => {
-    if (config && pendingIntentRef.current) {
-      const pending = pendingIntentRef.current;
+    if (!config) return;
+    const pending = pendingIntentRef.current;
+    if (pending) {
       pendingIntentRef.current = null;
-      applyIntent(pending, config, setSection, setSelection);
+      const target = resolveIntent(pending, config);
+      if (target) {
+        apply(target);
+        return;
+      }
+    }
+    if (selectedProfileId === null) {
+      setSelectedProfileId(config.activeProfileId);
     }
   }, [config]);
 
@@ -82,29 +131,73 @@ export const SettingsApp: React.FC = () => {
     return <div style={{ padding: 24 }}>…</div>;
   }
 
+  const effectiveProfileId = selectedProfileId ?? config.activeProfileId;
+  const selectedProfile: Profile =
+    config.profiles.find((p) => p.id === effectiveProfileId) ??
+    config.profiles[0];
+
   const selectedTab: Tab | null =
     selection.mode === "edit"
-      ? config.tabs.find((tab) => tab.id === selection.tabId) ?? null
+      ? selectedProfile.tabs.find((tab) => tab.id === selection.tabId) ?? null
       : null;
 
   const handleSave = async (tab: Tab) => {
-    await saveTab(tab);
+    await saveTab(tab, selectedProfile.id);
     setSelection({ mode: "edit", tabId: tab.id });
   };
 
   const handleDelete = async (tabId: string) => {
-    await deleteTab(tabId);
+    await deleteTab(tabId, selectedProfile.id);
     setSelection({ mode: "empty" });
+  };
+
+  const handleCreateProfile = async () => {
+    const name = window.prompt(t("settings.profile.promptName") ?? "Nome do perfil");
+    if (!name || !name.trim()) return;
+    try {
+      const newId = await createProfile(name.trim());
+      setSelectedProfileId(newId);
+    } catch (e) {
+      console.error("createProfile failed", e);
+    }
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    const target = config.profiles.find((p) => p.id === profileId);
+    if (!target) return;
+    const confirmed = window.confirm(
+      t("settings.profile.confirmDelete", { name: target.name }) ??
+        `Excluir perfil "${target.name}"?`,
+    );
+    if (!confirmed) return;
+    try {
+      await deleteProfile(profileId);
+      // Se excluímos o selecionado, volta para o ativo (que o backend pode ter trocado).
+      setSelectedProfileId(null);
+    } catch (e) {
+      console.error("deleteProfile failed", e);
+    }
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      <ProfilePicker
+        profiles={config.profiles}
+        selectedId={selectedProfile.id}
+        activeId={config.activeProfileId}
+        onSelect={(id) => {
+          setSelectedProfileId(id);
+          setSelection({ mode: "empty" });
+        }}
+        onCreate={handleCreateProfile}
+        onDelete={handleDeleteProfile}
+      />
       <SectionTabs active={section} onChange={setSection} />
 
       {section === "tabs" && (
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           <TabList
-            tabs={config.tabs}
+            tabs={selectedProfile.tabs}
             selectedId={selection.mode === "edit" ? selection.tabId : null}
             onSelect={(id) => setSelection({ mode: "edit", tabId: id })}
             onAdd={() => setSelection({ mode: "new" })}
@@ -144,22 +237,29 @@ export const SettingsApp: React.FC = () => {
 
       {section === "appearance" && (
         <AppearanceSection
-          theme={config.appearance.theme}
+          theme={selectedProfile.theme}
           language={config.appearance.language}
           onThemeChange={(theme) => {
-            void setTheme(theme);
+            void setTheme(theme, selectedProfile.id);
           }}
           onLanguageChange={(language) => {
             void setLanguage(language);
           }}
+          onSetActiveProfile={
+            selectedProfile.id !== config.activeProfileId
+              ? () => {
+                  void setActiveProfile(selectedProfile.id);
+                }
+              : undefined
+          }
         />
       )}
 
       {section === "shortcut" && (
         <ShortcutSection
-          current={config.shortcut}
+          current={selectedProfile.shortcut}
           onCapture={async (combo) => {
-            await setShortcut(combo);
+            await setShortcut(combo, selectedProfile.id);
           }}
         />
       )}

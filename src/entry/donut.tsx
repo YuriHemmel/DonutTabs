@@ -106,19 +106,24 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
       }}
       onClick={handleBackdropClick}
     >
-      {config && (
-        <Donut
-          tabs={config.tabs}
-          size={WINDOW_SIZE}
-          itemsPerPage={config.pagination.itemsPerPage}
-          wheelDirection={config.pagination.wheelDirection}
-          hoverHoldMs={config.interaction.hoverHoldMs}
-          onSelect={handleSelect}
-          onOpenSettings={handleOpenSettings}
-          onEditTab={handleEditTab}
-          onDeleteTab={handleDeleteTab}
-        />
-      )}
+      {config &&
+        (() => {
+          const activeProfile =
+            config.profiles.find((p) => p.id === config.activeProfileId) ?? null;
+          return (
+            <Donut
+              tabs={activeProfile?.tabs ?? []}
+              size={WINDOW_SIZE}
+              itemsPerPage={config.pagination.itemsPerPage}
+              wheelDirection={config.pagination.wheelDirection}
+              hoverHoldMs={config.interaction.hoverHoldMs}
+              onSelect={handleSelect}
+              onOpenSettings={handleOpenSettings}
+              onEditTab={handleEditTab}
+              onDeleteTab={handleDeleteTab}
+            />
+          );
+        })()}
       {errorMsg && (
         <div
           role="alert"

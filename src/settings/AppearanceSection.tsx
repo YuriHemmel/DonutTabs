@@ -8,6 +8,8 @@ export interface AppearanceSectionProps {
   language: Language;
   onThemeChange: (theme: Theme) => void;
   onLanguageChange: (language: Language) => void;
+  /** Quando o perfil sob edição não é o ativo, mostra um botão pra ativá-lo. */
+  onSetActiveProfile?: () => void;
 }
 
 const THEMES: Theme[] = ["dark", "light", "auto"];
@@ -22,6 +24,7 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   language,
   onThemeChange,
   onLanguageChange,
+  onSetActiveProfile,
 }) => {
   const { t } = useTranslation();
 
@@ -79,6 +82,26 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           <option value="en">{t("settings.appearance.languageEn")}</option>
         </select>
       </label>
+
+      {onSetActiveProfile && (
+        <button
+          type="button"
+          data-testid="set-active-profile"
+          onClick={onSetActiveProfile}
+          style={{
+            alignSelf: "flex-start",
+            background: "var(--accent-bg)",
+            color: "var(--accent-fg)",
+            border: 0,
+            borderRadius: 4,
+            padding: "8px 16px",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          {t("settings.profile.activate")}
+        </button>
+      )}
     </section>
   );
 };
