@@ -142,4 +142,92 @@ describe("Donut", () => {
     const { container } = render(<Donut {...baseProps} tabs={[]} />);
     expect(container.querySelector('[data-testid="pagination-dots"]')).toBeNull();
   });
+
+  it("does not render the profile switcher hit area when profiles props are absent", () => {
+    const { container } = render(<Donut {...baseProps} tabs={[]} />);
+    expect(
+      container.querySelector('[data-testid="profile-switcher-hit"]'),
+    ).toBeNull();
+  });
+
+  it("clicking the profile switcher hit area enters profiles mode", () => {
+    const profiles = [
+      {
+        id: "a",
+        name: "A",
+        icon: null,
+        shortcut: "Ctrl+Space",
+        theme: "dark",
+        tabs: [],
+      },
+      {
+        id: "b",
+        name: "B",
+        icon: null,
+        shortcut: "Ctrl+Alt+B",
+        theme: "dark",
+        tabs: [],
+      },
+    ] as never;
+    const { container } = render(
+      <Donut
+        {...baseProps}
+        tabs={[]}
+        profiles={profiles}
+        activeProfileId="a"
+        onSelectProfile={() => {}}
+      />,
+    );
+    const hit = container.querySelector(
+      '[data-testid="profile-switcher-hit"]',
+    ) as SVGRectElement;
+    expect(hit).not.toBeNull();
+    fireEvent.click(hit);
+    expect(
+      container.querySelector('[data-testid="profile-switcher"]'),
+    ).not.toBeNull();
+  });
+
+  it("selecting a profile in switcher mode calls onSelectProfile and returns to tabs mode", () => {
+    const onSelectProfile = vi.fn();
+    const profiles = [
+      {
+        id: "a",
+        name: "A",
+        icon: null,
+        shortcut: "Ctrl+Space",
+        theme: "dark",
+        tabs: [],
+      },
+      {
+        id: "b",
+        name: "B",
+        icon: null,
+        shortcut: "Ctrl+Alt+B",
+        theme: "dark",
+        tabs: [],
+      },
+    ] as never;
+    const { container } = render(
+      <Donut
+        {...baseProps}
+        tabs={[]}
+        profiles={profiles}
+        activeProfileId="a"
+        onSelectProfile={onSelectProfile}
+      />,
+    );
+    fireEvent.click(
+      container.querySelector(
+        '[data-testid="profile-switcher-hit"]',
+      ) as SVGRectElement,
+    );
+    const slices = container.querySelectorAll('[data-testid="donut-slice"]');
+    fireEvent.click(slices[1]); // segundo perfil
+    expect(onSelectProfile).toHaveBeenCalledWith("b");
+    // voltou ao modo abas (não mostra mais profile-switcher)
+    expect(
+      container.querySelector('[data-testid="profile-switcher"]'),
+    ).toBeNull();
+  });
 });

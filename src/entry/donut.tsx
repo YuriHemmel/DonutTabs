@@ -121,6 +121,14 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
               onOpenSettings={handleOpenSettings}
               onEditTab={handleEditTab}
               onDeleteTab={handleDeleteTab}
+              profiles={config.profiles}
+              activeProfileId={config.activeProfileId}
+              onSelectProfile={(profileId) => {
+                void ipc.setActiveProfile(profileId);
+              }}
+              onCreateProfile={() => {
+                void handleOpenSettings("new-profile");
+              }}
             />
           );
         })()}
