@@ -1,5 +1,5 @@
 use crate::errors::{AppError, AppResult};
-use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 pub const SETTINGS_LABEL: &str = "settings";
 const SETTINGS_MIN_SIZE: (f64, f64) = (720.0, 520.0);
@@ -17,15 +17,29 @@ pub fn prewarm<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     if app.get_webview_window(SETTINGS_LABEL).is_some() {
         return Ok(());
     }
-    WebviewWindowBuilder::new(app, SETTINGS_LABEL, WebviewUrl::App("settings.html".into()))
-        .title("DonutTabs — Configurações")
-        .inner_size(SETTINGS_INITIAL_SIZE.0, SETTINGS_INITIAL_SIZE.1)
-        .min_inner_size(SETTINGS_MIN_SIZE.0, SETTINGS_MIN_SIZE.1)
-        .resizable(true)
-        .decorations(true)
-        .visible(false)
-        .build()
-        .map_err(|e| AppError::window("window_build_failed", &[("reason", e.to_string())]))?;
+    let window =
+        WebviewWindowBuilder::new(app, SETTINGS_LABEL, WebviewUrl::App("settings.html".into()))
+            .title("DonutTabs — Configurações")
+            .inner_size(SETTINGS_INITIAL_SIZE.0, SETTINGS_INITIAL_SIZE.1)
+            .min_inner_size(SETTINGS_MIN_SIZE.0, SETTINGS_MIN_SIZE.1)
+            .resizable(true)
+            .decorations(true)
+            .visible(false)
+            .build()
+            .map_err(|e| AppError::window("window_build_failed", &[("reason", e.to_string())]))?;
+
+    // Intercepta o fechar nativo (X do título) e apenas oculta a janela.
+    // Destruir recriaria no próximo `show` via `run_on_main_thread`, que
+    // trava o build do WebView2 em alguns ambientes Windows (ver doc de
+    // `prewarm`) — e foi exatamente o sintoma relatado no issue #5: após
+    // fechar a Settings e reabrir, o app travava sem responder.
+    let hide_target = window.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            let _ = hide_target.hide();
+        }
+    });
     Ok(())
 }
 
