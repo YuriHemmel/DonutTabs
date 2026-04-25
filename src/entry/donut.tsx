@@ -83,6 +83,18 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     }
   };
 
+  const handleEditTab = (tabId: string) => {
+    void handleOpenSettings(`edit-tab:${tabId}` as import("../core/ipc").SettingsIntent);
+  };
+
+  const handleDeleteTab = async (tabId: string) => {
+    try {
+      await ipc.deleteTab(tabId);
+    } catch (err) {
+      setErrorMsg(translateAppError(err, t));
+    }
+  };
+
   return (
     <div
       style={{
@@ -98,8 +110,13 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
         <Donut
           tabs={config.tabs}
           size={WINDOW_SIZE}
+          itemsPerPage={config.pagination.itemsPerPage}
+          wheelDirection={config.pagination.wheelDirection}
+          hoverHoldMs={config.interaction.hoverHoldMs}
           onSelect={handleSelect}
           onOpenSettings={handleOpenSettings}
+          onEditTab={handleEditTab}
+          onDeleteTab={handleDeleteTab}
         />
       )}
       {errorMsg && (

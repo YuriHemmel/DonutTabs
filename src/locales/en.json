@@ -31,7 +31,13 @@
     "fallback": "An unexpected error occurred ({{kind}})"
   },
   "donut": {
-    "toastDismiss": "Close"
+    "toastDismiss": "Close",
+    "hoverHold": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "yes": "Confirm deletion",
+      "no": "Cancel"
+    }
   },
   "settings": {
     "title": "Settings",

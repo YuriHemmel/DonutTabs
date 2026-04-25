@@ -31,7 +31,13 @@
     "fallback": "Ocorreu um erro inesperado ({{kind}})"
   },
   "donut": {
-    "toastDismiss": "Fechar"
+    "toastDismiss": "Fechar",
+    "hoverHold": {
+      "edit": "Editar",
+      "delete": "Excluir",
+      "yes": "Confirmar exclusão",
+      "no": "Cancelar"
+    }
   },
   "settings": {
     "title": "Configurações",
