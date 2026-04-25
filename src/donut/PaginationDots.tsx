@@ -27,24 +27,39 @@ export const PaginationDots: React.FC<PaginationDotsProps> = ({
   const startX = cx - totalWidth / 2;
 
   return (
-    <g aria-label="pagination" data-testid="pagination-dots">
+    <g aria-label="pagination" data-testid="pagination-dots" role="tablist">
       {Array.from({ length: total }, (_, i) => {
         const isActive = i === active;
+        const activate = () => onChange(i);
         return (
-          <circle
+          <g
             key={i}
             data-testid={`pagination-dot-${i}`}
             data-active={isActive ? "true" : "false"}
-            cx={startX + i * gap}
-            cy={cy}
-            r={r}
-            fill={isActive ? "#dde" : "#445"}
-            style={{ cursor: "pointer" }}
+            role="tab"
+            tabIndex={0}
+            aria-label={`Página ${i + 1}`}
+            aria-selected={isActive}
+            style={{ cursor: "pointer", outline: "none" }}
             onClick={(e) => {
               e.stopPropagation();
-              onChange(i);
+              activate();
             }}
-          />
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                activate();
+              }
+            }}
+          >
+            <circle
+              cx={startX + i * gap}
+              cy={cy}
+              r={r}
+              fill={isActive ? "#dde" : "#445"}
+            />
+          </g>
         );
       })}
     </g>

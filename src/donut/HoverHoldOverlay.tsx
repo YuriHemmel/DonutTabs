@@ -81,27 +81,42 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
   const deleteY = cy + labelR * Math.sin(deleteAngle);
 
   if (state.phase === "actionable") {
+    const onActivate = (fn: () => void) => (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        fn();
+      }
+    };
     return (
       <g data-testid="hover-hold-action">
         <path
           d={editPath}
           data-testid="hover-hold-edit"
+          role="button"
+          tabIndex={0}
+          aria-label={t("donut.hoverHold.edit")}
           fill="rgba(80, 130, 220, 0.55)"
-          style={{ cursor: "pointer" }}
+          style={{ cursor: "pointer", outline: "none" }}
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
           }}
+          onKeyDown={onActivate(onEdit)}
         />
         <path
           d={deletePath}
           data-testid="hover-hold-delete"
+          role="button"
+          tabIndex={0}
+          aria-label={t("donut.hoverHold.delete")}
           fill="rgba(200, 60, 60, 0.55)"
-          style={{ cursor: "pointer" }}
+          style={{ cursor: "pointer", outline: "none" }}
           onClick={(e) => {
             e.stopPropagation();
             onRequestDelete();
           }}
+          onKeyDown={onActivate(onRequestDelete)}
         />
         <text
           x={editX}
@@ -138,6 +153,14 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
   const noY = cy + labelR * Math.sin(noAngle);
   const slicePath = arcPath({ cx, cy, innerR, outerR, startAngle, endAngle });
 
+  const onActivate = (fn: () => void) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      fn();
+    }
+  };
+
   return (
     <g data-testid="hover-hold-confirm">
       <path d={slicePath} fill="rgba(20, 25, 40, 0.55)" pointerEvents="none" />
@@ -145,11 +168,13 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
         data-testid="hover-hold-confirm-yes"
         aria-label={t("donut.hoverHold.yes")}
         role="button"
-        style={{ cursor: "pointer" }}
+        tabIndex={0}
+        style={{ cursor: "pointer", outline: "none" }}
         onClick={(e) => {
           e.stopPropagation();
           onConfirmDelete();
         }}
+        onKeyDown={onActivate(onConfirmDelete)}
       >
         <circle cx={yesX} cy={yesY} r={20} fill="#c8382b" />
         <text
@@ -167,11 +192,13 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
         data-testid="hover-hold-confirm-no"
         aria-label={t("donut.hoverHold.no")}
         role="button"
-        style={{ cursor: "pointer" }}
+        tabIndex={0}
+        style={{ cursor: "pointer", outline: "none" }}
         onClick={(e) => {
           e.stopPropagation();
           onCancelConfirm();
         }}
+        onKeyDown={onActivate(onCancelConfirm)}
       >
         <circle cx={noX} cy={noY} r={18} fill="#5a5f6e" />
         <text
