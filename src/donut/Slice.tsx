@@ -7,8 +7,12 @@ export interface SliceProps {
   startAngle: number; endAngle: number;
   label?: string;
   icon?: string;
+  /** Optional rich icon node (e.g. <IconRenderer/>). When set, replaces the
+   *  string-based icon rendering. */
+  iconNode?: React.ReactNode;
   highlighted: boolean;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent<SVGGElement>) => void;
 }
 
 export const Slice: React.FC<SliceProps> = (p) => {
@@ -17,9 +21,10 @@ export const Slice: React.FC<SliceProps> = (p) => {
   const labelR = (p.innerR + p.outerR) / 2;
   const lx = p.cx + labelR * Math.cos(mid);
   const ly = p.cy + labelR * Math.sin(mid);
+  const hasIcon = p.iconNode !== undefined || !!p.icon;
 
   return (
-    <g onClick={p.onClick} style={{ cursor: "pointer" }}>
+    <g onClick={p.onClick} onContextMenu={p.onContextMenu} style={{ cursor: "pointer" }}>
       <path
         data-testid="donut-slice"
         d={d}
@@ -29,11 +34,13 @@ export const Slice: React.FC<SliceProps> = (p) => {
         strokeWidth={1}
       />
       <g transform={`translate(${lx} ${ly})`} textAnchor="middle" fill="#eaeaea">
-        {p.icon && (
-          <text y={p.label ? -8 : 4} fontSize={22}>{p.icon}</text>
+        {p.iconNode !== undefined ? (
+          <g transform={`translate(0 ${p.label ? -8 : 0})`}>{p.iconNode}</g>
+        ) : (
+          p.icon && <text y={p.label ? -8 : 4} fontSize={22}>{p.icon}</text>
         )}
         {p.label && (
-          <text y={p.icon ? 18 : 4} fontSize={12}>{p.label}</text>
+          <text y={hasIcon ? 18 : 4} fontSize={12}>{p.label}</text>
         )}
       </g>
     </g>
