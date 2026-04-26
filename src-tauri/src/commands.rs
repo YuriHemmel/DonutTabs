@@ -1,6 +1,7 @@
 use crate::config::io::{load_from_path, save_atomic};
 use crate::config::schema::{Config, Language, Profile, Tab, Theme};
 use crate::errors::{AppError, AppResult};
+use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, TauriOpener};
 use crate::shortcut::ActiveShortcut;
 use std::path::{Path, PathBuf};
@@ -401,6 +402,18 @@ pub fn update_profile<R: tauri::Runtime>(
     };
     let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
     Ok(snapshot)
+}
+
+#[tauri::command]
+pub async fn fetch_favicon<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    url: String,
+) -> Result<FaviconResult, AppError> {
+    let base = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| AppError::io("favicon_fetch", &[("reason", e.to_string())]))?;
+    favicon::fetch_favicon(&url, &base).await
 }
 
 pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {

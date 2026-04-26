@@ -3,6 +3,7 @@ import type { Config } from "./types/Config";
 import type { Tab } from "./types/Tab";
 import type { Theme } from "./types/Theme";
 import type { Language } from "./types/Language";
+import type { FaviconResult } from "./types/FaviconResult";
 
 export type SettingsIntent = "new-tab" | `edit-tab:${string}` | "new-profile";
 
@@ -42,6 +43,7 @@ export const ipc = {
     invoke<Config>("reorder_tabs", { profileId, orderedIds }),
   reorderProfiles: (orderedIds: string[]) =>
     invoke<Config>("reorder_profiles", { orderedIds }),
+  fetchFavicon: (url: string) => invoke<FaviconResult>("fetch_favicon", { url }),
 };
 
 export const CONFIG_CHANGED_EVENT = "config-changed";

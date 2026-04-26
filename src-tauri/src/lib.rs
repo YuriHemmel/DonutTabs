@@ -128,6 +128,7 @@ pub fn run() {
             commands::set_autostart,
             commands::reorder_tabs,
             commands::reorder_profiles,
+            commands::fetch_favicon,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
