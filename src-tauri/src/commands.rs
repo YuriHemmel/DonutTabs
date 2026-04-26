@@ -344,6 +344,45 @@ pub fn set_autostart<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Reordena as abas de um perfil. `ordered_ids` deve cobrir exatamente o
+/// conjunto atual de abas (mesma cardinalidade, mesmos ids); a nova ordem
+/// vira a ordem do `Vec` e o campo `order` de cada `Tab` é renormalizado.
+#[tauri::command]
+pub fn reorder_tabs<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    profile_id: Uuid,
+    ordered_ids: Vec<Uuid>,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_reorder_tabs(&mut cfg, profile_id, &ordered_ids)?;
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Reordena os perfis. `ordered_ids` deve ser permutação exata de
+/// `cfg.profiles`. `active_profile_id` permanece intacto (referência por id,
+/// não por índice).
+#[tauri::command]
+pub fn reorder_profiles<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    ordered_ids: Vec<Uuid>,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_reorder_profiles(&mut cfg, &ordered_ids)?;
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 /// Atualiza nome / ícone de um perfil. Campo ausente (`None`) significa "não
 /// mexer". Passar `""` em `icon` zera o ícone (vira `None` em disco).
 #[tauri::command]
@@ -514,6 +553,63 @@ impl Profile {
             .unwrap_or_else(|| "CommandOrControl+Shift+Space".into());
         self
     }
+}
+
+/// Reordena `items` na ordem ditada por `ordered_ids`. Falha se o conjunto de
+/// ids divergir do conjunto atual (qualquer ausência, extra ou tamanho
+/// diferente). Mantém a relação 1-para-1, então não há perda nem duplicação.
+fn reorder_in_place<T, F>(
+    items: &mut Vec<T>,
+    ordered_ids: &[Uuid],
+    scope: &'static str,
+    get_id: F,
+) -> AppResult<()>
+where
+    F: Fn(&T) -> Uuid,
+{
+    if items.len() != ordered_ids.len() {
+        return Err(AppError::config(
+            "reorder_mismatch",
+            &[
+                ("scope", scope.to_string()),
+                ("reason", "length".to_string()),
+            ],
+        ));
+    }
+    let current: std::collections::HashSet<Uuid> = items.iter().map(&get_id).collect();
+    let incoming: std::collections::HashSet<Uuid> = ordered_ids.iter().copied().collect();
+    if current != incoming {
+        return Err(AppError::config(
+            "reorder_mismatch",
+            &[("scope", scope.to_string()), ("reason", "set".to_string())],
+        ));
+    }
+    let mut map: std::collections::HashMap<Uuid, T> =
+        items.drain(..).map(|t| (get_id(&t), t)).collect();
+    let mut rebuilt: Vec<T> = Vec::with_capacity(ordered_ids.len());
+    for id in ordered_ids {
+        // Set equality acima garante presença.
+        rebuilt.push(map.remove(id).expect("id validated above"));
+    }
+    *items = rebuilt;
+    Ok(())
+}
+
+pub(crate) fn apply_reorder_tabs(
+    cfg: &mut Config,
+    profile_id: Uuid,
+    ordered_ids: &[Uuid],
+) -> AppResult<()> {
+    let profile = profile_by_id_mut(cfg, profile_id)?;
+    reorder_in_place(&mut profile.tabs, ordered_ids, "tabs", |t| t.id)?;
+    for (i, t) in profile.tabs.iter_mut().enumerate() {
+        t.order = i as u32;
+    }
+    Ok(())
+}
+
+pub(crate) fn apply_reorder_profiles(cfg: &mut Config, ordered_ids: &[Uuid]) -> AppResult<()> {
+    reorder_in_place(&mut cfg.profiles, ordered_ids, "profiles", |p| p.id)
 }
 
 pub(crate) fn apply_update_profile(
@@ -835,6 +931,151 @@ mod tests {
             AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
             other => panic!("expected Config error, got {other:?}"),
         }
+    }
+
+    // ---------- apply_reorder_tabs ----------
+
+    fn make_profile_with_tabs(names: &[&str]) -> (Profile, Vec<Uuid>) {
+        let mut p = Profile::default();
+        let mut ids = Vec::new();
+        for (i, n) in names.iter().enumerate() {
+            let mut t = sample_tab(n);
+            t.order = i as u32;
+            ids.push(t.id);
+            p.tabs.push(t);
+        }
+        (p, ids)
+    }
+
+    #[test]
+    fn apply_reorder_tabs_permutes_and_renormalizes_order() {
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        let (mut p, ids) = make_profile_with_tabs(&["A", "B", "C"]);
+        p.id = pid;
+        cfg.profiles[0] = p;
+
+        // Nova ordem: C, A, B.
+        let new_order = vec![ids[2], ids[0], ids[1]];
+        apply_reorder_tabs(&mut cfg, pid, &new_order).unwrap();
+
+        let tabs = &cfg.profiles[0].tabs;
+        assert_eq!(tabs.len(), 3);
+        assert_eq!(tabs[0].id, ids[2]);
+        assert_eq!(tabs[0].name.as_deref(), Some("C"));
+        assert_eq!(tabs[0].order, 0);
+        assert_eq!(tabs[1].id, ids[0]);
+        assert_eq!(tabs[1].order, 1);
+        assert_eq!(tabs[2].id, ids[1]);
+        assert_eq!(tabs[2].order, 2);
+    }
+
+    #[test]
+    fn apply_reorder_tabs_rejects_missing_id() {
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        let (mut p, ids) = make_profile_with_tabs(&["A", "B", "C"]);
+        p.id = pid;
+        cfg.profiles[0] = p;
+
+        // Falta `ids[2]`.
+        let bad = vec![ids[0], ids[1]];
+        let err = apply_reorder_tabs(&mut cfg, pid, &bad).unwrap_err();
+        match err {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "reorder_mismatch");
+                assert_eq!(context.get("scope").map(String::as_str), Some("tabs"));
+                assert_eq!(context.get("reason").map(String::as_str), Some("length"));
+            }
+            other => panic!("expected Config, got {other:?}"),
+        }
+        // Estado intacto.
+        assert_eq!(cfg.profiles[0].tabs.len(), 3);
+    }
+
+    #[test]
+    fn apply_reorder_tabs_rejects_extra_id() {
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        let (mut p, ids) = make_profile_with_tabs(&["A", "B"]);
+        p.id = pid;
+        cfg.profiles[0] = p;
+
+        // Mesmo tamanho, mas com id estranho.
+        let bad = vec![ids[0], Uuid::new_v4()];
+        let err = apply_reorder_tabs(&mut cfg, pid, &bad).unwrap_err();
+        match err {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "reorder_mismatch");
+                assert_eq!(context.get("scope").map(String::as_str), Some("tabs"));
+                assert_eq!(context.get("reason").map(String::as_str), Some("set"));
+            }
+            other => panic!("expected Config, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_reorder_tabs_unknown_profile_errors() {
+        let mut cfg = Config::default();
+        let err = apply_reorder_tabs(&mut cfg, Uuid::new_v4(), &[]).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
+            other => panic!("expected Config, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_reorder_tabs_empty_is_noop() {
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        // Default profile has zero tabs.
+        apply_reorder_tabs(&mut cfg, pid, &[]).unwrap();
+        assert!(cfg.profiles[0].tabs.is_empty());
+    }
+
+    // ---------- apply_reorder_profiles ----------
+
+    #[test]
+    fn apply_reorder_profiles_permutes_and_keeps_active_id() {
+        let (mut cfg, p1, p2) = make_two_profile_config();
+        cfg.active_profile_id = p1;
+        let new_order = vec![p2, p1];
+        apply_reorder_profiles(&mut cfg, &new_order).unwrap();
+        assert_eq!(cfg.profiles[0].id, p2);
+        assert_eq!(cfg.profiles[1].id, p1);
+        // active_profile_id permanece referenciando o mesmo perfil.
+        assert_eq!(cfg.active_profile_id, p1);
+    }
+
+    #[test]
+    fn apply_reorder_profiles_rejects_set_divergence() {
+        let (mut cfg, p1, _p2) = make_two_profile_config();
+        let bad = vec![p1, Uuid::new_v4()];
+        let err = apply_reorder_profiles(&mut cfg, &bad).unwrap_err();
+        match err {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "reorder_mismatch");
+                assert_eq!(context.get("scope").map(String::as_str), Some("profiles"));
+                assert_eq!(context.get("reason").map(String::as_str), Some("set"));
+            }
+            other => panic!("expected Config, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_reorder_profiles_rejects_length_mismatch() {
+        let (mut cfg, p1, _p2) = make_two_profile_config();
+        let bad = vec![p1];
+        let err = apply_reorder_profiles(&mut cfg, &bad).unwrap_err();
+        match err {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "reorder_mismatch");
+                assert_eq!(context.get("reason").map(String::as_str), Some("length"));
+            }
+            other => panic!("expected Config, got {other:?}"),
+        }
+        // Lista intacta.
+        assert_eq!(cfg.profiles.len(), 2);
     }
 
     // ---------- save_with_rollback ----------

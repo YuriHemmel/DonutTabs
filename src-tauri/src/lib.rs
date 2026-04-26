@@ -125,6 +125,8 @@ pub fn run() {
             commands::delete_profile,
             commands::update_profile,
             commands::set_autostart,
+            commands::reorder_tabs,
+            commands::reorder_profiles,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
