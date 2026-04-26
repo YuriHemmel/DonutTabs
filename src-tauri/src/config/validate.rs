@@ -234,4 +234,37 @@ mod tests {
         cfg.profiles[0].tabs.push(t2);
         assert_config_code(validate(&cfg).unwrap_err(), "duplicate_tab_id");
     }
+
+    #[test]
+    fn hover_hold_ms_zero_is_invalid() {
+        let mut cfg = base_config();
+        cfg.interaction.hover_hold_ms = 0;
+        assert_config_code(validate(&cfg).unwrap_err(), "hover_hold_ms_zero");
+    }
+
+    #[test]
+    fn duplicate_tab_id_across_different_profiles_is_allowed() {
+        // Contrato: dedup de tab.id é por-perfil. Mesmo UUID em perfis distintos
+        // não é erro — é só improvável na prática (UUID v4).
+        let mut cfg = base_config();
+        let shared_tab_id = Uuid::new_v4();
+        let mut t1 = tab_with(Some("A"), None, vec![]);
+        t1.id = shared_tab_id;
+        cfg.profiles[0].tabs.push(t1);
+
+        let mut p2 = Profile {
+            id: Uuid::new_v4(),
+            name: "Outro".into(),
+            icon: None,
+            shortcut: "Ctrl+Alt+P".into(),
+            theme: cfg.profiles[0].theme,
+            tabs: vec![],
+        };
+        let mut t2 = tab_with(Some("B"), None, vec![]);
+        t2.id = shared_tab_id;
+        p2.tabs.push(t2);
+        cfg.profiles.push(p2);
+
+        assert!(validate(&cfg).is_ok());
+    }
 }

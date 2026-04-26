@@ -95,4 +95,52 @@ describe("ProfileSwitcher", () => {
     fireEvent.click(slices[1]); // último é o +
     expect(onCreate).toHaveBeenCalledTimes(1);
   });
+
+  it("renders the profile icon when defined and falls back to first letter when null", () => {
+    const profiles = [
+      profile("a", "Trabalho", { icon: "💼" }),
+      profile("b", "estudo"),
+    ];
+    const { container } = renderInSvg(
+      <ProfileSwitcher
+        cx={200}
+        cy={200}
+        innerR={80}
+        outerR={180}
+        profiles={profiles}
+        activeProfileId="a"
+        onSelect={() => {}}
+        onCreate={() => {}}
+      />,
+    );
+    const texts = Array.from(container.querySelectorAll("text")).map(
+      (t) => t.textContent,
+    );
+    expect(texts).toContain("💼");
+    // fallback uppercased da inicial
+    expect(texts).toContain("E");
+    // labels visíveis também
+    expect(texts).toContain("Trabalho");
+    expect(texts).toContain("estudo");
+  });
+
+  it("falls back to '?' when the profile name is empty/whitespace", () => {
+    const profiles = [profile("a", "   ")];
+    const { container } = renderInSvg(
+      <ProfileSwitcher
+        cx={200}
+        cy={200}
+        innerR={80}
+        outerR={180}
+        profiles={profiles}
+        activeProfileId="a"
+        onSelect={() => {}}
+        onCreate={() => {}}
+      />,
+    );
+    const texts = Array.from(container.querySelectorAll("text")).map(
+      (t) => t.textContent,
+    );
+    expect(texts).toContain("?");
+  });
 });

@@ -330,4 +330,137 @@ describe("SettingsApp intent routing", () => {
       expect(select.options).toHaveLength(2);
     });
   });
+
+  it("changing the profile in the picker swaps which profile's tabs are shown", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile({
+          tabs: [
+            {
+              id: "t-active",
+              name: "AbaAtivo",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://a.test" }],
+            },
+          ],
+        }),
+        makeProfile({
+          id: PROFILE_ID_2,
+          name: "Estudo",
+          tabs: [
+            {
+              id: "t-other",
+              name: "AbaOutro",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://b.test" }],
+            },
+          ],
+        }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText("AbaAtivo")).toBeTruthy();
+    });
+    await user.selectOptions(screen.getByTestId("profile-select"), PROFILE_ID_2);
+    await waitFor(() => {
+      expect(screen.getByText("AbaOutro")).toBeTruthy();
+      expect(screen.queryByText("AbaAtivo")).toBeNull();
+    });
+  });
+
+  it("deleting a profile asks for confirm and calls ipc.deleteProfile when accepted", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.deleteProfile as ReturnType<typeof vi.fn>).mockResolvedValue(
+      makeConfig(),
+    );
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-delete")).toBeTruthy();
+    });
+    // Seleciona o segundo perfil para mirar o delete nele.
+    await user.selectOptions(
+      screen.getByTestId("profile-select"),
+      PROFILE_ID_2,
+    );
+    await user.click(screen.getByTestId("profile-delete"));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(ipc.deleteProfile).toHaveBeenCalledWith(PROFILE_ID_2);
+    confirmSpy.mockRestore();
+  });
+
+  it("deleting a profile is a no-op when confirm is canceled", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-delete")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("profile-delete"));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(ipc.deleteProfile).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("create flow is canceled when the prompt returns empty/null", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("   ");
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-create")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("profile-create"));
+    expect(promptSpy).toHaveBeenCalledTimes(1);
+    expect(ipc.createProfile).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
+  it("AppearanceSection shows the set-active button only when editing a non-active profile", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.setActiveProfile as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-appearance")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-appearance"));
+    // editando o ativo (default) → sem botão
+    expect(screen.queryByTestId("set-active-profile")).toBeNull();
+    // troca pro perfil inativo → botão aparece
+    await user.selectOptions(
+      screen.getByTestId("profile-select"),
+      PROFILE_ID_2,
+    );
+    const btn = await waitFor(() => screen.getByTestId("set-active-profile"));
+    await user.click(btn);
+    expect(ipc.setActiveProfile).toHaveBeenCalledWith(PROFILE_ID_2);
+  });
 });
