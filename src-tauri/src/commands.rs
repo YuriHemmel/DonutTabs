@@ -131,12 +131,20 @@ pub fn set_shortcut<R: tauri::Runtime>(
     combo: String,
     profile_id: Option<Uuid>,
 ) -> Result<Config, AppError> {
-    let target = profile_id.unwrap_or_else(|| state.config.read().unwrap().active_profile_id);
-    let is_active = target == state.config.read().unwrap().active_profile_id;
+    let (target, is_active) = {
+        let cfg = state.config.read().unwrap();
+        let active = cfg.active_profile_id;
+        let target = profile_id.unwrap_or(active);
+        (target, target == active)
+    };
 
     if is_active {
         // Tenta registrar o novo antes de mexer em qualquer estado em memória.
         crate::shortcut::set_from_config(&app, &state.active_shortcut, &combo)?;
+    } else {
+        // Perfil inativo: não toca o atalho global, mas valida o combo pra
+        // evitar gravar lixo no disco que só falharia ao ativar o perfil.
+        crate::shortcut::validate_combo(&combo)?;
     }
 
     let snapshot = {
@@ -284,8 +292,15 @@ pub fn delete_profile<R: tauri::Runtime>(
     state: tauri::State<'_, AppState>,
     profile_id: Uuid,
 ) -> Result<Config, AppError> {
-    // Pré-checagens sob read lock pra falhar cedo sem mutar nada.
-    {
+    // Snapshot único sob read lock: valida pré-condições, decide swap de ativo
+    // e captura combos de antes/depois pra rollback. Evita janelas de corrida
+    // entre múltiplos `read()` consecutivos.
+    struct Plan {
+        new_active: Option<Uuid>,
+        new_combo: Option<String>,
+        old_combo: String,
+    }
+    let plan = {
         let cfg = state.config.read().unwrap();
         if cfg.profiles.len() <= 1 {
             return Err(AppError::config("cannot_delete_last_profile", &[]));
@@ -296,49 +311,51 @@ pub fn delete_profile<R: tauri::Runtime>(
                 &[("profileId", profile_id.to_string())],
             ));
         }
-    }
-
-    // Se for o ativo, precisamos re-registrar o atalho do novo ativo antes de
-    // remover. Pegamos o novo combo agora e tentamos registrar; em caso de
-    // falha, abortamos sem nenhuma mudança em disco.
-    let needs_active_swap = profile_id == state.config.read().unwrap().active_profile_id;
-    let mut new_active: Option<Uuid> = None;
-    if needs_active_swap {
-        let cfg = state.config.read().unwrap();
-        let candidate = cfg
+        let old_active = cfg.active_profile_id;
+        let old_combo = cfg
             .profiles
             .iter()
-            .find(|p| p.id != profile_id)
-            .ok_or_else(|| AppError::config("cannot_delete_last_profile", &[]))?;
-        let combo = candidate.shortcut.clone();
-        let cand_id = candidate.id;
-        drop(cfg);
-        crate::shortcut::set_from_config(&app, &state.active_shortcut, &combo)?;
-        new_active = Some(cand_id);
+            .find(|p| p.id == old_active)
+            .map(|p| p.shortcut.clone())
+            .unwrap_or_default();
+        let (new_active, new_combo) = if profile_id == old_active {
+            let candidate = cfg
+                .profiles
+                .iter()
+                .find(|p| p.id != profile_id)
+                .ok_or_else(|| AppError::config("cannot_delete_last_profile", &[]))?;
+            (Some(candidate.id), Some(candidate.shortcut.clone()))
+        } else {
+            (None, None)
+        };
+        Plan {
+            new_active,
+            new_combo,
+            old_combo,
+        }
+    };
+
+    // Re-registra atalho do novo ativo antes de qualquer mudança em disco.
+    if let Some(combo) = &plan.new_combo {
+        crate::shortcut::set_from_config(&app, &state.active_shortcut, combo)?;
     }
 
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
-        let old_active = cfg.active_profile_id;
-        if let Some(id) = new_active {
+        if let Some(id) = plan.new_active {
             cfg.active_profile_id = id;
         }
         cfg.profiles.retain(|p| p.id != profile_id);
         if let Err(e) = save_atomic(&state.config_path, &cfg) {
-            // Rollback: recarrega disco.
+            // Rollback: recarrega disco (best-effort).
             if let Ok(fresh) = load_from_path(&state.config_path) {
                 *cfg = fresh;
             }
-            // Restaura atalho antigo se trocamos.
-            if needs_active_swap {
-                let old_combo = cfg
-                    .profiles
-                    .iter()
-                    .find(|p| p.id == old_active)
-                    .map(|p| p.shortcut.clone());
-                if let Some(combo) = old_combo {
-                    let _ = crate::shortcut::set_from_config(&app, &state.active_shortcut, &combo);
-                }
+            // Restaura atalho antigo se trocamos. Usamos `plan.old_combo`
+            // capturado antes da mutação — sobrevive mesmo se o reload falhar.
+            if plan.new_combo.is_some() && !plan.old_combo.is_empty() {
+                let _ =
+                    crate::shortcut::set_from_config(&app, &state.active_shortcut, &plan.old_combo);
             }
             return Err(e);
         }
@@ -531,6 +548,24 @@ mod tests {
         let err = active_profile(&cfg).unwrap_err();
         match err {
             AppError::Config { code, .. } => assert_eq!(code, "active_profile_not_found"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn profile_by_id_mut_returns_match() {
+        let mut cfg = Config::default();
+        let id = cfg.profiles[0].id;
+        let p = profile_by_id_mut(&mut cfg, id).unwrap();
+        assert_eq!(p.id, id);
+    }
+
+    #[test]
+    fn profile_by_id_mut_errors_when_not_found() {
+        let mut cfg = Config::default();
+        let err = profile_by_id_mut(&mut cfg, Uuid::new_v4()).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
             other => panic!("expected Config error, got {other:?}"),
         }
     }
