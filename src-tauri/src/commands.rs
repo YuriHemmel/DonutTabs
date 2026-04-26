@@ -349,13 +349,15 @@ pub fn delete_profile<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Atualiza nome / ícone de um perfil. Campo ausente (`None`) significa "não
+/// mexer". Passar `""` em `icon` zera o ícone (vira `None` em disco).
 #[tauri::command]
 pub fn update_profile<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     state: tauri::State<'_, AppState>,
     profile_id: Uuid,
     name: Option<String>,
-    icon: Option<Option<String>>,
+    icon: Option<String>,
 ) -> Result<Config, AppError> {
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
@@ -371,7 +373,7 @@ pub fn update_profile<R: tauri::Runtime>(
             profile.name = trimmed;
         }
         if let Some(ic) = icon {
-            profile.icon = ic;
+            profile.icon = if ic.is_empty() { None } else { Some(ic) };
         }
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
