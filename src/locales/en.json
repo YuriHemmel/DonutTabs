@@ -35,6 +35,8 @@
     "io": {
       "ioGeneric": "I/O error: {{reason}}",
       "autostartFailed": "Could not change autostart setting: {{reason}}",
+      "faviconFetch": "Could not fetch the site icon ({{url}}).",
+      "faviconParse": "Invalid favicon URL: {{reason}}",
       "unknown": "I/O error: {{code}}"
     },
     "fallback": "An unexpected error occurred ({{kind}})"
@@ -46,6 +48,12 @@
       "delete": "Delete",
       "yes": "Confirm deletion",
       "no": "Cancel"
+    },
+    "contextMenu": {
+      "openAll": "Open all",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete tab \"{{label}}\"? This cannot be undone."
     }
   },
   "settings": {
