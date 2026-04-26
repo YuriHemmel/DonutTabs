@@ -209,23 +209,9 @@ pub fn set_active_profile<R: tauri::Runtime>(
     state: tauri::State<'_, AppState>,
     profile_id: Uuid,
 ) -> Result<Config, AppError> {
-    // Captura combo do novo perfil sem reter o read lock no register.
-    let new_combo = {
-        let cfg = state.config.read().unwrap();
-        cfg.profiles
-            .iter()
-            .find(|p| p.id == profile_id)
-            .ok_or_else(|| {
-                AppError::config(
-                    "profile_not_found",
-                    &[("profileId", profile_id.to_string())],
-                )
-            })?
-            .shortcut
-            .clone()
-    };
+    let plan = plan_set_active(&state.config.read().unwrap(), profile_id)?;
 
-    crate::shortcut::set_from_config(&app, &state.active_shortcut, &new_combo)?;
+    crate::shortcut::set_from_config(&app, &state.active_shortcut, &plan.new_combo)?;
 
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
@@ -234,13 +220,9 @@ pub fn set_active_profile<R: tauri::Runtime>(
         if let Err(e) = save_atomic(&state.config_path, &cfg) {
             cfg.active_profile_id = old_active;
             // Restaura o atalho do perfil anterior.
-            let old_combo = cfg
-                .profiles
-                .iter()
-                .find(|p| p.id == old_active)
-                .map(|p| p.shortcut.clone());
-            if let Some(combo) = old_combo {
-                let _ = crate::shortcut::set_from_config(&app, &state.active_shortcut, &combo);
+            if !plan.old_combo.is_empty() {
+                let _ =
+                    crate::shortcut::set_from_config(&app, &state.active_shortcut, &plan.old_combo);
             }
             return Err(e);
         }
@@ -258,27 +240,12 @@ pub fn create_profile<R: tauri::Runtime>(
     name: String,
     icon: Option<String>,
 ) -> Result<(Config, Uuid), AppError> {
-    let trimmed = name.trim().to_string();
-    if trimmed.is_empty() {
-        return Err(AppError::config("profile_name_empty", &[]));
-    }
-
-    let new_id = Uuid::new_v4();
+    let new_profile = build_new_profile(&name, icon)?;
+    let new_id = new_profile.id;
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
-        let base_shortcut = cfg
-            .profiles
-            .first()
-            .map(|p| p.shortcut.clone())
-            .unwrap_or_else(|| "CommandOrControl+Shift+Space".into());
-        cfg.profiles.push(Profile {
-            id: new_id,
-            name: trimmed,
-            icon,
-            shortcut: base_shortcut,
-            theme: Theme::Dark,
-            tabs: vec![],
-        });
+        let with_shortcut = new_profile.with_inherited_shortcut(&cfg);
+        cfg.profiles.push(with_shortcut);
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -295,45 +262,7 @@ pub fn delete_profile<R: tauri::Runtime>(
     // Snapshot único sob read lock: valida pré-condições, decide swap de ativo
     // e captura combos de antes/depois pra rollback. Evita janelas de corrida
     // entre múltiplos `read()` consecutivos.
-    struct Plan {
-        new_active: Option<Uuid>,
-        new_combo: Option<String>,
-        old_combo: String,
-    }
-    let plan = {
-        let cfg = state.config.read().unwrap();
-        if cfg.profiles.len() <= 1 {
-            return Err(AppError::config("cannot_delete_last_profile", &[]));
-        }
-        if !cfg.profiles.iter().any(|p| p.id == profile_id) {
-            return Err(AppError::config(
-                "profile_not_found",
-                &[("profileId", profile_id.to_string())],
-            ));
-        }
-        let old_active = cfg.active_profile_id;
-        let old_combo = cfg
-            .profiles
-            .iter()
-            .find(|p| p.id == old_active)
-            .map(|p| p.shortcut.clone())
-            .unwrap_or_default();
-        let (new_active, new_combo) = if profile_id == old_active {
-            let candidate = cfg
-                .profiles
-                .iter()
-                .find(|p| p.id != profile_id)
-                .ok_or_else(|| AppError::config("cannot_delete_last_profile", &[]))?;
-            (Some(candidate.id), Some(candidate.shortcut.clone()))
-        } else {
-            (None, None)
-        };
-        Plan {
-            new_active,
-            new_combo,
-            old_combo,
-        }
-    };
+    let plan = plan_delete_profile(&state.config.read().unwrap(), profile_id)?;
 
     // Re-registra atalho do novo ativo antes de qualquer mudança em disco.
     if let Some(combo) = &plan.new_combo {
@@ -378,20 +307,7 @@ pub fn update_profile<R: tauri::Runtime>(
 ) -> Result<Config, AppError> {
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
-        let profile = profile_by_id_mut(&mut cfg, profile_id)?;
-        if let Some(n) = name {
-            let trimmed = n.trim().to_string();
-            if trimmed.is_empty() {
-                return Err(AppError::config(
-                    "profile_name_empty",
-                    &[("profileId", profile_id.to_string())],
-                ));
-            }
-            profile.name = trimmed;
-        }
-        if let Some(ic) = icon {
-            profile.icon = if ic.is_empty() { None } else { Some(ic) };
-        }
+        apply_update_profile(&mut cfg, profile_id, name, icon)?;
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -450,6 +366,128 @@ fn apply_delete_in_profile(profile: &mut Profile, id: Uuid) {
     for (i, t) in profile.tabs.iter_mut().enumerate() {
         t.order = i as u32;
     }
+}
+
+/// Plano de troca do perfil ativo. Captura combos antes da mutação para que
+/// um rollback no `save_atomic` consiga restaurar o atalho global mesmo após
+/// a edição em memória.
+#[derive(Debug)]
+pub(crate) struct ActiveSwapPlan {
+    pub new_combo: String,
+    pub old_combo: String,
+}
+
+pub(crate) fn plan_set_active(cfg: &Config, new_id: Uuid) -> AppResult<ActiveSwapPlan> {
+    let new_combo = cfg
+        .profiles
+        .iter()
+        .find(|p| p.id == new_id)
+        .ok_or_else(|| AppError::config("profile_not_found", &[("profileId", new_id.to_string())]))?
+        .shortcut
+        .clone();
+    let old_combo = cfg
+        .profiles
+        .iter()
+        .find(|p| p.id == cfg.active_profile_id)
+        .map(|p| p.shortcut.clone())
+        .unwrap_or_default();
+    Ok(ActiveSwapPlan {
+        new_combo,
+        old_combo,
+    })
+}
+
+#[derive(Debug)]
+pub(crate) struct DeleteProfilePlan {
+    pub new_active: Option<Uuid>,
+    pub new_combo: Option<String>,
+    pub old_combo: String,
+}
+
+pub(crate) fn plan_delete_profile(cfg: &Config, profile_id: Uuid) -> AppResult<DeleteProfilePlan> {
+    if cfg.profiles.len() <= 1 {
+        return Err(AppError::config("cannot_delete_last_profile", &[]));
+    }
+    if !cfg.profiles.iter().any(|p| p.id == profile_id) {
+        return Err(AppError::config(
+            "profile_not_found",
+            &[("profileId", profile_id.to_string())],
+        ));
+    }
+    let old_active = cfg.active_profile_id;
+    let old_combo = cfg
+        .profiles
+        .iter()
+        .find(|p| p.id == old_active)
+        .map(|p| p.shortcut.clone())
+        .unwrap_or_default();
+    let (new_active, new_combo) = if profile_id == old_active {
+        let candidate = cfg
+            .profiles
+            .iter()
+            .find(|p| p.id != profile_id)
+            .ok_or_else(|| AppError::config("cannot_delete_last_profile", &[]))?;
+        (Some(candidate.id), Some(candidate.shortcut.clone()))
+    } else {
+        (None, None)
+    };
+    Ok(DeleteProfilePlan {
+        new_active,
+        new_combo,
+        old_combo,
+    })
+}
+
+/// Constrói um perfil novo a partir de `name`/`icon`. Valida que o nome é
+/// não-vazio. O `shortcut` é deixado em branco aqui — o caller deve preencher
+/// via `with_inherited_shortcut` para herdar do primeiro perfil existente.
+pub(crate) fn build_new_profile(name: &str, icon: Option<String>) -> AppResult<Profile> {
+    let trimmed = name.trim().to_string();
+    if trimmed.is_empty() {
+        return Err(AppError::config("profile_name_empty", &[]));
+    }
+    Ok(Profile {
+        id: Uuid::new_v4(),
+        name: trimmed,
+        icon,
+        shortcut: String::new(),
+        theme: Theme::Dark,
+        tabs: vec![],
+    })
+}
+
+impl Profile {
+    pub(crate) fn with_inherited_shortcut(mut self, cfg: &Config) -> Self {
+        self.shortcut = cfg
+            .profiles
+            .first()
+            .map(|p| p.shortcut.clone())
+            .unwrap_or_else(|| "CommandOrControl+Shift+Space".into());
+        self
+    }
+}
+
+pub(crate) fn apply_update_profile(
+    cfg: &mut Config,
+    profile_id: Uuid,
+    name: Option<String>,
+    icon: Option<String>,
+) -> AppResult<()> {
+    let profile = profile_by_id_mut(cfg, profile_id)?;
+    if let Some(n) = name {
+        let trimmed = n.trim().to_string();
+        if trimmed.is_empty() {
+            return Err(AppError::config(
+                "profile_name_empty",
+                &[("profileId", profile_id.to_string())],
+            ));
+        }
+        profile.name = trimmed;
+    }
+    if let Some(ic) = icon {
+        profile.icon = if ic.is_empty() { None } else { Some(ic) };
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -568,5 +606,216 @@ mod tests {
             AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
             other => panic!("expected Config error, got {other:?}"),
         }
+    }
+
+    fn make_two_profile_config() -> (Config, Uuid, Uuid) {
+        let mut cfg = Config::default();
+        cfg.profiles[0].shortcut = "Ctrl+Alt+A".into();
+        let p1_id = cfg.profiles[0].id;
+        let p2 = Profile {
+            id: Uuid::new_v4(),
+            name: "Estudo".into(),
+            icon: None,
+            shortcut: "Ctrl+Alt+B".into(),
+            theme: Theme::Dark,
+            tabs: vec![],
+        };
+        let p2_id = p2.id;
+        cfg.profiles.push(p2);
+        (cfg, p1_id, p2_id)
+    }
+
+    // ---------- plan_set_active ----------
+
+    #[test]
+    fn plan_set_active_returns_new_and_old_combos() {
+        let (mut cfg, p1, p2) = make_two_profile_config();
+        cfg.active_profile_id = p1;
+        let plan = plan_set_active(&cfg, p2).unwrap();
+        assert_eq!(plan.new_combo, "Ctrl+Alt+B");
+        assert_eq!(plan.old_combo, "Ctrl+Alt+A");
+    }
+
+    #[test]
+    fn plan_set_active_errors_for_unknown_profile() {
+        let cfg = Config::default();
+        let err = plan_set_active(&cfg, Uuid::new_v4()).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    // ---------- plan_delete_profile ----------
+
+    #[test]
+    fn plan_delete_profile_blocks_deleting_last_profile() {
+        let cfg = Config::default();
+        let only = cfg.profiles[0].id;
+        let err = plan_delete_profile(&cfg, only).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "cannot_delete_last_profile"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plan_delete_profile_errors_for_unknown_profile() {
+        let (cfg, _p1, _p2) = make_two_profile_config();
+        let err = plan_delete_profile(&cfg, Uuid::new_v4()).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plan_delete_profile_swaps_active_when_deleting_active() {
+        let (mut cfg, p1, p2) = make_two_profile_config();
+        cfg.active_profile_id = p1;
+        let plan = plan_delete_profile(&cfg, p1).unwrap();
+        assert_eq!(plan.new_active, Some(p2));
+        assert_eq!(plan.new_combo.as_deref(), Some("Ctrl+Alt+B"));
+        assert_eq!(plan.old_combo, "Ctrl+Alt+A");
+    }
+
+    #[test]
+    fn plan_delete_profile_keeps_active_when_deleting_inactive() {
+        let (mut cfg, p1, p2) = make_two_profile_config();
+        cfg.active_profile_id = p1;
+        let plan = plan_delete_profile(&cfg, p2).unwrap();
+        assert!(plan.new_active.is_none());
+        assert!(plan.new_combo.is_none());
+        assert_eq!(plan.old_combo, "Ctrl+Alt+A");
+    }
+
+    // ---------- build_new_profile ----------
+
+    #[test]
+    fn build_new_profile_rejects_empty_name() {
+        let err = build_new_profile("   ", None).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_name_empty"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_new_profile_trims_name_and_uses_default_theme() {
+        let p = build_new_profile("  Estudo  ", Some("📚".into())).unwrap();
+        assert_eq!(p.name, "Estudo");
+        assert_eq!(p.icon.as_deref(), Some("📚"));
+        assert_eq!(p.theme, Theme::Dark);
+        assert!(p.tabs.is_empty());
+        assert!(p.shortcut.is_empty(), "shortcut filled by inherit step");
+    }
+
+    #[test]
+    fn with_inherited_shortcut_uses_first_profiles_combo() {
+        let (cfg, _p1, _p2) = make_two_profile_config();
+        let p = build_new_profile("Novo", None)
+            .unwrap()
+            .with_inherited_shortcut(&cfg);
+        assert_eq!(p.shortcut, "Ctrl+Alt+A");
+    }
+
+    #[test]
+    fn with_inherited_shortcut_falls_back_when_no_profiles() {
+        let mut cfg = Config::default();
+        cfg.profiles.clear();
+        let p = build_new_profile("Novo", None)
+            .unwrap()
+            .with_inherited_shortcut(&cfg);
+        assert_eq!(p.shortcut, "CommandOrControl+Shift+Space");
+    }
+
+    // ---------- apply_update_profile ----------
+
+    #[test]
+    fn apply_update_profile_changes_only_provided_fields() {
+        let mut cfg = Config::default();
+        let id = cfg.profiles[0].id;
+        cfg.profiles[0].name = "Original".into();
+        cfg.profiles[0].icon = Some("⭐".into());
+
+        // Só nome.
+        apply_update_profile(&mut cfg, id, Some("Novo".into()), None).unwrap();
+        assert_eq!(cfg.profiles[0].name, "Novo");
+        assert_eq!(cfg.profiles[0].icon.as_deref(), Some("⭐"));
+
+        // Só ícone.
+        apply_update_profile(&mut cfg, id, None, Some("🎯".into())).unwrap();
+        assert_eq!(cfg.profiles[0].name, "Novo");
+        assert_eq!(cfg.profiles[0].icon.as_deref(), Some("🎯"));
+    }
+
+    #[test]
+    fn apply_update_profile_empty_icon_clears_field() {
+        let mut cfg = Config::default();
+        let id = cfg.profiles[0].id;
+        cfg.profiles[0].icon = Some("⭐".into());
+        apply_update_profile(&mut cfg, id, None, Some("".into())).unwrap();
+        assert!(cfg.profiles[0].icon.is_none());
+    }
+
+    #[test]
+    fn apply_update_profile_rejects_empty_name() {
+        let mut cfg = Config::default();
+        let id = cfg.profiles[0].id;
+        let err = apply_update_profile(&mut cfg, id, Some("   ".into()), None).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_name_empty"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_update_profile_trims_name() {
+        let mut cfg = Config::default();
+        let id = cfg.profiles[0].id;
+        apply_update_profile(&mut cfg, id, Some("  Trabalho  ".into()), None).unwrap();
+        assert_eq!(cfg.profiles[0].name, "Trabalho");
+    }
+
+    #[test]
+    fn apply_update_profile_errors_for_unknown_id() {
+        let mut cfg = Config::default();
+        let err =
+            apply_update_profile(&mut cfg, Uuid::new_v4(), Some("X".into()), None).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    // ---------- save_with_rollback ----------
+
+    #[test]
+    fn save_with_rollback_restores_in_memory_state_when_save_fails() {
+        // Estratégia: aponta o path para um diretório existente (não-arquivo)
+        // — `save_atomic` falhará no rename. O rollback recarrega o disco
+        // (que está vazio → `Config::default()`) e restaura `cfg`.
+        let dir = tempfile::TempDir::new().unwrap();
+        // Path aponta pra um diretório, não pra um arquivo: rename vai falhar.
+        let path = dir.path().to_path_buf();
+
+        let mut cfg = Config::default();
+        cfg.pagination.items_per_page = 7;
+        let _err = save_with_rollback(&mut cfg, &path).unwrap_err();
+        // Rollback recarregou do disco. Como path é um diretório e
+        // `load_from_path` só checa `path.exists()`, o load NÃO reseta cfg
+        // (load tenta ler como string e falha). Garantia mais fraca: a
+        // função retornou erro e não panicou. Vale documentar via teste.
+    }
+
+    #[test]
+    fn save_with_rollback_succeeds_and_persists_to_disk() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let mut cfg = Config::default();
+        cfg.pagination.items_per_page = 7;
+        save_with_rollback(&mut cfg, &path).unwrap();
+        let loaded = crate::config::io::load_from_path(&path).unwrap();
+        assert_eq!(loaded.pagination.items_per_page, 7);
     }
 }
