@@ -76,7 +76,6 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
               <ActiveMarker
                 cx={cx}
                 cy={cy}
-                innerR={innerR}
                 outerR={outerR}
                 startAngle={start}
                 endAngle={end}
@@ -109,7 +108,6 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
 interface ActiveMarkerProps {
   cx: number;
   cy: number;
-  innerR: number;
   outerR: number;
   startAngle: number;
   endAngle: number;
@@ -122,7 +120,6 @@ interface ActiveMarkerProps {
 const ActiveMarker: React.FC<ActiveMarkerProps> = ({
   cx,
   cy,
-  innerR: _innerR,
   outerR,
   startAngle,
   endAngle,
