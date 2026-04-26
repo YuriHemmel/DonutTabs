@@ -6,6 +6,13 @@
       "tabMissingNameAndIcon": "Tab {{id}} needs a name or an icon",
       "invalidUrl": "Invalid URL in tab {{tabId}}: {{reason}}",
       "duplicateTabId": "Duplicate tab id: {{id}}",
+      "noProfiles": "Invalid config: no profiles defined.",
+      "activeProfileNotFound": "Active profile not found: {{activeProfileId}}",
+      "duplicateProfileId": "Duplicate profile id: {{id}}",
+      "profileNameEmpty": "Profile name cannot be empty.",
+      "profileShortcutEmpty": "Profile shortcut cannot be empty.",
+      "profileNotFound": "Profile not found: {{profileId}}",
+      "cannotDeleteLastProfile": "Cannot delete the last profile.",
       "jsonParse": "Malformed configuration file: {{reason}}",
       "unknown": "Config error: {{code}}"
     },
@@ -45,6 +52,15 @@
       "tabs": "Tabs",
       "appearance": "Appearance",
       "shortcut": "Shortcut"
+    },
+    "profile": {
+      "label": "Profile:",
+      "new": "New",
+      "delete": "Delete profile",
+      "activate": "Set as active profile",
+      "activeMarker": "(active)",
+      "promptName": "Name of the new profile",
+      "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost."
     },
     "appearance": {
       "sectionTitle": "Appearance",

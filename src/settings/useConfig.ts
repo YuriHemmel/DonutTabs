@@ -9,11 +9,19 @@ import type { Language } from "../core/types/Language";
 export interface UseConfig {
   config: Config | null;
   loadError: unknown;
-  saveTab: (tab: Tab) => Promise<Config>;
-  deleteTab: (tabId: string) => Promise<Config>;
-  setShortcut: (combo: string) => Promise<Config>;
-  setTheme: (theme: Theme) => Promise<Config>;
+  saveTab: (tab: Tab, profileId?: string) => Promise<Config>;
+  deleteTab: (tabId: string, profileId?: string) => Promise<Config>;
+  setShortcut: (combo: string, profileId?: string) => Promise<Config>;
+  setTheme: (theme: Theme, profileId?: string) => Promise<Config>;
   setLanguage: (language: Language) => Promise<Config>;
+  setActiveProfile: (profileId: string) => Promise<Config>;
+  createProfile: (name: string, icon?: string | null) => Promise<string>;
+  deleteProfile: (profileId: string) => Promise<Config>;
+  updateProfile: (
+    profileId: string,
+    name?: string,
+    icon?: string,
+  ) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -47,26 +55,26 @@ export function useConfig(): UseConfig {
     };
   }, []);
 
-  const saveTab = useCallback(async (tab: Tab) => {
-    const next = await ipc.saveTab(tab);
+  const saveTab = useCallback(async (tab: Tab, profileId?: string) => {
+    const next = await ipc.saveTab(tab, profileId);
     setConfig(next);
     return next;
   }, []);
 
-  const deleteTab = useCallback(async (tabId: string) => {
-    const next = await ipc.deleteTab(tabId);
+  const deleteTab = useCallback(async (tabId: string, profileId?: string) => {
+    const next = await ipc.deleteTab(tabId, profileId);
     setConfig(next);
     return next;
   }, []);
 
-  const setShortcut = useCallback(async (combo: string) => {
-    const next = await ipc.setShortcut(combo);
+  const setShortcut = useCallback(async (combo: string, profileId?: string) => {
+    const next = await ipc.setShortcut(combo, profileId);
     setConfig(next);
     return next;
   }, []);
 
-  const setTheme = useCallback(async (theme: Theme) => {
-    const next = await ipc.setTheme(theme);
+  const setTheme = useCallback(async (theme: Theme, profileId?: string) => {
+    const next = await ipc.setTheme(theme, profileId);
     setConfig(next);
     return next;
   }, []);
@@ -77,6 +85,36 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setActiveProfile = useCallback(async (profileId: string) => {
+    const next = await ipc.setActiveProfile(profileId);
+    setConfig(next);
+    return next;
+  }, []);
+
+  const createProfile = useCallback(
+    async (name: string, icon?: string | null) => {
+      const [next, newId] = await ipc.createProfile(name, icon ?? null);
+      setConfig(next);
+      return newId;
+    },
+    [],
+  );
+
+  const deleteProfile = useCallback(async (profileId: string) => {
+    const next = await ipc.deleteProfile(profileId);
+    setConfig(next);
+    return next;
+  }, []);
+
+  const updateProfile = useCallback(
+    async (profileId: string, name?: string, icon?: string) => {
+      const next = await ipc.updateProfile(profileId, name, icon);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
   return {
     config,
     loadError,
@@ -85,5 +123,9 @@ export function useConfig(): UseConfig {
     setShortcut,
     setTheme,
     setLanguage,
+    setActiveProfile,
+    createProfile,
+    deleteProfile,
+    updateProfile,
   };
 }

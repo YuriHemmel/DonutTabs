@@ -7,11 +7,23 @@ use uuid::Uuid;
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub version: u32,
-    pub shortcut: String,
+    pub active_profile_id: Uuid,
+    pub profiles: Vec<Profile>,
     pub appearance: Appearance,
     pub interaction: Interaction,
     pub pagination: Pagination,
     pub system: SystemConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct Profile {
+    pub id: Uuid,
+    pub name: String,
+    pub icon: Option<String>,
+    pub shortcut: String,
+    pub theme: Theme,
     pub tabs: Vec<Tab>,
 }
 
@@ -19,7 +31,6 @@ pub struct Config {
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct Appearance {
-    pub theme: Theme,
     #[serde(default)]
     pub language: Language,
 }
@@ -121,13 +132,28 @@ pub enum Item {
     Url { value: String },
 }
 
-impl Default for Config {
+impl Default for Profile {
     fn default() -> Self {
         Self {
-            version: 1,
+            id: Uuid::new_v4(),
+            name: "Padrão".into(),
+            icon: None,
             shortcut: "CommandOrControl+Shift+Space".into(),
+            theme: Theme::Dark,
+            tabs: vec![],
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        let default_profile = Profile::default();
+        let active_id = default_profile.id;
+        Self {
+            version: 2,
+            active_profile_id: active_id,
+            profiles: vec![default_profile],
             appearance: Appearance {
-                theme: Theme::Dark,
                 language: Language::Auto,
             },
             interaction: Interaction {
@@ -140,7 +166,6 @@ impl Default for Config {
                 wheel_direction: WheelDirection::Standard,
             },
             system: SystemConfig { autostart: false },
-            tabs: vec![],
         }
     }
 }
@@ -148,6 +173,19 @@ impl Default for Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_config_has_version_2() {
+        let cfg = Config::default();
+        assert_eq!(cfg.version, 2);
+    }
+
+    #[test]
+    fn default_config_has_one_profile_with_active_matching_its_id() {
+        let cfg = Config::default();
+        assert_eq!(cfg.profiles.len(), 1);
+        assert_eq!(cfg.active_profile_id, cfg.profiles[0].id);
+    }
 
     #[test]
     fn default_config_roundtrip() {
@@ -158,20 +196,44 @@ mod tests {
     }
 
     #[test]
-    fn tab_with_url_items_roundtrips() {
-        let tab = Tab {
+    fn profile_roundtrips() {
+        let p = Profile {
             id: Uuid::nil(),
-            name: Some("Trabalho".into()),
+            name: "Trabalho".into(),
             icon: Some("💼".into()),
-            order: 0,
-            open_mode: OpenMode::ReuseOrNewWindow,
-            items: vec![Item::Url {
-                value: "https://example.com".into(),
+            shortcut: "Ctrl+Alt+W".into(),
+            theme: Theme::Light,
+            tabs: vec![Tab {
+                id: Uuid::nil(),
+                name: Some("aba".into()),
+                icon: None,
+                order: 0,
+                open_mode: OpenMode::ReuseOrNewWindow,
+                items: vec![Item::Url {
+                    value: "https://example.com".into(),
+                }],
             }],
         };
-        let json = serde_json::to_string(&tab).unwrap();
-        let parsed: Tab = serde_json::from_str(&json).unwrap();
-        assert_eq!(tab, parsed);
+        let json = serde_json::to_string(&p).unwrap();
+        let parsed: Profile = serde_json::from_str(&json).unwrap();
+        assert_eq!(p, parsed);
+    }
+
+    #[test]
+    fn config_v2_serializes_with_version_2() {
+        let cfg = Config::default();
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(json.contains("\"version\":2"));
+        assert!(json.contains("\"activeProfileId\""));
+        assert!(json.contains("\"profiles\""));
+    }
+
+    #[test]
+    fn appearance_only_holds_language_now() {
+        let json = serde_json::to_string(&Config::default()).unwrap();
+        assert!(json.contains("\"appearance\":{\"language\""));
+        // theme não vive mais em appearance
+        assert!(!json.contains("\"appearance\":{\"theme\""));
     }
 
     #[test]
@@ -180,12 +242,7 @@ mod tests {
         let json = serde_json::to_string(&cfg).unwrap();
         assert!(json.contains("hoverHoldMs"));
         assert!(json.contains("itemsPerPage"));
-    }
-
-    #[test]
-    fn appearance_has_language_default_auto() {
-        let cfg = Config::default();
-        assert_eq!(cfg.appearance.language, Language::Auto);
+        assert!(json.contains("activeProfileId"));
     }
 
     #[test]

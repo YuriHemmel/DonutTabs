@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Tab } from "../core/types/Tab";
+import type { Profile } from "../core/types/Profile";
 import type { SettingsIntent } from "../core/ipc";
 import { Slice } from "./Slice";
 import { CenterCircle } from "./CenterCircle";
 import { PaginationDots } from "./PaginationDots";
 import { HoverHoldOverlay } from "./HoverHoldOverlay";
+import { ProfileSwitcher } from "./ProfileSwitcher";
 import { sliceAngleRange } from "./geometry";
 import { paginate } from "./pagination";
 import { useSliceHighlight } from "./useSliceHighlight";
@@ -20,6 +22,12 @@ export interface DonutProps {
   onOpenSettings?: (intent?: SettingsIntent) => void;
   onEditTab?: (tabId: string) => void;
   onDeleteTab?: (tabId: string) => void;
+  /** Lista de perfis (necessária para o switcher). Se ausente, switcher é
+   *  desativado. */
+  profiles?: Profile[];
+  activeProfileId?: string;
+  onSelectProfile?: (profileId: string) => void;
+  onCreateProfile?: () => void;
 }
 
 const PLUS_KEY = "__plus__";
@@ -34,11 +42,32 @@ export const Donut: React.FC<DonutProps> = ({
   onOpenSettings,
   onEditTab,
   onDeleteTab,
+  profiles,
+  activeProfileId,
+  onSelectProfile,
+  onCreateProfile,
 }) => {
   const cx = size / 2;
   const cy = size / 2;
   const outerR = size * 0.46;
   const innerR = size * 0.22;
+
+  const [mode, setMode] = useState<"tabs" | "profiles">("tabs");
+  const switcherEnabled = !!(profiles && activeProfileId && onSelectProfile);
+
+  // ESC sai do modo perfil quando estiver lá.
+  useEffect(() => {
+    if (mode !== "profiles") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setMode("tabs");
+      }
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [mode]);
 
   const ordered = useMemo(() => [...tabs].sort((a, b) => a.order - b.order), [tabs]);
   const pages = useMemo(() => paginate(ordered, itemsPerPage), [ordered, itemsPerPage]);
@@ -109,6 +138,40 @@ export const Donut: React.FC<DonutProps> = ({
     hoverHold.state.phase === "idle" ? -1 : hoverHold.state.sliceIndex;
   const activeTab =
     activeSliceIndex >= 0 ? current.tabs[activeSliceIndex] : null;
+
+  if (mode === "profiles" && profiles && activeProfileId && onSelectProfile) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
+        <ProfileSwitcher
+          cx={cx}
+          cy={cy}
+          innerR={innerR}
+          outerR={outerR}
+          profiles={profiles}
+          activeProfileId={activeProfileId}
+          onSelect={(id) => {
+            setMode("tabs");
+            onSelectProfile(id);
+          }}
+          onCreate={() => {
+            setMode("tabs");
+            onCreateProfile?.();
+          }}
+        />
+        <CenterCircle
+          cx={cx}
+          cy={cy}
+          r={innerR * 0.85}
+          onGearClick={onOpenSettings}
+          onProfileSwitcherClick={() => setMode("tabs")}
+        />
+      </svg>
+    );
+  }
 
   return (
     <svg
@@ -192,7 +255,15 @@ export const Donut: React.FC<DonutProps> = ({
             />
           );
         })()}
-      <CenterCircle cx={cx} cy={cy} r={innerR * 0.85} onGearClick={onOpenSettings} />
+      <CenterCircle
+        cx={cx}
+        cy={cy}
+        r={innerR * 0.85}
+        onGearClick={onOpenSettings}
+        onProfileSwitcherClick={
+          switcherEnabled ? () => setMode("profiles") : undefined
+        }
+      />
       <PaginationDots
         total={pages.length}
         active={safePage}

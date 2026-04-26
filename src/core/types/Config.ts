@@ -2,7 +2,7 @@
 import type { Appearance } from "./Appearance";
 import type { Interaction } from "./Interaction";
 import type { Pagination } from "./Pagination";
+import type { Profile } from "./Profile";
 import type { SystemConfig } from "./SystemConfig";
-import type { Tab } from "./Tab";
 
-export type Config = { version: number, shortcut: string, appearance: Appearance, interaction: Interaction, pagination: Pagination, system: SystemConfig, tabs: Array<Tab>, };
+export type Config = { version: number, activeProfileId: string, profiles: Array<Profile>, appearance: Appearance, interaction: Interaction, pagination: Pagination, system: SystemConfig, };

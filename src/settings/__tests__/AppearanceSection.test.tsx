@@ -12,6 +12,7 @@ async function renderSection(overrides: Partial<{
   language: Language;
   onThemeChange: (t: Theme) => void;
   onLanguageChange: (l: Language) => void;
+  onSetActiveProfile: () => void;
 }> = {}) {
   const i18n = await createI18n("pt-BR");
   const props = {
@@ -56,5 +57,20 @@ describe("AppearanceSection", () => {
     const { props } = await renderSection({ language: "auto" });
     await user.selectOptions(screen.getByLabelText(/idioma/i), "ptBr");
     expect(props.onLanguageChange).toHaveBeenCalledWith("ptBr");
+  });
+
+  it("does not render the set-active button when onSetActiveProfile is undefined", async () => {
+    await renderSection();
+    expect(screen.queryByTestId("set-active-profile")).toBeNull();
+  });
+
+  it("renders the set-active button and invokes the callback when clicked", async () => {
+    const user = userEvent.setup();
+    const onSetActiveProfile = vi.fn();
+    await renderSection({ onSetActiveProfile });
+    const btn = screen.getByTestId("set-active-profile");
+    expect(btn).toBeTruthy();
+    await user.click(btn);
+    expect(onSetActiveProfile).toHaveBeenCalledTimes(1);
   });
 });

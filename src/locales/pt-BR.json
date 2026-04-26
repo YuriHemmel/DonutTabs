@@ -6,6 +6,13 @@
       "tabMissingNameAndIcon": "Aba {{id}} precisa de nome ou ícone",
       "invalidUrl": "URL inválida na aba {{tabId}}: {{reason}}",
       "duplicateTabId": "ID de aba duplicado: {{id}}",
+      "noProfiles": "Configuração inválida: nenhum perfil cadastrado.",
+      "activeProfileNotFound": "Perfil ativo não encontrado: {{activeProfileId}}",
+      "duplicateProfileId": "ID de perfil duplicado: {{id}}",
+      "profileNameEmpty": "Nome do perfil não pode ser vazio.",
+      "profileShortcutEmpty": "Atalho do perfil não pode ser vazio.",
+      "profileNotFound": "Perfil não encontrado: {{profileId}}",
+      "cannotDeleteLastProfile": "Não é possível excluir o último perfil.",
       "jsonParse": "Arquivo de configuração mal formado: {{reason}}",
       "unknown": "Erro de configuração: {{code}}"
     },
@@ -45,6 +52,15 @@
       "tabs": "Abas",
       "appearance": "Aparência",
       "shortcut": "Atalho"
+    },
+    "profile": {
+      "label": "Perfil:",
+      "new": "Novo",
+      "delete": "Excluir perfil",
+      "activate": "Definir como perfil ativo",
+      "activeMarker": "(ativo)",
+      "promptName": "Nome do novo perfil",
+      "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas."
     },
     "appearance": {
       "sectionTitle": "Aparência",

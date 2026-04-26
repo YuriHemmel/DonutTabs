@@ -5,9 +5,16 @@ export interface CenterCircleProps {
   cy: number;
   r: number;
   onGearClick?: () => void;
+  onProfileSwitcherClick?: () => void;
 }
 
-export const CenterCircle: React.FC<CenterCircleProps> = ({ cx, cy, r, onGearClick }) => (
+export const CenterCircle: React.FC<CenterCircleProps> = ({
+  cx,
+  cy,
+  r,
+  onGearClick,
+  onProfileSwitcherClick,
+}) => (
   <g>
     <circle cx={cx} cy={cy} r={r} fill="#141a28" stroke="#3a4968" strokeWidth={1} />
     <line x1={cx} y1={cy - r} x2={cx} y2={cy + r} stroke="#3a4968" strokeWidth={1} />
@@ -45,6 +52,21 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({ cx, cy, r, onGearCli
         onClick={(e) => {
           e.stopPropagation();
           onGearClick();
+        }}
+      />
+    )}
+    {onProfileSwitcherClick && (
+      <rect
+        data-testid="profile-switcher-hit"
+        x={cx}
+        y={cy - r}
+        width={r}
+        height={r * 2}
+        fill="transparent"
+        style={{ cursor: "pointer" }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onProfileSwitcherClick();
         }}
       />
     )}

@@ -7,17 +7,25 @@ import { initI18n, changeLanguage } from "../core/i18n";
 import { applyTheme, watchSystemTheme } from "../core/theme";
 import { SettingsApp } from "../settings/SettingsApp";
 import type { Config } from "../core/types/Config";
+import type { Theme } from "../core/types/Theme";
 
 let unwatchSystemTheme: () => void = () => {};
+
+function activeProfileTheme(cfg: Config): Theme {
+  return (
+    cfg.profiles.find((p) => p.id === cfg.activeProfileId)?.theme ?? "dark"
+  );
+}
 
 async function reactToConfig(cfg: Config) {
   await changeLanguage(cfg.appearance.language);
   document.title = i18next.t("settings.title");
 
+  const theme = activeProfileTheme(cfg);
   unwatchSystemTheme();
-  applyTheme(cfg.appearance.theme);
-  unwatchSystemTheme = watchSystemTheme(cfg.appearance.theme, () => {
-    applyTheme(cfg.appearance.theme);
+  applyTheme(theme);
+  unwatchSystemTheme = watchSystemTheme(theme, () => {
+    applyTheme(theme);
   });
 }
 
@@ -34,13 +42,13 @@ async function bootstrap() {
 
   if (cfg) {
     document.title = i18next.t("settings.title");
-    applyTheme(cfg.appearance.theme);
-    unwatchSystemTheme = watchSystemTheme(cfg.appearance.theme, () => {
-      applyTheme(cfg.appearance.theme);
+    const theme = activeProfileTheme(cfg);
+    applyTheme(theme);
+    unwatchSystemTheme = watchSystemTheme(theme, () => {
+      applyTheme(theme);
     });
   }
 
-  // Eventos de mudança: Rust emite `config-changed` em toda mutação.
   void listen<Config>(CONFIG_CHANGED_EVENT, (e) => {
     void reactToConfig(e.payload);
   });
