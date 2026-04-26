@@ -74,6 +74,11 @@
       "validationNameRequired": "Nome do perfil é obrigatório.",
       "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone."
     },
+    "system": {
+      "title": "Sistema",
+      "autostart": "Iniciar automaticamente com o sistema",
+      "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador."
+    },
     "appearance": {
       "sectionTitle": "Aparência",
       "theme": "Tema",

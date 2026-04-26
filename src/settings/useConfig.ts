@@ -22,6 +22,7 @@ export interface UseConfig {
     name?: string,
     icon?: string,
   ) => Promise<Config>;
+  setAutostart: (enabled: boolean) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -115,6 +116,12 @@ export function useConfig(): UseConfig {
     [],
   );
 
+  const setAutostart = useCallback(async (enabled: boolean) => {
+    const next = await ipc.setAutostart(enabled);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -127,5 +134,6 @@ export function useConfig(): UseConfig {
     createProfile,
     deleteProfile,
     updateProfile,
+    setAutostart,
   };
 }

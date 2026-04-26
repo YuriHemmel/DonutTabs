@@ -77,6 +77,7 @@ export const SettingsApp: React.FC = () => {
     createProfile,
     deleteProfile,
     updateProfile,
+    setAutostart,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -293,11 +294,15 @@ export const SettingsApp: React.FC = () => {
         <AppearanceSection
           theme={selectedProfile.theme}
           language={config.appearance.language}
+          autostart={config.system.autostart}
           onThemeChange={(theme) => {
             void setTheme(theme, selectedProfile.id);
           }}
           onLanguageChange={(language) => {
             void setLanguage(language);
+          }}
+          onAutostartChange={(enabled) => {
+            void setAutostart(enabled);
           }}
           onSetActiveProfile={
             selectedProfile.id !== config.activeProfileId

@@ -74,6 +74,11 @@
       "validationNameRequired": "Profile name is required.",
       "validationIconTooLong": "The icon must be a single character or emoji."
     },
+    "system": {
+      "title": "System",
+      "autostart": "Start automatically with the system",
+      "autostartHint": "When enabled, DonutTabs starts in the tray on system boot."
+    },
     "appearance": {
       "sectionTitle": "Appearance",
       "theme": "Theme",
