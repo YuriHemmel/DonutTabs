@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "protocol-asset"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
@@ -29,6 +29,9 @@ ts-rs = { version = "9", features = ["serde-compat", "uuid-impl"] }
 mouse_position = "0.1"
 url = "2"
 tauri-plugin-autostart = "2.5.1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+sha2 = "0.10"
+regex = "1"
 
 [dev-dependencies]
 tempfile = "3"

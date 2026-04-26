@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod donut_window;
 mod errors;
+mod favicon;
 mod launcher;
 mod settings_window;
 mod shortcut;
