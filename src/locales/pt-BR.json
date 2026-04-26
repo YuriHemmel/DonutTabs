@@ -87,6 +87,13 @@
       "autostart": "Iniciar automaticamente com o sistema",
       "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador."
     },
+    "icon": {
+      "modalTitle": "Escolher ícone",
+      "pickButton": "🎨 Escolher",
+      "tabEmoji": "Emoji",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "Buscar ícone…"
+    },
     "appearance": {
       "sectionTitle": "Aparência",
       "theme": "Tema",

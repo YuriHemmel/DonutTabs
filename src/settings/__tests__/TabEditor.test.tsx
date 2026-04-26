@@ -129,10 +129,10 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
   });
 
-  it("icon input caps UTF-16 length at 16", async () => {
+  it("icon input caps UTF-16 length at 64 to fit lucide: tokens", async () => {
     await renderEditor();
     const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
-    expect(iconInput.maxLength).toBe(16);
+    expect(iconInput.maxLength).toBe(64);
   });
 
   it("does not render the open-mode selector", async () => {

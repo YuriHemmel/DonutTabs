@@ -87,6 +87,13 @@
       "autostart": "Start automatically with the system",
       "autostartHint": "When enabled, DonutTabs starts in the tray on system boot."
     },
+    "icon": {
+      "modalTitle": "Pick an icon",
+      "pickButton": "🎨 Pick",
+      "tabEmoji": "Emoji",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "Search icon…"
+    },
     "appearance": {
       "sectionTitle": "Appearance",
       "theme": "Theme",
