@@ -33,6 +33,7 @@
     },
     "io": {
       "ioGeneric": "Erro de I/O: {{reason}}",
+      "autostartFailed": "Não foi possível alterar a inicialização automática: {{reason}}",
       "unknown": "Erro de I/O: {{code}}"
     },
     "fallback": "Ocorreu um erro inesperado ({{kind}})"

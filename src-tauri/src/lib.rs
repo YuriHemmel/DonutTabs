@@ -14,6 +14,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             let dir = app
                 .path()
@@ -54,6 +58,27 @@ pub fn run() {
                 }
             }
 
+            // Sincroniza o estado do autostart no SO com o config (best-effort).
+            // Falha típica em sandbox (snap/flatpak) — log e segue, sem mudar
+            // o config.
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let cfg = {
+                    let state: tauri::State<'_, commands::AppState> = app.state();
+                    let snapshot = state.config.read().unwrap().clone();
+                    snapshot
+                };
+                let manager = app.autolaunch();
+                let res = if cfg.system.autostart {
+                    manager.enable()
+                } else {
+                    manager.disable()
+                };
+                if let Err(e) = res {
+                    eprintln!("[setup] autostart sync failed ({e:?}); SO state may diverge from config");
+                }
+            }
+
             let _ = donut_window::show(app.handle());
             if let Some(w) = app.get_webview_window("donut") {
                 let _ = w.hide();
@@ -88,6 +113,7 @@ pub fn run() {
             commands::create_profile,
             commands::delete_profile,
             commands::update_profile,
+            commands::set_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

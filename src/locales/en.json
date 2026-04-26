@@ -33,6 +33,7 @@
     },
     "io": {
       "ioGeneric": "I/O error: {{reason}}",
+      "autostartFailed": "Could not change autostart setting: {{reason}}",
       "unknown": "I/O error: {{code}}"
     },
     "fallback": "An unexpected error occurred ({{kind}})"

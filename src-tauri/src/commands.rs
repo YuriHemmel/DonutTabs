@@ -295,6 +295,47 @@ pub fn delete_profile<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Habilita ou desabilita o autostart no SO + persiste em `cfg.system.autostart`.
+/// Toca o SO PRIMEIRO; só persiste se o plugin aceitar. Em caso de falha do
+/// `save_atomic` posterior, faz rollback do estado do SO.
+#[tauri::command]
+pub fn set_autostart<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    use tauri_plugin_autostart::ManagerExt;
+    let manager = app.autolaunch();
+    if enabled {
+        manager
+            .enable()
+            .map_err(|e| AppError::io("autostart_failed", &[("reason", e.to_string())]))?;
+    } else {
+        manager
+            .disable()
+            .map_err(|e| AppError::io("autostart_failed", &[("reason", e.to_string())]))?;
+    }
+
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let old = cfg.system.autostart;
+        cfg.system.autostart = enabled;
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            // Rollback do SO + memória.
+            cfg.system.autostart = old;
+            let _ = if old {
+                manager.enable()
+            } else {
+                manager.disable()
+            };
+            return Err(e);
+        }
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 /// Atualiza nome / ícone de um perfil. Campo ausente (`None`) significa "não
 /// mexer". Passar `""` em `icon` zera o ícone (vira `None` em disco).
 #[tauri::command]

@@ -74,6 +74,13 @@ impl AppError {
             context: ctx(pairs),
         }
     }
+
+    pub fn io(code: impl Into<String>, pairs: &[(&str, String)]) -> Self {
+        AppError::Io {
+            code: code.into(),
+            context: ctx(pairs),
+        }
+    }
 }
 
 impl From<std::io::Error> for AppError {
