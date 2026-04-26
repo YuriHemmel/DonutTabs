@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import type { DragEvent as ReactDragEvent } from "react";
 
 export type DropWhere = "above" | "below";
+export type DragOrientation = "vertical" | "horizontal";
 
 interface DropTarget {
   id: string;
@@ -11,6 +12,13 @@ interface DropTarget {
 interface UseDragReorderOpts<T extends { id: string }> {
   items: T[];
   onReorder: (orderedIds: string[]) => void;
+  /**
+   * Eixo do layout. `vertical` (default) compara `clientY` com o centro Y do
+   * alvo; `horizontal` compara `clientX` com o centro X. `"above"` mapeia para
+   * "inserir antes" (acima/à esquerda) e `"below"` para "inserir depois"
+   * (abaixo/à direita) na direção do flow.
+   */
+  orientation?: DragOrientation;
 }
 
 export interface DragItemProps {
@@ -29,14 +37,15 @@ export interface UseDragReorder {
 
 /**
  * HTML5 native DnD para reordenar uma lista plana cuja única chave é `id`.
- * Calcula `above`/`below` pela posição do cursor relativa ao centro vertical
- * do alvo. `onReorder` recebe o array completo de ids na nova ordem; chamadas
+ * O limiar `above`/`below` segue o eixo do layout (`orientation`): vertical
+ * compara `clientY` com o meio Y do alvo; horizontal compara `clientX` com o
+ * meio X. `onReorder` recebe o array completo de ids na nova ordem; chamadas
  * são suprimidas quando o resultado seria idêntico ao estado atual.
  */
 export function useDragReorder<T extends { id: string }>(
   opts: UseDragReorderOpts<T>,
 ): UseDragReorder {
-  const { items, onReorder } = opts;
+  const { items, onReorder, orientation = "vertical" } = opts;
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
@@ -85,7 +94,13 @@ export function useDragReorder<T extends { id: string }>(
         }
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const where: DropWhere =
-          e.clientY < rect.top + rect.height / 2 ? "above" : "below";
+          orientation === "horizontal"
+            ? e.clientX < rect.left + rect.width / 2
+              ? "above"
+              : "below"
+            : e.clientY < rect.top + rect.height / 2
+              ? "above"
+              : "below";
         setDropTarget((prev) =>
           prev?.id === id && prev.where === where ? prev : { id, where },
         );
@@ -109,7 +124,7 @@ export function useDragReorder<T extends { id: string }>(
       "data-drop-target":
         dropTarget?.id === id && draggingId !== id ? dropTarget.where : null,
     }),
-    [draggingId, dropTarget, computeNewOrder, onReorder, reset],
+    [draggingId, dropTarget, computeNewOrder, onReorder, reset, orientation],
   );
 
   return { getItemProps };

@@ -23,7 +23,11 @@ export const DraggableProfileList: React.FC<DraggableProfileListProps> = ({
   onReorder,
 }) => {
   const { t } = useTranslation();
-  const { getItemProps } = useDragReorder({ items: profiles, onReorder });
+  const { getItemProps } = useDragReorder({
+    items: profiles,
+    onReorder,
+    orientation: "horizontal",
+  });
 
   return (
     <ul
@@ -43,7 +47,7 @@ export const DraggableProfileList: React.FC<DraggableProfileListProps> = ({
         const dnd = getItemProps(p.id);
         const isActive = p.id === activeId;
         const isSelected = p.id === selectedId;
-        const fallbackChar = (p.name.trim()[0] ?? "?").toUpperCase();
+        const fallbackChar = (Array.from(p.name.trim())[0] ?? "?").toUpperCase();
         const dropAbove = dnd["data-drop-target"] === "above";
         const dropBelow = dnd["data-drop-target"] === "below";
         return (
