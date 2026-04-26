@@ -1,5 +1,5 @@
 import React from "react";
-import * as Lucide from "lucide-react";
+import { getLucideComponent } from "../core/lucideRegistry";
 
 const LUCIDE_PREFIX = "lucide:";
 
@@ -10,16 +10,6 @@ export interface IconRendererProps {
   fallback?: string;
   /** SVG sizing — passed straight to whichever leaf the renderer picks. */
   size?: number;
-}
-
-const lucideRegistry = Lucide as unknown as Record<string, unknown>;
-
-function resolveLucideComponent(name: string) {
-  const direct = lucideRegistry[name];
-  if (typeof direct === "function" || typeof direct === "object") {
-    return direct as React.ComponentType<{ size?: number; color?: string }>;
-  }
-  return null;
 }
 
 function isImageRef(s: string): boolean {
@@ -40,7 +30,7 @@ export const IconRenderer: React.FC<IconRendererProps> = ({
 }) => {
   if (icon && icon.startsWith(LUCIDE_PREFIX)) {
     const name = icon.slice(LUCIDE_PREFIX.length);
-    const Cmp = resolveLucideComponent(name);
+    const Cmp = getLucideComponent(name);
     if (Cmp) {
       return (
         <foreignObject

@@ -1,33 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import * as Lucide from "lucide-react";
-
-const lucideRegistry = Lucide as unknown as Record<
-  string,
-  React.ComponentType<{ size?: number; color?: string }>
->;
-
-/** Curated set — keeps the picker fast and the bundle predictable. */
-const LUCIDE_ICONS: ReadonlyArray<string> = [
-  "Coffee", "Briefcase", "Book", "BookOpen", "Code", "Code2", "Terminal",
-  "Github", "Globe", "Home", "Mail", "MessageCircle", "MessageSquare",
-  "Music", "Image", "Camera", "Video", "Film", "Tv", "Headphones",
-  "Laptop", "Monitor", "Smartphone", "Server", "Cloud", "Database",
-  "Folder", "FolderOpen", "File", "FileText",
-  "Heart", "Star", "Bookmark", "Tag", "Hash",
-  "Calendar", "Clock", "Bell", "Settings", "Cog", "Wrench",
-  "Lock", "Key", "Shield", "User", "Users",
-  "ShoppingCart", "ShoppingBag", "CreditCard", "DollarSign",
-  "TrendingUp", "BarChart", "PieChart", "Activity", "Zap",
-  "Flag", "MapPin", "Map", "Compass",
-  "Plane", "Car", "Train", "Truck", "Bike",
-  "Gamepad2", "Trophy", "Award", "Gift",
-  "Pizza", "Utensils", "Beer", "Wine", "Apple",
-  "Search", "Pencil", "Trash2", "Plus", "Check", "X",
-  "Eye", "Download", "Upload", "Share2", "Link", "ExternalLink",
-  "Sun", "Moon", "CloudRain", "Umbrella", "Lightbulb", "Flame",
-  "Droplet", "Leaf", "TreePine", "Mountain", "Anchor", "Rocket",
-];
+import { LUCIDE_NAMES, getLucideComponent } from "../core/lucideRegistry";
 
 const EMOJI_PRESETS: ReadonlyArray<string> = [
   "☕", "📚", "💼", "🎮", "🎵", "🎬", "🛒", "✉️", "📅",
@@ -70,8 +43,8 @@ export const IconPicker: React.FC<IconPickerProps> = ({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return LUCIDE_ICONS;
-    return LUCIDE_ICONS.filter((n) => n.toLowerCase().includes(q));
+    if (!q) return LUCIDE_NAMES;
+    return LUCIDE_NAMES.filter((n) => n.toLowerCase().includes(q));
   }, [search]);
 
   if (!open) return null;
@@ -205,7 +178,7 @@ export const IconPicker: React.FC<IconPickerProps> = ({
                 </button>
               ))
             : filtered.map((name) => {
-                const Cmp = lucideRegistry[name];
+                const Cmp = getLucideComponent(name);
                 if (!Cmp) return null;
                 return (
                   <button
