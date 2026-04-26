@@ -192,6 +192,28 @@ mod tests {
     }
 
     #[test]
+    fn load_does_not_rewrite_v1_file_on_disk() {
+        // Contrato: migração v1→v2 acontece em memória; o arquivo no disco
+        // permanece v1 até a próxima mutação chamar `save_atomic`. Protege o
+        // usuário de rollback em caso de bug na v2.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let raw = r#"{
+                "version": 1,
+                "shortcut": "Ctrl+Shift+J",
+                "appearance": { "theme": "light", "language": "en" },
+                "interaction": { "spawnPosition": "cursor", "selectionMode": "clickOrRelease", "hoverHoldMs": 800 },
+                "pagination": { "itemsPerPage": 6, "wheelDirection": "standard" },
+                "system": { "autostart": false },
+                "tabs": []
+            }"#;
+        std::fs::write(&path, raw).unwrap();
+        let _cfg = load_from_path(&path).unwrap();
+        let after = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(after, raw, "load_from_path não pode reescrever o disco");
+    }
+
+    #[test]
     fn loads_v1_with_tabs_and_migrates_to_default_profile() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("config.json");
