@@ -40,11 +40,17 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Reset apenas quando muda o alvo (mode ou perfil sob edição). Não depender
+  // de `initial` direto: a referência muda a cada `config-changed`, o que
+  // descartaria edições in-progress se outro fluxo persistisse no meio do
+  // formulário aberto.
+  const initialId = initial?.id ?? null;
   useEffect(() => {
     setState(fromProfile(initial));
     setValidation(null);
     setServerError(null);
-  }, [initial, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, initialId]);
 
   const submit = async () => {
     setServerError(null);

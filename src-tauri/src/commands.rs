@@ -296,8 +296,11 @@ pub fn delete_profile<R: tauri::Runtime>(
 }
 
 /// Habilita ou desabilita o autostart no SO + persiste em `cfg.system.autostart`.
-/// Toca o SO PRIMEIRO; só persiste se o plugin aceitar. Em caso de falha do
-/// `save_atomic` posterior, faz rollback do estado do SO.
+/// Captura o estado real do SO antes da mutação (`is_enabled()`) — não confia
+/// no config — para que o rollback restaure o SO ao seu valor pré-comando
+/// mesmo se SO/config estavam divergentes (ex.: setup() falhou no boot ou
+/// usuário toggou via Task Scheduler/launchctl). Toca o SO antes de persistir;
+/// se `save_atomic` falhar, desfaz tanto SO quanto memória.
 #[tauri::command]
 pub fn set_autostart<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -306,6 +309,9 @@ pub fn set_autostart<R: tauri::Runtime>(
 ) -> Result<Config, AppError> {
     use tauri_plugin_autostart::ManagerExt;
     let manager = app.autolaunch();
+    let so_before = manager
+        .is_enabled()
+        .map_err(|e| AppError::io("autostart_failed", &[("reason", e.to_string())]))?;
     if enabled {
         manager
             .enable()
@@ -318,12 +324,14 @@ pub fn set_autostart<R: tauri::Runtime>(
 
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
-        let old = cfg.system.autostart;
+        let cfg_old = cfg.system.autostart;
         cfg.system.autostart = enabled;
         if let Err(e) = save_atomic(&state.config_path, &cfg) {
-            // Rollback do SO + memória.
-            cfg.system.autostart = old;
-            let _ = if old {
+            // Rollback: memória volta ao valor antes do write; SO volta ao
+            // valor capturado antes do enable/disable (não ao config antigo,
+            // que pode estar dessincronizado).
+            cfg.system.autostart = cfg_old;
+            let _ = if so_before {
                 manager.enable()
             } else {
                 manager.disable()

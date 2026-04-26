@@ -59,8 +59,12 @@ pub fn run() {
             }
 
             // Sincroniza o estado do autostart no SO com o config (best-effort).
-            // Falha típica em sandbox (snap/flatpak) — log e segue, sem mudar
-            // o config.
+            // Apenas garante o `enable()` quando `cfg.system.autostart == true`
+            // E o SO ainda não está habilitado — evita brigar com toggles
+            // manuais (Task Scheduler / launchctl). Quando o config diz `false`
+            // não fazemos `disable()` proativo: a única forma de o app desligar
+            // o autostart é via comando `set_autostart` explícito.
+            // Falha típica em sandbox (snap/flatpak) — log e segue.
             {
                 use tauri_plugin_autostart::ManagerExt;
                 let cfg = {
@@ -68,14 +72,21 @@ pub fn run() {
                     let snapshot = state.config.read().unwrap().clone();
                     snapshot
                 };
-                let manager = app.autolaunch();
-                let res = if cfg.system.autostart {
-                    manager.enable()
-                } else {
-                    manager.disable()
-                };
-                if let Err(e) = res {
-                    eprintln!("[setup] autostart sync failed ({e:?}); SO state may diverge from config");
+                if cfg.system.autostart {
+                    let manager = app.autolaunch();
+                    match manager.is_enabled() {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            if let Err(e) = manager.enable() {
+                                eprintln!(
+                                    "[setup] autostart enable failed ({e:?}); config says on but SO state stays off"
+                                );
+                            }
+                        }
+                        Err(e) => eprintln!(
+                            "[setup] autostart is_enabled query failed ({e:?}); skipping reconcile"
+                        ),
+                    }
                 }
             }
 

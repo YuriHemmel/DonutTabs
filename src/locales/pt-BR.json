@@ -61,7 +61,6 @@
       "delete": "Excluir perfil",
       "activate": "Definir como perfil ativo",
       "activeMarker": "(ativo)",
-      "promptName": "Nome do novo perfil",
       "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas.",
       "newTitle": "Novo perfil",
       "editTitle": "Editar perfil",

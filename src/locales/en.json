@@ -61,7 +61,6 @@
       "delete": "Delete profile",
       "activate": "Set as active profile",
       "activeMarker": "(active)",
-      "promptName": "Name of the new profile",
       "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost.",
       "newTitle": "New profile",
       "editTitle": "Edit profile",
