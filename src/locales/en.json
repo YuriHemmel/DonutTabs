@@ -13,6 +13,7 @@
       "profileShortcutEmpty": "Profile shortcut cannot be empty.",
       "profileNotFound": "Profile not found: {{profileId}}",
       "cannotDeleteLastProfile": "Cannot delete the last profile.",
+      "reorderMismatch": "Reorder failed: item set mismatch ({{scope}}).",
       "jsonParse": "Malformed configuration file: {{reason}}",
       "unknown": "Config error: {{code}}"
     },

@@ -41,6 +41,9 @@ vi.mock("../../core/ipc", () => ({
     createProfile: vi.fn(),
     deleteProfile: vi.fn(),
     updateProfile: vi.fn(),
+    setAutostart: vi.fn(),
+    reorderTabs: vi.fn(),
+    reorderProfiles: vi.fn(),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",
@@ -223,6 +226,34 @@ describe("useConfig", () => {
 
     await act(() => result.current.deleteProfile(PROFILE_ID));
     expect(ipc.deleteProfile).toHaveBeenCalledWith(PROFILE_ID);
+  });
+
+  it("reorderTabs delegates to ipc with profileId + ordered ids", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.reorderTabs as ReturnType<typeof vi.fn>).mockResolvedValue(
+      makeConfig(),
+    );
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    const ids = ["a", "b", "c"];
+    await act(() => result.current.reorderTabs(PROFILE_ID, ids));
+    expect(ipc.reorderTabs).toHaveBeenCalledWith(PROFILE_ID, ids);
+  });
+
+  it("reorderProfiles delegates to ipc", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.reorderProfiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+      makeConfig(),
+    );
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    const ids = [PROFILE_ID];
+    await act(() => result.current.reorderProfiles(ids));
+    expect(ipc.reorderProfiles).toHaveBeenCalledWith(ids);
   });
 
   it("updateProfile passes name/icon through", async () => {
