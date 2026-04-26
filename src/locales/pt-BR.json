@@ -13,6 +13,7 @@
       "profileShortcutEmpty": "Atalho do perfil não pode ser vazio.",
       "profileNotFound": "Perfil não encontrado: {{profileId}}",
       "cannotDeleteLastProfile": "Não é possível excluir o último perfil.",
+      "reorderMismatch": "Falha ao reordenar: conjunto de itens divergente ({{scope}}).",
       "jsonParse": "Arquivo de configuração mal formado: {{reason}}",
       "unknown": "Erro de configuração: {{code}}"
     },

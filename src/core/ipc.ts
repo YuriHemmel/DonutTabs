@@ -38,6 +38,10 @@ export const ipc = {
     }),
   setAutostart: (enabled: boolean) =>
     invoke<Config>("set_autostart", { enabled }),
+  reorderTabs: (profileId: string, orderedIds: string[]) =>
+    invoke<Config>("reorder_tabs", { profileId, orderedIds }),
+  reorderProfiles: (orderedIds: string[]) =>
+    invoke<Config>("reorder_profiles", { orderedIds }),
 };
 
 export const CONFIG_CHANGED_EVENT = "config-changed";

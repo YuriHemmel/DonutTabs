@@ -23,6 +23,8 @@ export interface UseConfig {
     icon?: string,
   ) => Promise<Config>;
   setAutostart: (enabled: boolean) => Promise<Config>;
+  reorderTabs: (profileId: string, orderedIds: string[]) => Promise<Config>;
+  reorderProfiles: (orderedIds: string[]) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -122,6 +124,21 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const reorderTabs = useCallback(
+    async (profileId: string, orderedIds: string[]) => {
+      const next = await ipc.reorderTabs(profileId, orderedIds);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
+  const reorderProfiles = useCallback(async (orderedIds: string[]) => {
+    const next = await ipc.reorderProfiles(orderedIds);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -135,5 +152,7 @@ export function useConfig(): UseConfig {
     deleteProfile,
     updateProfile,
     setAutostart,
+    reorderTabs,
+    reorderProfiles,
   };
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { TabList } from "./TabList";
@@ -78,6 +78,8 @@ export const SettingsApp: React.FC = () => {
     deleteProfile,
     updateProfile,
     setAutostart,
+    reorderTabs,
+    reorderProfiles,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -150,14 +152,38 @@ export const SettingsApp: React.FC = () => {
     }
   }, [config]);
 
-  if (!config) {
+  // Computado mesmo com `config` nulo para manter os hooks abaixo na ordem
+  // estável (não pode haver early-return acima de `useCallback`).
+  const effectiveProfileId = config
+    ? selectedProfileId ?? config.activeProfileId
+    : null;
+  const selectedProfile: Profile | null = config
+    ? config.profiles.find((p) => p.id === effectiveProfileId) ??
+      config.profiles[0]
+    : null;
+
+  const handleReorderProfiles = useCallback(
+    (orderedIds: string[]) => {
+      reorderProfiles(orderedIds).catch((e) => {
+        console.error("reorderProfiles failed", e);
+      });
+    },
+    [reorderProfiles],
+  );
+
+  const handleReorderTabs = useCallback(
+    (orderedIds: string[]) => {
+      if (!selectedProfile) return;
+      reorderTabs(selectedProfile.id, orderedIds).catch((e) => {
+        console.error("reorderTabs failed", e);
+      });
+    },
+    [reorderTabs, selectedProfile],
+  );
+
+  if (!config || !selectedProfile) {
     return <div style={{ padding: 24 }}>…</div>;
   }
-
-  const effectiveProfileId = selectedProfileId ?? config.activeProfileId;
-  const selectedProfile: Profile =
-    config.profiles.find((p) => p.id === effectiveProfileId) ??
-    config.profiles[0];
 
   const selectedTab: Tab | null =
     selection.mode === "edit"
@@ -238,6 +264,7 @@ export const SettingsApp: React.FC = () => {
         onCreate={handleCreateProfile}
         onEdit={handleEditProfile}
         onDelete={handleDeleteProfile}
+        onReorder={handleReorderProfiles}
       />
       {profileEditorMode && (
         <ProfileEditor
@@ -256,6 +283,7 @@ export const SettingsApp: React.FC = () => {
             selectedId={selection.mode === "edit" ? selection.tabId : null}
             onSelect={(id) => setSelection({ mode: "edit", tabId: id })}
             onAdd={() => setSelection({ mode: "new" })}
+            onReorder={handleReorderTabs}
           />
           {selection.mode === "new" ? (
             <TabEditor
