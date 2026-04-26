@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import type { Config } from "./types/Config";
 import type { Tab } from "./types/Tab";
 import type { Theme } from "./types/Theme";
@@ -44,6 +45,20 @@ export const ipc = {
   reorderProfiles: (orderedIds: string[]) =>
     invoke<Config>("reorder_profiles", { orderedIds }),
   fetchFavicon: (url: string) => invoke<FaviconResult>("fetch_favicon", { url }),
+};
+
+/** Native file/folder picker wrappers. Return absolute path or `null` when
+ *  the user cancels. Result is `string | null` (Tauri's `open` returns
+ *  `string[]` only when `multiple: true`, which we don't use here). */
+export const dialog = {
+  pickFile: async (): Promise<string | null> => {
+    const r = await openDialog({ multiple: false, directory: false });
+    return typeof r === "string" ? r : null;
+  },
+  pickFolder: async (): Promise<string | null> => {
+    const r = await openDialog({ multiple: false, directory: true });
+    return typeof r === "string" ? r : null;
+  },
 };
 
 export const CONFIG_CHANGED_EVENT = "config-changed";
