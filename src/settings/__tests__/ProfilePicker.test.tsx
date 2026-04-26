@@ -25,6 +25,7 @@ async function renderPicker(
     onCreate: () => void;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
+    onReorder: (ids: string[]) => void;
   }> = {},
 ) {
   const i18n = await createI18n("pt-BR");
@@ -36,6 +37,7 @@ async function renderPicker(
     onCreate: vi.fn(),
     onEdit: vi.fn(),
     onDelete: vi.fn(),
+    onReorder: vi.fn(),
     ...overrides,
   };
   const utils = render(
@@ -59,7 +61,18 @@ describe("ProfilePicker", () => {
     expect(screen.getByTestId("profile-delete")).toBeTruthy();
   });
 
-  it("appends activeMarker only to the active profile option", async () => {
+  it("renders chips for every profile via DraggableProfileList", async () => {
+    await renderPicker({
+      profiles: [
+        profile({ id: "p1", name: "Padrão" }),
+        profile({ id: "p2", name: "Estudo" }),
+      ],
+    });
+    expect(screen.getByTestId("profile-chip-p1")).toBeTruthy();
+    expect(screen.getByTestId("profile-chip-p2")).toBeTruthy();
+  });
+
+  it("active profile shows the gold marker", async () => {
     await renderPicker({
       profiles: [
         profile({ id: "p1", name: "Padrão" }),
@@ -68,27 +81,17 @@ describe("ProfilePicker", () => {
       selectedId: "p1",
       activeId: "p2",
     });
-    const select = screen.getByTestId("profile-select") as HTMLSelectElement;
-    const opts = Array.from(select.options);
-    expect(opts.find((o) => o.value === "p1")?.text).not.toMatch(/ativo/i);
-    expect(opts.find((o) => o.value === "p2")?.text).toMatch(/ativo/i);
+    expect(screen.getByTestId("profile-chip-active-p2")).toBeTruthy();
+    expect(screen.queryByTestId("profile-chip-active-p1")).toBeNull();
   });
 
-  it("prefixes the icon to the option label when icon is set", async () => {
-    await renderPicker({
-      profiles: [profile({ id: "p1", name: "Trabalho", icon: "💼" })],
-    });
-    const select = screen.getByTestId("profile-select") as HTMLSelectElement;
-    expect(select.options[0].text).toMatch(/^💼\s+Trabalho/);
-  });
-
-  it("calls onSelect with the chosen profile id when select changes", async () => {
+  it("calls onSelect when a chip is clicked", async () => {
     const user = userEvent.setup();
     const { props } = await renderPicker({
       profiles: [profile(), profile({ id: "p2", name: "Estudo" })],
       selectedId: "p1",
     });
-    await user.selectOptions(screen.getByTestId("profile-select"), "p2");
+    await user.click(screen.getByTestId("profile-chip-p2"));
     expect(props.onSelect).toHaveBeenCalledWith("p2");
   });
 

@@ -1,17 +1,26 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Tab } from "../core/types/Tab";
+import { useDragReorder } from "./useDragReorder";
 
 export interface TabListProps {
   tabs: Tab[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onAdd: () => void;
+  onReorder: (orderedIds: string[]) => void;
 }
 
-export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, onAdd }) => {
+export const TabList: React.FC<TabListProps> = ({
+  tabs,
+  selectedId,
+  onSelect,
+  onAdd,
+  onReorder,
+}) => {
   const { t } = useTranslation();
   const ordered = [...tabs].sort((a, b) => a.order - b.order);
+  const { getItemProps } = useDragReorder({ items: ordered, onReorder });
 
   return (
     <aside
@@ -37,6 +46,7 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
       </header>
       <button
         type="button"
+        data-testid="tab-add"
         onClick={onAdd}
         style={{
           background: "var(--hover-bg)",
@@ -70,8 +80,30 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
           {ordered.map((tab) => {
             const selected = tab.id === selectedId;
             const label = tab.name ?? tab.icon ?? tab.id.slice(0, 6);
+            const dnd = getItemProps(tab.id);
+            const dropAbove = dnd["data-drop-target"] === "above";
+            const dropBelow = dnd["data-drop-target"] === "below";
             return (
-              <li key={tab.id}>
+              <li
+                key={tab.id}
+                data-testid="tab-row-li"
+                data-dragging={dnd["data-dragging"] ? "true" : undefined}
+                data-drop-target={dnd["data-drop-target"] ?? undefined}
+                draggable={dnd.draggable}
+                onDragStart={dnd.onDragStart}
+                onDragOver={dnd.onDragOver}
+                onDrop={dnd.onDrop}
+                onDragEnd={dnd.onDragEnd}
+                style={{
+                  opacity: dnd["data-dragging"] ? 0.5 : 1,
+                  boxShadow: dropAbove
+                    ? "inset 0 2px 0 var(--accent-bg)"
+                    : dropBelow
+                      ? "inset 0 -2px 0 var(--accent-bg)"
+                      : "none",
+                  borderRadius: 6,
+                }}
+              >
                 <button
                   type="button"
                   data-testid="tab-row"
@@ -94,7 +126,9 @@ export const TabList: React.FC<TabListProps> = ({ tabs, selectedId, onSelect, on
                     gap: 8,
                   }}
                 >
-                  <span style={{ width: 20, textAlign: "center" }}>{tab.icon ?? "•"}</span>
+                  <span style={{ width: 20, textAlign: "center" }}>
+                    {tab.icon ?? "•"}
+                  </span>
                   <span
                     style={{
                       flex: 1,

@@ -78,6 +78,8 @@ export const SettingsApp: React.FC = () => {
     deleteProfile,
     updateProfile,
     setAutostart,
+    reorderTabs,
+    reorderProfiles,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -238,6 +240,9 @@ export const SettingsApp: React.FC = () => {
         onCreate={handleCreateProfile}
         onEdit={handleEditProfile}
         onDelete={handleDeleteProfile}
+        onReorder={(orderedIds) => {
+          void reorderProfiles(orderedIds);
+        }}
       />
       {profileEditorMode && (
         <ProfileEditor
@@ -256,6 +261,9 @@ export const SettingsApp: React.FC = () => {
             selectedId={selection.mode === "edit" ? selection.tabId : null}
             onSelect={(id) => setSelection({ mode: "edit", tabId: id })}
             onAdd={() => setSelection({ mode: "new" })}
+            onReorder={(orderedIds) => {
+              void reorderTabs(selectedProfile.id, orderedIds);
+            }}
           />
           {selection.mode === "new" ? (
             <TabEditor

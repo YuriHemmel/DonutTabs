@@ -44,6 +44,9 @@ vi.mock("../../core/ipc", () => ({
     createProfile: vi.fn(),
     deleteProfile: vi.fn(),
     updateProfile: vi.fn(),
+    setAutostart: vi.fn(),
+    reorderTabs: vi.fn(),
+    reorderProfiles: vi.fn(),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",
@@ -289,8 +292,11 @@ describe("SettingsApp intent routing", () => {
       const nameInput = screen.getByLabelText(/nome/i) as HTMLInputElement;
       expect(nameInput.value).toBe("Faculdade");
     });
-    const select = screen.getByTestId("profile-select") as HTMLSelectElement;
-    expect(select.value).toBe(PROFILE_ID_2);
+    expect(
+      screen.getByTestId(`profile-chip-${PROFILE_ID_2}`).getAttribute(
+        "aria-selected",
+      ),
+    ).toBe("true");
   });
 
   it("'new-profile' intent opens ProfileEditor in new mode after config loads", async () => {
@@ -347,10 +353,7 @@ describe("SettingsApp intent routing", () => {
     await waitFor(() => {
       expect(screen.getByTestId("profile-edit")).toBeTruthy();
     });
-    await user.selectOptions(
-      screen.getByTestId("profile-select"),
-      PROFILE_ID_2,
-    );
+    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
     await user.click(screen.getByTestId("profile-edit"));
     const editor = await waitFor(() => screen.getByTestId("profile-editor"));
     const nameInput = editor.querySelector("input") as HTMLInputElement;
@@ -397,8 +400,8 @@ describe("SettingsApp intent routing", () => {
     (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
     await renderApp();
     await waitFor(() => {
-      const select = screen.getByTestId("profile-select") as HTMLSelectElement;
-      expect(select.options).toHaveLength(2);
+      expect(screen.getByTestId(`profile-chip-${PROFILE_ID}`)).toBeTruthy();
+      expect(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`)).toBeTruthy();
     });
   });
 
@@ -439,7 +442,7 @@ describe("SettingsApp intent routing", () => {
     await waitFor(() => {
       expect(screen.getByText("AbaAtivo")).toBeTruthy();
     });
-    await user.selectOptions(screen.getByTestId("profile-select"), PROFILE_ID_2);
+    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
     await waitFor(() => {
       expect(screen.getByText("AbaOutro")).toBeTruthy();
       expect(screen.queryByText("AbaAtivo")).toBeNull();
@@ -464,10 +467,7 @@ describe("SettingsApp intent routing", () => {
       expect(screen.getByTestId("profile-delete")).toBeTruthy();
     });
     // Seleciona o segundo perfil para mirar o delete nele.
-    await user.selectOptions(
-      screen.getByTestId("profile-select"),
-      PROFILE_ID_2,
-    );
+    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
     await user.click(screen.getByTestId("profile-delete"));
     expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(ipc.deleteProfile).toHaveBeenCalledWith(PROFILE_ID_2);
@@ -512,10 +512,7 @@ describe("SettingsApp intent routing", () => {
     // editando o ativo (default) → sem botão
     expect(screen.queryByTestId("set-active-profile")).toBeNull();
     // troca pro perfil inativo → botão aparece
-    await user.selectOptions(
-      screen.getByTestId("profile-select"),
-      PROFILE_ID_2,
-    );
+    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
     const btn = await waitFor(() => screen.getByTestId("set-active-profile"));
     await user.click(btn);
     expect(ipc.setActiveProfile).toHaveBeenCalledWith(PROFILE_ID_2);
