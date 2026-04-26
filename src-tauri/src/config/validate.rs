@@ -94,6 +94,18 @@ fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
                         )
                     })?;
                 }
+                Item::File { path } | Item::Folder { path } => {
+                    if path.trim().is_empty() {
+                        return Err(AppError::config(
+                            "path_empty",
+                            &[
+                                ("tabId", tab.id.to_string()),
+                                ("profileId", profile.id.to_string()),
+                                ("kind", item_kind_label(item).to_string()),
+                            ],
+                        ));
+                    }
+                }
             }
         }
     }
@@ -112,6 +124,14 @@ fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
     }
 
     Ok(())
+}
+
+fn item_kind_label(item: &Item) -> &'static str {
+    match item {
+        Item::Url { .. } => "url",
+        Item::File { .. } => "file",
+        Item::Folder { .. } => "folder",
+    }
 }
 
 #[cfg(test)]
@@ -240,6 +260,87 @@ mod tests {
         let mut cfg = base_config();
         cfg.interaction.hover_hold_ms = 0;
         assert_config_code(validate(&cfg).unwrap_err(), "hover_hold_ms_zero");
+    }
+
+    #[test]
+    fn file_item_with_non_empty_path_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("F"),
+            None,
+            vec![Item::File {
+                path: "C:/x.txt".into(),
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn folder_item_with_non_empty_path_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("D"),
+            None,
+            vec![Item::Folder {
+                path: "/tmp".into(),
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn file_item_with_empty_path_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("F"),
+            None,
+            vec![Item::File { path: "".into() }],
+        ));
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "path_empty");
+                assert_eq!(context.get("kind").map(String::as_str), Some("file"));
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn folder_item_with_whitespace_path_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("D"),
+            None,
+            vec![Item::Folder { path: "   ".into() }],
+        ));
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "path_empty");
+                assert_eq!(context.get("kind").map(String::as_str), Some("folder"));
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mixed_url_file_folder_items_validate() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Mix"),
+            None,
+            vec![
+                Item::Url {
+                    value: "https://a.test".into(),
+                },
+                Item::File {
+                    path: "/tmp/x".into(),
+                },
+                Item::Folder {
+                    path: "/tmp".into(),
+                },
+            ],
+        ));
+        assert!(validate(&cfg).is_ok());
     }
 
     #[test]
