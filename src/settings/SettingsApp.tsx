@@ -22,6 +22,9 @@ interface IntentTarget {
   section: Section;
   selection: Selection;
   selectedProfileId?: string;
+  /** Quando `true`, dispara o fluxo de criação de perfil após aplicar o
+   *  target. Usado pelo intent `new-profile` vindo do donut. */
+  triggerCreateProfile?: boolean;
 }
 
 /**
@@ -38,9 +41,11 @@ function resolveIntent(
     return { section: "tabs", selection: { mode: "new" } };
   }
   if (intent === "new-profile") {
-    return { section: "tabs", selection: { mode: "empty" } };
-    // ProfilePicker fica visível em todas as seções; o entrypoint do donut
-    // pode posteriormente disparar prompt de criação aqui.
+    return {
+      section: "tabs",
+      selection: { mode: "empty" },
+      triggerCreateProfile: true,
+    };
   }
   if (intent && intent.startsWith("edit-tab:")) {
     const tabId = intent.slice("edit-tab:".length);
@@ -79,17 +84,26 @@ export const SettingsApp: React.FC = () => {
   const configRef = useRef<Config | null>(config);
   configRef.current = config;
   const pendingIntentRef = useRef<string | null>(null);
+  // Ref para `handleCreateProfile` permite que `apply` (declarado antes)
+  // dispare o fluxo de criação sem depender da ordem de declaração.
+  const createProfileRef = useRef<() => void>(() => {});
 
   const apply = (target: IntentTarget) => {
     setSection(target.section);
     setSelection(target.selection);
     if (target.selectedProfileId) setSelectedProfileId(target.selectedProfileId);
+    if (target.triggerCreateProfile) createProfileRef.current();
   };
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     const handle = (intent: string | null) => {
-      if (intent && intent.startsWith("edit-tab:") && !configRef.current) {
+      // Intents que dependem do config (lookup de aba/perfil) ou que abrem
+      // prompt na UI (new-profile) ficam em buffer até o config carregar.
+      const needsConfig =
+        !!intent &&
+        (intent.startsWith("edit-tab:") || intent === "new-profile");
+      if (needsConfig && !configRef.current) {
         pendingIntentRef.current = intent;
         return;
       }
@@ -160,6 +174,9 @@ export const SettingsApp: React.FC = () => {
     } catch (e) {
       console.error("createProfile failed", e);
     }
+  };
+  createProfileRef.current = () => {
+    void handleCreateProfile();
   };
 
   const handleDeleteProfile = async (profileId: string) => {

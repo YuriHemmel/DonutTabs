@@ -293,6 +293,29 @@ describe("SettingsApp intent routing", () => {
     expect(select.value).toBe(PROFILE_ID_2);
   });
 
+  it("'new-profile' intent triggers the create flow after config loads", async () => {
+    const NEW_ID = "00000000-0000-0000-0000-0000000000aa";
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "new-profile",
+    );
+    (ipc.createProfile as ReturnType<typeof vi.fn>).mockResolvedValue([
+      makeConfig({
+        profiles: [makeProfile(), makeProfile({ id: NEW_ID, name: "Estudo" })],
+      }),
+      NEW_ID,
+    ]);
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("Estudo");
+    await renderApp();
+    await waitFor(() => {
+      expect(promptSpy).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(ipc.createProfile).toHaveBeenCalledWith("Estudo", null);
+    });
+    promptSpy.mockRestore();
+  });
+
   it("ProfilePicker shows all profiles", async () => {
     const cfg = makeConfig({
       profiles: [
