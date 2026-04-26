@@ -58,6 +58,13 @@ pub fn set_from_config<R: Runtime>(
     Ok(())
 }
 
+/// Valida um combo sem registrar nada. Usado pelo `set_shortcut` quando o
+/// alvo é um perfil **inativo** — não tocamos o atalho global, mas precisamos
+/// rejeitar entradas malformadas antes de gravar em disco.
+pub fn validate_combo(combo: &str) -> AppResult<()> {
+    parse(combo).map(|_| ())
+}
+
 fn parse(combo: &str) -> AppResult<Shortcut> {
     combo.parse::<Shortcut>().map_err(|e| {
         AppError::shortcut(
@@ -65,6 +72,31 @@ fn parse(combo: &str) -> AppResult<Shortcut> {
             &[("combo", combo.to_string()), ("reason", format!("{e}"))],
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_combo_accepts_valid_combo() {
+        assert!(validate_combo("CommandOrControl+Shift+Space").is_ok());
+        assert!(validate_combo("Ctrl+Alt+P").is_ok());
+    }
+
+    #[test]
+    fn validate_combo_rejects_garbage() {
+        let err = validate_combo("not a real combo").unwrap_err();
+        match err {
+            AppError::Shortcut { code, .. } => assert_eq!(code, "shortcut_parse_failed"),
+            other => panic!("expected Shortcut error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_combo_rejects_empty_string() {
+        assert!(validate_combo("").is_err());
+    }
 }
 
 fn bind<R: Runtime>(app: &AppHandle<R>, sc: &Shortcut) -> AppResult<()> {
