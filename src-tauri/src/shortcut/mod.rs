@@ -32,12 +32,23 @@ pub fn register_from_config<R: Runtime>(
 /// largar o atual. Se o novo falhar (combo em uso por outro app), o atual
 /// permanece em vigor — ao usuário vemos um erro traduzido, mas o atalho
 /// dele continua funcionando.
+///
+/// Caso especial: se o novo combo for o mesmo já registrado (caso comum
+/// quando perfis herdam atalho do criador), pular o re-bind — o plugin
+/// recusa registrar duas vezes a mesma combinação.
 pub fn set_from_config<R: Runtime>(
     app: &AppHandle<R>,
     active: &ActiveShortcut,
     new_combo: &str,
 ) -> AppResult<()> {
     let new_sc = parse(new_combo)?;
+    {
+        let slot = active.0.lock().unwrap();
+        if slot.as_ref() == Some(&new_sc) {
+            // Mesmo combo já registrado — handler global continua válido.
+            return Ok(());
+        }
+    }
     bind(app, &new_sc)?;
     let mut slot = active.0.lock().unwrap();
     if let Some(old) = slot.take() {

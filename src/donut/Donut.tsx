@@ -166,6 +166,7 @@ export const Donut: React.FC<DonutProps> = ({
           cx={cx}
           cy={cy}
           r={innerR * 0.85}
+          onGearClick={onOpenSettings}
           onProfileSwitcherClick={() => setMode("tabs")}
         />
       </svg>
