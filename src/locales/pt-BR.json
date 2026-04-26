@@ -33,6 +33,7 @@
     },
     "io": {
       "ioGeneric": "Erro de I/O: {{reason}}",
+      "autostartFailed": "Não foi possível alterar a inicialização automática: {{reason}}",
       "unknown": "Erro de I/O: {{code}}"
     },
     "fallback": "Ocorreu um erro inesperado ({{kind}})"
@@ -56,11 +57,26 @@
     "profile": {
       "label": "Perfil:",
       "new": "Novo",
+      "edit": "Editar perfil",
       "delete": "Excluir perfil",
       "activate": "Definir como perfil ativo",
       "activeMarker": "(ativo)",
-      "promptName": "Nome do novo perfil",
-      "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas."
+      "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas.",
+      "newTitle": "Novo perfil",
+      "editTitle": "Editar perfil",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Trabalho",
+      "iconLabel": "Ícone",
+      "iconPlaceholder": "💼",
+      "iconHint": "Um emoji ou caractere curto. Opcional.",
+      "create": "Criar",
+      "validationNameRequired": "Nome do perfil é obrigatório.",
+      "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone."
+    },
+    "system": {
+      "title": "Sistema",
+      "autostart": "Iniciar automaticamente com o sistema",
+      "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador."
     },
     "appearance": {
       "sectionTitle": "Aparência",

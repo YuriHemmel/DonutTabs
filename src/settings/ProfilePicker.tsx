@@ -8,6 +8,7 @@ export interface ProfilePickerProps {
   activeId: string;
   onSelect: (profileId: string) => void;
   onCreate: () => void;
+  onEdit: (profileId: string) => void;
   onDelete: (profileId: string) => void;
 }
 
@@ -23,6 +24,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   activeId,
   onSelect,
   onCreate,
+  onEdit,
   onDelete,
 }) => {
   const { t } = useTranslation();
@@ -69,6 +71,22 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           ))}
         </select>
       </label>
+      <button
+        type="button"
+        data-testid="profile-edit"
+        onClick={() => onEdit(selectedId)}
+        style={{
+          background: "transparent",
+          color: "var(--fg)",
+          border: "1px solid var(--ghost-border)",
+          borderRadius: 4,
+          padding: "6px 12px",
+          cursor: "pointer",
+          font: "inherit",
+        }}
+      >
+        {t("settings.profile.edit")}
+      </button>
       <button
         type="button"
         data-testid="profile-create"

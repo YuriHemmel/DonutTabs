@@ -33,6 +33,7 @@
     },
     "io": {
       "ioGeneric": "I/O error: {{reason}}",
+      "autostartFailed": "Could not change autostart setting: {{reason}}",
       "unknown": "I/O error: {{code}}"
     },
     "fallback": "An unexpected error occurred ({{kind}})"
@@ -56,11 +57,26 @@
     "profile": {
       "label": "Profile:",
       "new": "New",
+      "edit": "Edit profile",
       "delete": "Delete profile",
       "activate": "Set as active profile",
       "activeMarker": "(active)",
-      "promptName": "Name of the new profile",
-      "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost."
+      "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost.",
+      "newTitle": "New profile",
+      "editTitle": "Edit profile",
+      "nameLabel": "Name",
+      "namePlaceholder": "Work",
+      "iconLabel": "Icon",
+      "iconPlaceholder": "💼",
+      "iconHint": "An emoji or short character. Optional.",
+      "create": "Create",
+      "validationNameRequired": "Profile name is required.",
+      "validationIconTooLong": "The icon must be a single character or emoji."
+    },
+    "system": {
+      "title": "System",
+      "autostart": "Start automatically with the system",
+      "autostartHint": "When enabled, DonutTabs starts in the tray on system boot."
     },
     "appearance": {
       "sectionTitle": "Appearance",

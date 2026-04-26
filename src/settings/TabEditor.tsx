@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { UrlListEditor } from "./UrlListEditor";
 import { translateAppError } from "../core/errors";
+import { stripLetters, graphemeCount } from "./textUtils";
 import type { Tab } from "../core/types/Tab";
 import type { OpenMode } from "../core/types/OpenMode";
 
@@ -25,33 +26,6 @@ interface FormState {
 
 function randomUuid(): string {
   return crypto.randomUUID();
-}
-
-function stripLetters(s: string): string {
-  // \p{L} cobre letras de qualquer script (Latin, Cyrillic, CJK, etc.).
-  // Emojis ficam em \p{So}, ZWJ em \p{Cf}, modifiers em \p{Sk} — passam intactos.
-  return s.replace(/\p{L}/gu, "");
-}
-
-function graphemeCount(s: string): number {
-  // Intl.Segmenter cobre emojis compostos (ZWJ, skin tone, bandeiras).
-  // Fallback para contagem de codepoints em runtimes sem Segmenter.
-  const IntlAny = Intl as unknown as {
-    Segmenter?: new (
-      locale: string,
-      opts: { granularity: "grapheme" },
-    ) => { segment: (s: string) => Iterable<unknown> };
-  };
-  if (IntlAny.Segmenter) {
-    let count = 0;
-    for (const _ of new IntlAny.Segmenter("pt-BR", { granularity: "grapheme" }).segment(
-      s,
-    )) {
-      count++;
-    }
-    return count;
-  }
-  return [...s].length;
 }
 
 function fromTab(tab: Tab | null): FormState {

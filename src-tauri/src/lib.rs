@@ -14,6 +14,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             let dir = app
                 .path()
@@ -54,6 +58,38 @@ pub fn run() {
                 }
             }
 
+            // Sincroniza o estado do autostart no SO com o config (best-effort).
+            // Apenas garante o `enable()` quando `cfg.system.autostart == true`
+            // E o SO ainda não está habilitado — evita brigar com toggles
+            // manuais (Task Scheduler / launchctl). Quando o config diz `false`
+            // não fazemos `disable()` proativo: a única forma de o app desligar
+            // o autostart é via comando `set_autostart` explícito.
+            // Falha típica em sandbox (snap/flatpak) — log e segue.
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let cfg = {
+                    let state: tauri::State<'_, commands::AppState> = app.state();
+                    let snapshot = state.config.read().unwrap().clone();
+                    snapshot
+                };
+                if cfg.system.autostart {
+                    let manager = app.autolaunch();
+                    match manager.is_enabled() {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            if let Err(e) = manager.enable() {
+                                eprintln!(
+                                    "[setup] autostart enable failed ({e:?}); config says on but SO state stays off"
+                                );
+                            }
+                        }
+                        Err(e) => eprintln!(
+                            "[setup] autostart is_enabled query failed ({e:?}); skipping reconcile"
+                        ),
+                    }
+                }
+            }
+
             let _ = donut_window::show(app.handle());
             if let Some(w) = app.get_webview_window("donut") {
                 let _ = w.hide();
@@ -88,6 +124,7 @@ pub fn run() {
             commands::create_profile,
             commands::delete_profile,
             commands::update_profile,
+            commands::set_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

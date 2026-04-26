@@ -36,6 +36,8 @@ export const ipc = {
       // `undefined` → não tocar, `""` → zera o ícone, string normal → seta
       icon: icon === undefined ? null : icon,
     }),
+  setAutostart: (enabled: boolean) =>
+    invoke<Config>("set_autostart", { enabled }),
 };
 
 export const CONFIG_CHANGED_EVENT = "config-changed";

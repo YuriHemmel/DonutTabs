@@ -6,8 +6,10 @@ import type { Language } from "../core/types/Language";
 export interface AppearanceSectionProps {
   theme: Theme;
   language: Language;
+  autostart: boolean;
   onThemeChange: (theme: Theme) => void;
   onLanguageChange: (language: Language) => void;
+  onAutostartChange: (enabled: boolean) => void;
   /** Quando o perfil sob edição não é o ativo, mostra um botão pra ativá-lo. */
   onSetActiveProfile?: () => void;
 }
@@ -22,8 +24,10 @@ const THEME_KEY: Record<Theme, string> = {
 export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   theme,
   language,
+  autostart,
   onThemeChange,
   onLanguageChange,
+  onAutostartChange,
   onSetActiveProfile,
 }) => {
   const { t } = useTranslation();
@@ -82,6 +86,26 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           <option value="en">{t("settings.appearance.languageEn")}</option>
         </select>
       </label>
+
+      <fieldset
+        style={{ border: "1px solid var(--input-border)", borderRadius: 4, padding: 12 }}
+      >
+        <legend style={{ padding: "0 6px" }}>{t("settings.system.title")}</legend>
+        <label
+          style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+        >
+          <input
+            type="checkbox"
+            data-testid="autostart-toggle"
+            checked={autostart}
+            onChange={(e) => onAutostartChange(e.target.checked)}
+          />
+          {t("settings.system.autostart")}
+        </label>
+        <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
+          {t("settings.system.autostartHint")}
+        </small>
+      </fieldset>
 
       {onSetActiveProfile && (
         <button

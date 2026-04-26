@@ -28,6 +28,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 ts-rs = { version = "9", features = ["serde-compat", "uuid-impl"] }
 mouse_position = "0.1"
 url = "2"
+tauri-plugin-autostart = "2.5.1"
 
 [dev-dependencies]
 tempfile = "3"

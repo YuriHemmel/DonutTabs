@@ -10,16 +10,20 @@ import type { Language } from "../../core/types/Language";
 async function renderSection(overrides: Partial<{
   theme: Theme;
   language: Language;
+  autostart: boolean;
   onThemeChange: (t: Theme) => void;
   onLanguageChange: (l: Language) => void;
+  onAutostartChange: (e: boolean) => void;
   onSetActiveProfile: () => void;
 }> = {}) {
   const i18n = await createI18n("pt-BR");
   const props = {
     theme: "dark" as Theme,
     language: "auto" as Language,
+    autostart: false,
     onThemeChange: vi.fn(),
     onLanguageChange: vi.fn(),
+    onAutostartChange: vi.fn(),
     ...overrides,
   };
   const utils = render(
@@ -72,5 +76,18 @@ describe("AppearanceSection", () => {
     expect(btn).toBeTruthy();
     await user.click(btn);
     expect(onSetActiveProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it("autostart checkbox reflects the current value", async () => {
+    await renderSection({ autostart: true });
+    const cb = screen.getByTestId("autostart-toggle") as HTMLInputElement;
+    expect(cb.checked).toBe(true);
+  });
+
+  it("calls onAutostartChange when the checkbox is toggled", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderSection({ autostart: false });
+    await user.click(screen.getByTestId("autostart-toggle"));
+    expect(props.onAutostartChange).toHaveBeenCalledWith(true);
   });
 });

@@ -295,6 +295,55 @@ pub fn delete_profile<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Habilita ou desabilita o autostart no SO + persiste em `cfg.system.autostart`.
+/// Captura o estado real do SO antes da mutação (`is_enabled()`) — não confia
+/// no config — para que o rollback restaure o SO ao seu valor pré-comando
+/// mesmo se SO/config estavam divergentes (ex.: setup() falhou no boot ou
+/// usuário toggou via Task Scheduler/launchctl). Toca o SO antes de persistir;
+/// se `save_atomic` falhar, desfaz tanto SO quanto memória.
+#[tauri::command]
+pub fn set_autostart<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    use tauri_plugin_autostart::ManagerExt;
+    let manager = app.autolaunch();
+    let so_before = manager
+        .is_enabled()
+        .map_err(|e| AppError::io("autostart_failed", &[("reason", e.to_string())]))?;
+    if enabled {
+        manager
+            .enable()
+            .map_err(|e| AppError::io("autostart_failed", &[("reason", e.to_string())]))?;
+    } else {
+        manager
+            .disable()
+            .map_err(|e| AppError::io("autostart_failed", &[("reason", e.to_string())]))?;
+    }
+
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let cfg_old = cfg.system.autostart;
+        cfg.system.autostart = enabled;
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            // Rollback: memória volta ao valor antes do write; SO volta ao
+            // valor capturado antes do enable/disable (não ao config antigo,
+            // que pode estar dessincronizado).
+            cfg.system.autostart = cfg_old;
+            let _ = if so_before {
+                manager.enable()
+            } else {
+                manager.disable()
+            };
+            return Err(e);
+        }
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 /// Atualiza nome / ícone de um perfil. Campo ausente (`None`) significa "não
 /// mexer". Passar `""` em `icon` zera o ícone (vira `None` em disco).
 #[tauri::command]
