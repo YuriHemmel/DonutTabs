@@ -293,27 +293,98 @@ describe("SettingsApp intent routing", () => {
     expect(select.value).toBe(PROFILE_ID_2);
   });
 
-  it("'new-profile' intent triggers the create flow after config loads", async () => {
-    const NEW_ID = "00000000-0000-0000-0000-0000000000aa";
+  it("'new-profile' intent opens ProfileEditor in new mode after config loads", async () => {
     (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
     (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
       "new-profile",
     );
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-editor")).toBeTruthy();
+    });
+    expect(
+      screen.getByRole("heading", { name: /novo perfil/i }),
+    ).toBeTruthy();
+    expect(ipc.createProfile).not.toHaveBeenCalled();
+  });
+
+  it("submitting the new ProfileEditor calls ipc.createProfile with name + icon", async () => {
+    const NEW_ID = "00000000-0000-0000-0000-0000000000aa";
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
     (ipc.createProfile as ReturnType<typeof vi.fn>).mockResolvedValue([
       makeConfig({
         profiles: [makeProfile(), makeProfile({ id: NEW_ID, name: "Estudo" })],
       }),
       NEW_ID,
     ]);
-    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("Estudo");
+    const user = userEvent.setup();
     await renderApp();
     await waitFor(() => {
-      expect(promptSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("profile-create")).toBeTruthy();
     });
+    await user.click(screen.getByTestId("profile-create"));
+    const editor = await waitFor(() => screen.getByTestId("profile-editor"));
+    const nameInput = editor.querySelector("input") as HTMLInputElement;
+    await user.type(nameInput, "Estudo");
+    await user.click(screen.getByRole("button", { name: /^criar$/i }));
+    expect(ipc.createProfile).toHaveBeenCalledWith("Estudo", null);
     await waitFor(() => {
-      expect(ipc.createProfile).toHaveBeenCalledWith("Estudo", null);
+      expect(screen.queryByTestId("profile-editor")).toBeNull();
     });
-    promptSpy.mockRestore();
+  });
+
+  it("editing a profile opens ProfileEditor with prefilled fields and calls updateProfile on submit", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo", icon: "📚" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.updateProfile as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-edit")).toBeTruthy();
+    });
+    await user.selectOptions(
+      screen.getByTestId("profile-select"),
+      PROFILE_ID_2,
+    );
+    await user.click(screen.getByTestId("profile-edit"));
+    const editor = await waitFor(() => screen.getByTestId("profile-editor"));
+    const nameInput = editor.querySelector("input") as HTMLInputElement;
+    expect(nameInput.value).toBe("Estudo");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Faculdade");
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    expect(ipc.updateProfile).toHaveBeenCalledWith(
+      PROFILE_ID_2,
+      "Faculdade",
+      "📚",
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId("profile-editor")).toBeNull();
+    });
+  });
+
+  it("ProfileEditor cancel closes the panel without calling IPC", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-create")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("profile-create"));
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-editor")).toBeTruthy();
+    });
+    await user.click(screen.getByRole("button", { name: /^cancelar$/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId("profile-editor")).toBeNull();
+    });
+    expect(ipc.createProfile).not.toHaveBeenCalled();
+    expect(ipc.updateProfile).not.toHaveBeenCalled();
   });
 
   it("ProfilePicker shows all profiles", async () => {
@@ -421,20 +492,6 @@ describe("SettingsApp intent routing", () => {
     expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(ipc.deleteProfile).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
-  });
-
-  it("create flow is canceled when the prompt returns empty/null", async () => {
-    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
-    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("   ");
-    const user = userEvent.setup();
-    await renderApp();
-    await waitFor(() => {
-      expect(screen.getByTestId("profile-create")).toBeTruthy();
-    });
-    await user.click(screen.getByTestId("profile-create"));
-    expect(promptSpy).toHaveBeenCalledTimes(1);
-    expect(ipc.createProfile).not.toHaveBeenCalled();
-    promptSpy.mockRestore();
   });
 
   it("AppearanceSection shows the set-active button only when editing a non-active profile", async () => {

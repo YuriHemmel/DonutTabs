@@ -56,6 +56,7 @@
     "profile": {
       "label": "Profile:",
       "new": "New",
+      "edit": "Edit profile",
       "delete": "Delete profile",
       "activate": "Set as active profile",
       "activeMarker": "(active)",

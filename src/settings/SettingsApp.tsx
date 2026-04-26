@@ -7,6 +7,7 @@ import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
+import { ProfileEditor } from "./ProfileEditor";
 import { useConfig } from "./useConfig";
 import { ipc, SETTINGS_INTENT_EVENT } from "../core/ipc";
 import type { Config } from "../core/types/Config";
@@ -75,11 +76,18 @@ export const SettingsApp: React.FC = () => {
     setActiveProfile,
     createProfile,
     deleteProfile,
+    updateProfile,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
   // Perfil sob edição. Default = ativo do config quando ele carrega.
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  // Painel `<ProfileEditor>` sobreposto. `null` = oculto.
+  const [profileEditorMode, setProfileEditorMode] = useState<
+    | null
+    | { mode: "new" }
+    | { mode: "edit"; profileId: string }
+  >(null);
 
   const configRef = useRef<Config | null>(config);
   configRef.current = config;
@@ -165,18 +173,33 @@ export const SettingsApp: React.FC = () => {
     setSelection({ mode: "empty" });
   };
 
-  const handleCreateProfile = async () => {
-    const name = window.prompt(t("settings.profile.promptName") ?? "Nome do perfil");
-    if (!name || !name.trim()) return;
-    try {
-      const newId = await createProfile(name.trim());
-      setSelectedProfileId(newId);
-    } catch (e) {
-      console.error("createProfile failed", e);
-    }
+  const handleCreateProfile = () => {
+    setProfileEditorMode({ mode: "new" });
   };
   createProfileRef.current = () => {
-    void handleCreateProfile();
+    handleCreateProfile();
+  };
+
+  const handleEditProfile = (profileId: string) => {
+    setProfileEditorMode({ mode: "edit", profileId });
+  };
+
+  const handleProfileEditorSubmit = async ({
+    name,
+    icon,
+  }: {
+    name: string;
+    icon: string | null;
+  }) => {
+    if (!profileEditorMode) return;
+    if (profileEditorMode.mode === "new") {
+      const newId = await createProfile(name, icon);
+      setSelectedProfileId(newId);
+    } else {
+      // `updateProfile` espera `string` (não `null`); string vazia = limpa o ícone.
+      await updateProfile(profileEditorMode.profileId, name, icon ?? "");
+    }
+    setProfileEditorMode(null);
   };
 
   const handleDeleteProfile = async (profileId: string) => {
@@ -196,6 +219,11 @@ export const SettingsApp: React.FC = () => {
     }
   };
 
+  const profileEditorInitial: Profile | null =
+    profileEditorMode?.mode === "edit"
+      ? config.profiles.find((p) => p.id === profileEditorMode.profileId) ?? null
+      : null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <ProfilePicker
@@ -207,8 +235,17 @@ export const SettingsApp: React.FC = () => {
           setSelection({ mode: "empty" });
         }}
         onCreate={handleCreateProfile}
+        onEdit={handleEditProfile}
         onDelete={handleDeleteProfile}
       />
+      {profileEditorMode && (
+        <ProfileEditor
+          mode={profileEditorMode.mode}
+          initial={profileEditorInitial}
+          onSubmit={handleProfileEditorSubmit}
+          onCancel={() => setProfileEditorMode(null)}
+        />
+      )}
       <SectionTabs active={section} onChange={setSection} />
 
       {section === "tabs" && (

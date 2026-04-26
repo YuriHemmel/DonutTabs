@@ -23,6 +23,7 @@ async function renderPicker(
     activeId: string;
     onSelect: (id: string) => void;
     onCreate: () => void;
+    onEdit: (id: string) => void;
     onDelete: (id: string) => void;
   }> = {},
 ) {
@@ -33,6 +34,7 @@ async function renderPicker(
     activeId: "p1",
     onSelect: vi.fn(),
     onCreate: vi.fn(),
+    onEdit: vi.fn(),
     onDelete: vi.fn(),
     ...overrides,
   };
@@ -95,6 +97,16 @@ describe("ProfilePicker", () => {
     const { props } = await renderPicker();
     await user.click(screen.getByTestId("profile-create"));
     expect(props.onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onEdit with the currently selected id when edit is clicked", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderPicker({
+      profiles: [profile(), profile({ id: "p2", name: "Estudo" })],
+      selectedId: "p2",
+    });
+    await user.click(screen.getByTestId("profile-edit"));
+    expect(props.onEdit).toHaveBeenCalledWith("p2");
   });
 
   it("calls onDelete with the currently selected id when delete is clicked", async () => {
