@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { translateAppError } from "../core/errors";
 import { stripLetters, graphemeCount } from "./textUtils";
+import { IconPicker } from "./IconPicker";
 import type { Profile } from "../core/types/Profile";
+
+const LUCIDE_PREFIX = "lucide:";
+const isLucideToken = (s: string) => s.startsWith(LUCIDE_PREFIX);
 
 type Mode = "new" | "edit";
 
@@ -39,6 +43,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   const [validation, setValidation] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Reset apenas quando muda o alvo (mode ou perfil sob edição). Não depender
   // de `initial` direto: a referência muda a cada `config-changed`, o que
@@ -63,7 +68,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       return;
     }
 
-    if (icon && graphemeCount(icon) > 1) {
+    if (icon && !isLucideToken(icon) && graphemeCount(icon) > 1) {
       setValidation(t("settings.profile.validationIconTooLong"));
       return;
     }
@@ -125,21 +130,48 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span>{t("settings.profile.iconLabel")}</span>
-          <input
-            value={state.icon}
-            onChange={(e) =>
-              setState({ ...state, icon: stripLetters(e.target.value) })
-            }
-            placeholder={t("settings.profile.iconPlaceholder")}
-            maxLength={16}
-            size={4}
-            style={{ ...inputStyle, width: 80 }}
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              value={state.icon}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setState({
+                  ...state,
+                  icon: isLucideToken(raw) ? raw : stripLetters(raw),
+                });
+              }}
+              placeholder={t("settings.profile.iconPlaceholder")}
+              maxLength={64}
+              size={4}
+              style={{ ...inputStyle, width: 160 }}
+            />
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              style={{
+                background: "transparent",
+                color: "var(--fg)",
+                border: "1px solid var(--ghost-border)",
+                borderRadius: 4,
+                padding: "6px 12px",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+            >
+              {t("settings.icon.pickButton")}
+            </button>
+          </div>
         </label>
         <small style={{ color: "var(--muted)" }}>
           {t("settings.profile.iconHint")}
         </small>
       </div>
+
+      <IconPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(icon) => setState((s) => ({ ...s, icon }))}
+      />
 
       {validation && (
         <div role="alert" style={{ color: "var(--danger-fg)" }}>

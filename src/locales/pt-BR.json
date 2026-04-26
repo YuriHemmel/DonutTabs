@@ -35,6 +35,8 @@
     "io": {
       "ioGeneric": "Erro de I/O: {{reason}}",
       "autostartFailed": "Não foi possível alterar a inicialização automática: {{reason}}",
+      "faviconFetch": "Não foi possível buscar o ícone do site ({{url}}).",
+      "faviconParse": "Endereço inválido para favicon: {{reason}}",
       "unknown": "Erro de I/O: {{code}}"
     },
     "fallback": "Ocorreu um erro inesperado ({{kind}})"
@@ -46,6 +48,12 @@
       "delete": "Excluir",
       "yes": "Confirmar exclusão",
       "no": "Cancelar"
+    },
+    "contextMenu": {
+      "openAll": "Abrir tudo",
+      "edit": "Editar",
+      "delete": "Excluir",
+      "confirmDelete": "Excluir aba \"{{label}}\"? Essa ação não pode ser desfeita."
     }
   },
   "settings": {
@@ -78,6 +86,13 @@
       "title": "Sistema",
       "autostart": "Iniciar automaticamente com o sistema",
       "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador."
+    },
+    "icon": {
+      "modalTitle": "Escolher ícone",
+      "pickButton": "🎨 Escolher",
+      "tabEmoji": "Emoji",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "Buscar ícone…"
     },
     "appearance": {
       "sectionTitle": "Aparência",

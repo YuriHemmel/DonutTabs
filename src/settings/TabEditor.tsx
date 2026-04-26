@@ -3,8 +3,12 @@ import { useTranslation } from "react-i18next";
 import { UrlListEditor } from "./UrlListEditor";
 import { translateAppError } from "../core/errors";
 import { stripLetters, graphemeCount } from "./textUtils";
+import { IconPicker } from "./IconPicker";
 import type { Tab } from "../core/types/Tab";
 import type { OpenMode } from "../core/types/OpenMode";
+
+const LUCIDE_PREFIX = "lucide:";
+const isLucideToken = (s: string) => s.startsWith(LUCIDE_PREFIX);
 
 type Mode = "new" | "edit";
 
@@ -61,6 +65,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   const [validation, setValidation] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     setState(fromTab(initial));
@@ -78,7 +83,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       return;
     }
 
-    if (icon && graphemeCount(icon) > 1) {
+    if (icon && !isLucideToken(icon) && graphemeCount(icon) > 1) {
       setValidation(t("settings.editor.validationIconTooLong"));
       return;
     }
@@ -169,19 +174,46 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span>{t("settings.editor.icon")}</span>
-          <input
-            value={state.icon}
-            onChange={(e) =>
-              setState({ ...state, icon: stripLetters(e.target.value) })
-            }
-            placeholder={t("settings.editor.iconPlaceholder")}
-            maxLength={16}
-            size={4}
-            style={{ ...inputStyle, width: 80 }}
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              value={state.icon}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setState({
+                  ...state,
+                  icon: isLucideToken(raw) ? raw : stripLetters(raw),
+                });
+              }}
+              placeholder={t("settings.editor.iconPlaceholder")}
+              maxLength={64}
+              size={4}
+              style={{ ...inputStyle, width: 160 }}
+            />
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              style={{
+                background: "transparent",
+                color: "var(--fg)",
+                border: "1px solid var(--ghost-border)",
+                borderRadius: 4,
+                padding: "6px 12px",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+            >
+              {t("settings.icon.pickButton")}
+            </button>
+          </div>
         </label>
         <small style={{ color: "var(--muted)" }}>{t("settings.editor.iconHint")}</small>
       </div>
+
+      <IconPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(icon) => setState((s) => ({ ...s, icon }))}
+      />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span>{t("settings.editor.urls")}</span>

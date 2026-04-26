@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod donut_window;
 mod errors;
+mod favicon;
 mod launcher;
 mod settings_window;
 mod shortcut;
@@ -127,6 +128,7 @@ pub fn run() {
             commands::set_autostart,
             commands::reorder_tabs,
             commands::reorder_profiles,
+            commands::fetch_favicon,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

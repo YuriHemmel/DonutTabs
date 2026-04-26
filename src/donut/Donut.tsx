@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Tab } from "../core/types/Tab";
 import type { Profile } from "../core/types/Profile";
 import type { SettingsIntent } from "../core/ipc";
@@ -11,6 +12,47 @@ import { sliceAngleRange } from "./geometry";
 import { paginate } from "./pagination";
 import { useSliceHighlight } from "./useSliceHighlight";
 import { useHoverHold } from "./useHoverHold";
+import { IconRenderer } from "./IconRenderer";
+import { useFavicon } from "./useFavicon";
+import { SliceContextMenu } from "./SliceContextMenu";
+
+function tabInitial(name: string | null | undefined): string {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return "?";
+  const codepoints = Array.from(trimmed);
+  return codepoints[0]?.toUpperCase() ?? "?";
+}
+
+function firstTabUrl(tab: Tab): string | null {
+  for (const item of tab.items) {
+    if (item.kind === "url") return item.value;
+  }
+  return null;
+}
+
+interface TabSliceProps {
+  tab: Tab;
+  cx: number; cy: number;
+  innerR: number; outerR: number;
+  startAngle: number; endAngle: number;
+  highlighted: boolean;
+  onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent<SVGGElement>) => void;
+}
+
+const TabSlice: React.FC<TabSliceProps> = ({ tab, ...rest }) => {
+  const fallback = tabInitial(tab.name);
+  const useFav = !tab.icon;
+  const fav = useFavicon(useFav ? firstTabUrl(tab) : null);
+  const iconString = tab.icon ?? fav.src ?? null;
+  return (
+    <Slice
+      {...rest}
+      label={tab.name ?? undefined}
+      iconNode={<IconRenderer icon={iconString} fallback={fallback} />}
+    />
+  );
+};
 
 export interface DonutProps {
   tabs: Tab[];
@@ -52,8 +94,13 @@ export const Donut: React.FC<DonutProps> = ({
   const outerR = size * 0.46;
   const innerR = size * 0.22;
 
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"tabs" | "profiles">("tabs");
   const switcherEnabled = !!(profiles && activeProfileId && onSelectProfile);
+  const [contextMenu, setContextMenu] = useState<
+    | { x: number; y: number; tabId: string; tabLabel: string }
+    | null
+  >(null);
 
   // ESC sai do modo perfil quando estiver lá.
   useEffect(() => {
@@ -92,7 +139,9 @@ export const Donut: React.FC<DonutProps> = ({
   const isTabSlice = (i: number) => i >= 0 && i < current.tabs.length;
 
   const hoverHold = useHoverHold({
-    hoveredSlice: highlighted,
+    // While a context menu is open, lock the hover-hold gesture so the
+    // overlay doesn't fight the menu for the same slice.
+    hoveredSlice: contextMenu ? null : highlighted,
     isTabSlice,
     holdMs: hoverHoldMs,
     onComplete: () => {
@@ -174,6 +223,7 @@ export const Donut: React.FC<DonutProps> = ({
   }
 
   return (
+    <>
     <svg
       width={size}
       height={size}
@@ -185,16 +235,15 @@ export const Donut: React.FC<DonutProps> = ({
       {current.tabs.map((tab, i) => {
         const { start, end } = sliceAngleRange(i, sliceCount);
         return (
-          <Slice
+          <TabSlice
             key={tab.id}
+            tab={tab}
             cx={cx}
             cy={cy}
             innerR={innerR}
             outerR={outerR}
             startAngle={start}
             endAngle={end}
-            label={tab.name ?? undefined}
-            icon={tab.icon ?? undefined}
             highlighted={highlighted === i}
             onClick={() => {
               // Se está em modo ação para esta fatia, clique não dispara select
@@ -207,6 +256,17 @@ export const Donut: React.FC<DonutProps> = ({
                 return;
               }
               onSelect(tab.id);
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              hoverHold.reset();
+              setContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                tabId: tab.id,
+                tabLabel: tab.name ?? tab.icon ?? tab.id,
+              });
             }}
           />
         );
@@ -272,5 +332,37 @@ export const Donut: React.FC<DonutProps> = ({
         onChange={changePage}
       />
     </svg>
+    {contextMenu && (
+      <SliceContextMenu
+        position={{ x: contextMenu.x, y: contextMenu.y }}
+        onClose={() => setContextMenu(null)}
+        items={[
+          {
+            id: "open-all",
+            label: t("donut.contextMenu.openAll"),
+            onSelect: () => onSelect(contextMenu.tabId),
+          },
+          {
+            id: "edit",
+            label: t("donut.contextMenu.edit"),
+            onSelect: () => onEditTab?.(contextMenu.tabId),
+          },
+          {
+            id: "delete",
+            label: t("donut.contextMenu.delete"),
+            variant: "danger",
+            onSelect: () => {
+              const ok = window.confirm(
+                t("donut.contextMenu.confirmDelete", {
+                  label: contextMenu.tabLabel,
+                }),
+              );
+              if (ok) onDeleteTab?.(contextMenu.tabId);
+            },
+          },
+        ]}
+      />
+    )}
+    </>
   );
 };
