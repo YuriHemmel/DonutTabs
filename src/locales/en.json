@@ -60,7 +60,17 @@
       "activate": "Set as active profile",
       "activeMarker": "(active)",
       "promptName": "Name of the new profile",
-      "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost."
+      "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost.",
+      "newTitle": "New profile",
+      "editTitle": "Edit profile",
+      "nameLabel": "Name",
+      "namePlaceholder": "Work",
+      "iconLabel": "Icon",
+      "iconPlaceholder": "💼",
+      "iconHint": "An emoji or short character. Optional.",
+      "create": "Create",
+      "validationNameRequired": "Profile name is required.",
+      "validationIconTooLong": "The icon must be a single character or emoji."
     },
     "appearance": {
       "sectionTitle": "Appearance",

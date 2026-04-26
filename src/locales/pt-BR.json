@@ -60,7 +60,17 @@
       "activate": "Definir como perfil ativo",
       "activeMarker": "(ativo)",
       "promptName": "Nome do novo perfil",
-      "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas."
+      "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas.",
+      "newTitle": "Novo perfil",
+      "editTitle": "Editar perfil",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Trabalho",
+      "iconLabel": "Ícone",
+      "iconPlaceholder": "💼",
+      "iconHint": "Um emoji ou caractere curto. Opcional.",
+      "create": "Criar",
+      "validationNameRequired": "Nome do perfil é obrigatório.",
+      "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone."
     },
     "appearance": {
       "sectionTitle": "Aparência",
