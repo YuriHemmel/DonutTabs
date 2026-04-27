@@ -15,6 +15,8 @@ import { useHoverHold } from "./useHoverHold";
 import { IconRenderer } from "./IconRenderer";
 import { useFavicon } from "./useFavicon";
 import { SliceContextMenu } from "./SliceContextMenu";
+import { TabSearchOverlay } from "./TabSearchOverlay";
+import { matchesCombo } from "./matchesCombo";
 
 function tabInitial(name: string | null | undefined): string {
   const trimmed = (name ?? "").trim();
@@ -60,6 +62,10 @@ export interface DonutProps {
   itemsPerPage: number;
   wheelDirection: "standard" | "inverted";
   hoverHoldMs?: number;
+  /** Combo Tauri-style (`CommandOrControl+F`) que abre o overlay de busca
+   *  rápida das abas do perfil ativo. Quando ausente, o overlay fica
+   *  desabilitado. */
+  searchShortcut?: string;
   onSelect: (tabId: string) => void;
   onOpenSettings?: (intent?: SettingsIntent) => void;
   onEditTab?: (tabId: string) => void;
@@ -80,6 +86,7 @@ export const Donut: React.FC<DonutProps> = ({
   itemsPerPage,
   wheelDirection,
   hoverHoldMs = 800,
+  searchShortcut,
   onSelect,
   onOpenSettings,
   onEditTab,
@@ -101,6 +108,23 @@ export const Donut: React.FC<DonutProps> = ({
     | { x: number; y: number; tabId: string; tabLabel: string }
     | null
   >(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Atalho window-level pra abrir o overlay de busca. Suprimido quando
+  // donut está em modo perfil ou com context menu aberto.
+  useEffect(() => {
+    if (!searchShortcut) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (mode !== "tabs" || contextMenu || searchOpen) return;
+      if (matchesCombo(e, searchShortcut)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [mode, contextMenu, searchOpen, searchShortcut]);
 
   // ESC sai do modo perfil quando estiver lá.
   useEffect(() => {
@@ -141,7 +165,7 @@ export const Donut: React.FC<DonutProps> = ({
   const hoverHold = useHoverHold({
     // While a context menu is open, lock the hover-hold gesture so the
     // overlay doesn't fight the menu for the same slice.
-    hoveredSlice: contextMenu ? null : highlighted,
+    hoveredSlice: contextMenu || searchOpen ? null : highlighted,
     isTabSlice,
     holdMs: hoverHoldMs,
     onComplete: () => {
@@ -177,6 +201,7 @@ export const Donut: React.FC<DonutProps> = ({
   };
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    if (searchOpen) return;
     if (pages.length <= 1) return;
     const direction = wheelDirection === "inverted" ? -1 : 1;
     const delta = e.deltaY > 0 ? 1 : -1;
@@ -361,6 +386,16 @@ export const Donut: React.FC<DonutProps> = ({
             },
           },
         ]}
+      />
+    )}
+    {searchOpen && (
+      <TabSearchOverlay
+        tabs={ordered}
+        onClose={() => setSearchOpen(false)}
+        onSelect={(tabId) => {
+          setSearchOpen(false);
+          onSelect(tabId);
+        }}
       />
     )}
     </>
