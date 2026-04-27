@@ -6,7 +6,7 @@
       "tabMissingNameAndIcon": "Aba {{id}} precisa de nome ou ícone",
       "invalidUrl": "URL inválida na aba {{tabId}}: {{reason}}",
       "duplicateTabId": "ID de aba duplicado: {{id}}",
-      "pathEmpty": "Caminho de {{kind}} não pode ser vazio na aba {{tabId}}.",
+      "pathEmpty": "{{kind}}: caminho não pode ser vazio na aba {{tabId}}.",
       "noProfiles": "Configuração inválida: nenhum perfil cadastrado.",
       "activeProfileNotFound": "Perfil ativo não encontrado: {{activeProfileId}}",
       "duplicateProfileId": "ID de perfil duplicado: {{id}}",
@@ -153,8 +153,7 @@
       "validationNameOrIcon": "Preencha nome ou ícone.",
       "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone.",
       "validationAtLeastOneItem": "Adicione ao menos um item (URL, arquivo ou pasta).",
-      "validationInvalidUrl": "URL inválida: {{value}}",
-      "validationPathEmpty": "Caminho de {{kind}} não pode ser vazio."
+      "validationInvalidUrl": "URL inválida: {{value}}"
     }
   }
 }

@@ -153,8 +153,7 @@
       "validationNameOrIcon": "Provide a name or an icon.",
       "validationIconTooLong": "The icon must be a single character or emoji.",
       "validationAtLeastOneItem": "Add at least one item (URL, file or folder).",
-      "validationInvalidUrl": "Invalid URL: {{value}}",
-      "validationPathEmpty": "{{kind}} path cannot be empty."
+      "validationInvalidUrl": "Invalid URL: {{value}}"
     }
   }
 }
