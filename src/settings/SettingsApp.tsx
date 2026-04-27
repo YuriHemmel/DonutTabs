@@ -9,7 +9,8 @@ import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
 import { ProfileEditor } from "./ProfileEditor";
 import { useConfig } from "./useConfig";
-import { ipc, SETTINGS_INTENT_EVENT } from "../core/ipc";
+import { ipc, dialog, SETTINGS_INTENT_EVENT } from "../core/ipc";
+import { translateAppError } from "../core/errors";
 import type { Config } from "../core/types/Config";
 import type { Profile } from "../core/types/Profile";
 import type { Tab } from "../core/types/Tab";
@@ -331,6 +332,35 @@ export const SettingsApp: React.FC = () => {
           }}
           onAutostartChange={(enabled) => {
             void setAutostart(enabled);
+          }}
+          onExportConfig={() => {
+            void (async () => {
+              const path = await dialog.saveAs({
+                defaultPath: "donuttabs-config.json",
+                filters: [
+                  { name: "DonutTabs config", extensions: ["json"] },
+                ],
+              });
+              if (!path) return;
+              try {
+                await ipc.exportConfig(path);
+                window.alert(t("settings.system.exportSuccess", { path }));
+              } catch (err) {
+                window.alert(translateAppError(err, t));
+              }
+            })();
+          }}
+          onImportConfig={() => {
+            void (async () => {
+              const path = await dialog.pickFile();
+              if (!path) return;
+              if (!window.confirm(t("settings.system.importConfirm"))) return;
+              try {
+                await ipc.importConfig(path);
+              } catch (err) {
+                window.alert(translateAppError(err, t));
+              }
+            })();
           }}
           onSetActiveProfile={
             selectedProfile.id !== config.activeProfileId

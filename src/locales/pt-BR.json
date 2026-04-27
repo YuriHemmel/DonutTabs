@@ -87,7 +87,12 @@
     "system": {
       "title": "Sistema",
       "autostart": "Iniciar automaticamente com o sistema",
-      "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador."
+      "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador.",
+      "exportButton": "Exportar configuração…",
+      "importButton": "Importar configuração…",
+      "exportImportHint": "Backup / restauração do config.json para sincronizar entre máquinas.",
+      "exportSuccess": "Configuração exportada para {{path}}.",
+      "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?"
     },
     "icon": {
       "modalTitle": "Escolher ícone",
