@@ -33,7 +33,7 @@ const existing: Tab = {
   icon: "💼",
   order: 0,
   openMode: "reuseOrNewWindow",
-  items: [{ kind: "url", value: "https://example.com" }],
+  items: [{ kind: "url", value: "https://example.com", openWith: null }],
 };
 
 describe("TabEditor", () => {
@@ -186,9 +186,9 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://a.test" },
-      { kind: "file", path: "C:/x.txt" },
-      { kind: "folder", path: "/tmp" },
+      { kind: "url", value: "https://a.test", openWith: null },
+      { kind: "file", path: "C:/x.txt", openWith: null },
+      { kind: "folder", path: "/tmp", openWith: null },
     ]);
   });
 
@@ -207,7 +207,7 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "file", path: "/home/me/doc.pdf" },
+      { kind: "file", path: "/home/me/doc.pdf", openWith: null },
     ]);
   });
 
@@ -224,7 +224,52 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://kept.test" },
+      { kind: "url", value: "https://kept.test", openWith: null },
     ]);
+  });
+
+  it("saves openWith trimmed and forwards as string when present", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "Work");
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "https://work.test" },
+    });
+    fireEvent.change(screen.getByTestId("item-open-with-0"), {
+      target: { value: "  firefox  " },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([
+      { kind: "url", value: "https://work.test", openWith: "firefox" },
+    ]);
+  });
+
+  it("saves openWith as null when empty/whitespace", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "X");
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "https://x.test" },
+    });
+    fireEvent.change(screen.getByTestId("item-open-with-0"), {
+      target: { value: "   " },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items[0].openWith).toBeNull();
+  });
+
+  it("prefills openWith from an existing tab item", async () => {
+    const tabWithOpenWith: Tab = {
+      ...existing,
+      items: [
+        { kind: "url", value: "https://a.test", openWith: "edge" },
+      ],
+    };
+    await renderEditor({ mode: "edit", initial: tabWithOpenWith });
+    expect(
+      (screen.getByTestId("item-open-with-0") as HTMLInputElement).value,
+    ).toBe("edge");
   });
 });
