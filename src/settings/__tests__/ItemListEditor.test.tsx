@@ -58,6 +58,15 @@ describe("ItemListEditor", () => {
     expect(screen.getByTestId("item-browse-2")).toBeTruthy();
   });
 
+  it("renders an invisible spacer in URL rows so the openWith column aligns", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://a", openWith: "" },
+      { kind: "file", value: "/tmp/x", openWith: "" },
+    ]);
+    expect(screen.getByTestId("item-browse-spacer-0")).toBeTruthy();
+    expect(screen.queryByTestId("item-browse-spacer-1")).toBeNull();
+  });
+
   it("preserves the input value when switching kind", async () => {
     const { onChange } = await renderEditor([
       { kind: "url", value: "https://keepme", openWith: "" },

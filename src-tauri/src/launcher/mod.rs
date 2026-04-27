@@ -1,13 +1,15 @@
 use crate::config::schema::{Item, Tab};
 use crate::errors::{AppError, AppResult};
 
+/// Abstraction over `tauri-plugin-opener` so launcher logic stays unit-testable.
+///
+/// Both methods accept an optional `with` (handler/program — e.g. `"firefox"`,
+/// `"code"`). `None` defers to the OS default. The string is forwarded as-is
+/// to the plugin — semantics depend on the OS:
+///   * Windows: executable on PATH or absolute `.exe` path
+///   * macOS: `.app` bundle name (e.g. `"Firefox"`)
+///   * Linux: program name on PATH
 pub trait Opener: Send + Sync {
-    /// `with` is the optional handler/program (e.g. `"firefox"`, `"code"`).
-    /// `None` defers to the OS default. The string is forwarded as-is to
-    /// `tauri-plugin-opener` — semantics depend on the OS:
-    ///   * Windows: executable on PATH or absolute `.exe` path
-    ///   * macOS: `.app` bundle name (e.g. `"Firefox"`)
-    ///   * Linux: program name on PATH
     fn open_url(&self, url: &str, with: Option<&str>) -> Result<(), String>;
     fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String>;
 }

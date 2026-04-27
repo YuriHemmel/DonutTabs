@@ -50,6 +50,14 @@ const ghostBtn: React.CSSProperties = {
   cursor: "pointer",
   font: "inherit",
 };
+const browseSpacer: React.CSSProperties = {
+  flex: "0 0 auto",
+  visibility: "hidden",
+  border: "1px solid transparent",
+  borderRadius: 4,
+  padding: "4px 10px",
+  font: "inherit",
+};
 const removeBtn: React.CSSProperties = {
   background: "transparent",
   color: "var(--danger-fg)",
@@ -129,7 +137,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
             placeholder={placeholderFor(it.kind)}
             style={inputStyle}
           />
-          {it.kind !== "url" && (
+          {it.kind !== "url" ? (
             <button
               type="button"
               data-testid={`item-browse-${i}`}
@@ -138,6 +146,10 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
             >
               {t("settings.editor.browse")}
             </button>
+          ) : (
+            <div data-testid={`item-browse-spacer-${i}`} style={browseSpacer} aria-hidden>
+              {t("settings.editor.browse")}
+            </div>
           )}
           <input
             aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
