@@ -130,6 +130,8 @@ pub fn run() {
             commands::reorder_tabs,
             commands::reorder_profiles,
             commands::fetch_favicon,
+            commands::export_config,
+            commands::import_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
