@@ -16,6 +16,7 @@
     "opener:allow-open-path",
     "autostart:default",
     "dialog:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "dialog:allow-save"
   ]
 }

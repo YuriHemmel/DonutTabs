@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import type { Config } from "./types/Config";
 import type { Tab } from "./types/Tab";
 import type { Theme } from "./types/Theme";
@@ -45,7 +45,16 @@ export const ipc = {
   reorderProfiles: (orderedIds: string[]) =>
     invoke<Config>("reorder_profiles", { orderedIds }),
   fetchFavicon: (url: string) => invoke<FaviconResult>("fetch_favicon", { url }),
+  exportConfig: (targetPath: string) =>
+    invoke<void>("export_config", { targetPath }),
+  importConfig: (sourcePath: string) =>
+    invoke<Config>("import_config", { sourcePath }),
 };
+
+export interface SaveAsOptions {
+  defaultPath?: string;
+  filters?: { name: string; extensions: string[] }[];
+}
 
 /** Native file/folder picker wrappers. Return absolute path or `null` when
  *  the user cancels. Result is `string | null` (Tauri's `open` returns
@@ -57,6 +66,10 @@ export const dialog = {
   },
   pickFolder: async (): Promise<string | null> => {
     const r = await openDialog({ multiple: false, directory: true });
+    return typeof r === "string" ? r : null;
+  },
+  saveAs: async (opts: SaveAsOptions = {}): Promise<string | null> => {
+    const r = await saveDialog(opts);
     return typeof r === "string" ? r : null;
   },
 };
