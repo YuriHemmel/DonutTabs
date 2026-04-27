@@ -50,6 +50,8 @@ export const ipc = {
     invoke<void>("export_config", { targetPath }),
   importConfig: (sourcePath: string) =>
     invoke<ImportResult>("import_config", { sourcePath }),
+  setSearchShortcut: (combo: string) =>
+    invoke<Config>("set_search_shortcut", { combo }),
 };
 
 export interface DialogFilter {

@@ -132,6 +132,7 @@ pub fn run() {
             commands::fetch_favicon,
             commands::export_config,
             commands::import_config,
+            commands::set_search_shortcut,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
