@@ -2,4 +2,10 @@
 import type { SelectionMode } from "./SelectionMode";
 import type { SpawnPosition } from "./SpawnPosition";
 
-export type Interaction = { spawnPosition: SpawnPosition, selectionMode: SelectionMode, hoverHoldMs: number, };
+export type Interaction = { spawnPosition: SpawnPosition, selectionMode: SelectionMode, hoverHoldMs: number, 
+/**
+ * Atalho window-level que abre o overlay de busca rápida no donut.
+ * Formato Tauri (`CommandOrControl+F`). Configs do Plano 12 ou
+ * anteriores deserializam usando `default_search_shortcut`.
+ */
+searchShortcut: string, };

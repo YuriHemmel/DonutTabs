@@ -8,6 +8,7 @@
       "duplicateTabId": "Duplicate tab id: {{id}}",
       "pathEmpty": "{{kind}} path cannot be empty in tab {{tabId}}.",
       "openWithEmpty": "Open-with program cannot be empty in tab {{tabId}} ({{kind}} item).",
+      "searchShortcutEmpty": "Search shortcut cannot be empty.",
       "noProfiles": "Invalid config: no profiles defined.",
       "activeProfileNotFound": "Active profile not found: {{activeProfileId}}",
       "duplicateProfileId": "Duplicate profile id: {{id}}",
@@ -56,6 +57,11 @@
       "edit": "Edit",
       "delete": "Delete",
       "confirmDelete": "Delete tab \"{{label}}\"? This cannot be undone."
+    },
+    "search": {
+      "placeholder": "Search tab…",
+      "empty": "No matching tab",
+      "shortcutHint": "↑↓ navigate · Enter open · Esc close"
     }
   },
   "settings": {
@@ -121,7 +127,9 @@
       "cancel": "Cancel",
       "hint": "The combo must include Ctrl, Alt, Shift or Super plus a non-reserved key (Enter/Esc/Tab are rejected).",
       "reservedKey": "Reserved key: {{key}}",
-      "noModifier": "Include a modifier (Ctrl/Alt/Shift/Super)."
+      "noModifier": "Include a modifier (Ctrl/Alt/Shift/Super).",
+      "searchSectionTitle": "Search shortcut",
+      "searchHint": "Window-level shortcut that opens the quick tab search inside the donut. Default: Ctrl+F."
     },
     "tabs": {
       "sectionTitle": "Tabs",

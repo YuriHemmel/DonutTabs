@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, act } from "@testing-library/react";
 import { Donut } from "../Donut";
 import type { Tab } from "../../core/types/Tab";
 
@@ -186,6 +186,98 @@ describe("Donut", () => {
     expect(
       container.querySelector('[data-testid="profile-switcher"]'),
     ).not.toBeNull();
+  });
+
+  describe("search overlay integration", () => {
+    function dispatchKey(combo: { key: string; ctrl?: boolean }) {
+      const ev = new KeyboardEvent("keydown", {
+        key: combo.key,
+        ctrlKey: !!combo.ctrl,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        window.dispatchEvent(ev);
+      });
+    }
+
+    it("matching searchShortcut opens the overlay", () => {
+      const tabs = [makeTab("a", "Trabalho", 0), makeTab("b", "Pessoal", 1)];
+      const { container } = render(
+        <Donut {...baseProps} tabs={tabs} searchShortcut="Ctrl+F" />,
+      );
+      expect(container.querySelector('[data-testid="search-overlay"]')).toBeNull();
+      dispatchKey({ key: "f", ctrl: true });
+      expect(
+        container.querySelector('[data-testid="search-overlay"]'),
+      ).not.toBeNull();
+    });
+
+    it("non-matching key does not open the overlay", () => {
+      const tabs = [makeTab("a", "A", 0)];
+      const { container } = render(
+        <Donut {...baseProps} tabs={tabs} searchShortcut="Ctrl+F" />,
+      );
+      dispatchKey({ key: "g", ctrl: true });
+      expect(container.querySelector('[data-testid="search-overlay"]')).toBeNull();
+    });
+
+    it("does nothing when searchShortcut prop is omitted", () => {
+      const tabs = [makeTab("a", "A", 0)];
+      const { container } = render(<Donut {...baseProps} tabs={tabs} />);
+      dispatchKey({ key: "f", ctrl: true });
+      expect(container.querySelector('[data-testid="search-overlay"]')).toBeNull();
+    });
+
+    it("does not open overlay while in profiles mode", () => {
+      const profiles = [
+        {
+          id: "a",
+          name: "A",
+          icon: null,
+          shortcut: "Ctrl+Space",
+          theme: "dark",
+          tabs: [],
+        },
+      ] as never;
+      const { container } = render(
+        <Donut
+          {...baseProps}
+          tabs={[]}
+          searchShortcut="Ctrl+F"
+          profiles={profiles}
+          activeProfileId="a"
+          onSelectProfile={() => {}}
+        />,
+      );
+      // Enter profiles mode
+      fireEvent.click(
+        container.querySelector(
+          '[data-testid="profile-switcher-hit"]',
+        ) as SVGRectElement,
+      );
+      dispatchKey({ key: "f", ctrl: true });
+      expect(container.querySelector('[data-testid="search-overlay"]')).toBeNull();
+    });
+
+    it("wheel pagination is suppressed while overlay is open", () => {
+      const tabs = Array.from({ length: 7 }, (_, i) =>
+        makeTab(`t${i}`, `T${i}`, i),
+      );
+      const { container } = render(
+        <Donut {...baseProps} tabs={tabs} searchShortcut="Ctrl+F" />,
+      );
+      const svg = container.querySelector("svg") as SVGSVGElement;
+      dispatchKey({ key: "f", ctrl: true });
+      expect(
+        container.querySelector('[data-testid="search-overlay"]'),
+      ).not.toBeNull();
+      // Page 1 has 6 slices. Wheel must NOT advance to page 2 (which would be 2 slices).
+      fireEvent.wheel(svg, { deltaY: 30 });
+      expect(
+        container.querySelectorAll('[data-testid="donut-slice"]'),
+      ).toHaveLength(6);
+    });
   });
 
   it("selecting a profile in switcher mode calls onSelectProfile and returns to tabs mode", () => {

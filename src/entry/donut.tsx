@@ -117,6 +117,7 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
               itemsPerPage={config.pagination.itemsPerPage}
               wheelDirection={config.pagination.wheelDirection}
               hoverHoldMs={config.interaction.hoverHoldMs}
+              searchShortcut={config.interaction.searchShortcut}
               onSelect={handleSelect}
               onOpenSettings={handleOpenSettings}
               onEditTab={handleEditTab}

@@ -25,6 +25,7 @@ export interface UseConfig {
   setAutostart: (enabled: boolean) => Promise<Config>;
   reorderTabs: (profileId: string, orderedIds: string[]) => Promise<Config>;
   reorderProfiles: (orderedIds: string[]) => Promise<Config>;
+  setSearchShortcut: (combo: string) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -139,6 +140,12 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setSearchShortcut = useCallback(async (combo: string) => {
+    const next = await ipc.setSearchShortcut(combo);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -154,5 +161,6 @@ export function useConfig(): UseConfig {
     setAutostart,
     reorderTabs,
     reorderProfiles,
+    setSearchShortcut,
   };
 }

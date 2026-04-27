@@ -8,6 +8,7 @@
       "duplicateTabId": "ID de aba duplicado: {{id}}",
       "pathEmpty": "{{kind}}: caminho não pode ser vazio na aba {{tabId}}.",
       "openWithEmpty": "Programa para abrir não pode ser vazio na aba {{tabId}} (item {{kind}}).",
+      "searchShortcutEmpty": "Atalho de busca não pode ser vazio.",
       "noProfiles": "Configuração inválida: nenhum perfil cadastrado.",
       "activeProfileNotFound": "Perfil ativo não encontrado: {{activeProfileId}}",
       "duplicateProfileId": "ID de perfil duplicado: {{id}}",
@@ -56,6 +57,11 @@
       "edit": "Editar",
       "delete": "Excluir",
       "confirmDelete": "Excluir aba \"{{label}}\"? Essa ação não pode ser desfeita."
+    },
+    "search": {
+      "placeholder": "Buscar aba…",
+      "empty": "Nenhuma aba encontrada",
+      "shortcutHint": "↑↓ navegar · Enter abrir · Esc fechar"
     }
   },
   "settings": {
@@ -121,7 +127,9 @@
       "cancel": "Cancelar",
       "hint": "Combinação precisa conter Ctrl, Alt, Shift ou Super + uma tecla não reservada (Enter/Esc/Tab são rejeitadas).",
       "reservedKey": "Tecla reservada: {{key}}",
-      "noModifier": "Inclua um modificador (Ctrl/Alt/Shift/Super)."
+      "noModifier": "Inclua um modificador (Ctrl/Alt/Shift/Super).",
+      "searchSectionTitle": "Atalho de busca",
+      "searchHint": "Atalho dentro do donut que abre a busca rápida de abas. Padrão: Ctrl+F."
     },
     "tabs": {
       "sectionTitle": "Abas",

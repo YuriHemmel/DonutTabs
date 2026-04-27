@@ -418,6 +418,34 @@ pub fn update_profile<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Atualiza o atalho window-level que abre o overlay de busca rápida no
+/// donut. Atalho é validado (formato Tauri + não-vazio); persiste com
+/// rollback in-memory em caso de falha no `save_atomic`.
+#[tauri::command]
+pub fn set_search_shortcut<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    combo: String,
+) -> Result<Config, AppError> {
+    if combo.trim().is_empty() {
+        return Err(AppError::config("search_shortcut_empty", &[]));
+    }
+    crate::shortcut::validate_combo(&combo)?;
+
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let old = cfg.interaction.search_shortcut.clone();
+        cfg.interaction.search_shortcut = combo;
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            cfg.interaction.search_shortcut = old;
+            return Err(e);
+        }
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 #[tauri::command]
 pub async fn fetch_favicon<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,

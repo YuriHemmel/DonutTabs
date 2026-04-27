@@ -81,6 +81,7 @@ export const SettingsApp: React.FC = () => {
     setAutostart,
     reorderTabs,
     reorderProfiles,
+    setSearchShortcut,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -384,6 +385,10 @@ export const SettingsApp: React.FC = () => {
           current={selectedProfile.shortcut}
           onCapture={async (combo) => {
             await setShortcut(combo, selectedProfile.id);
+          }}
+          searchShortcut={config.interaction.searchShortcut}
+          onCaptureSearchShortcut={async (combo) => {
+            await setSearchShortcut(combo);
           }}
         />
       )}
