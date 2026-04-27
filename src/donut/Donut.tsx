@@ -17,13 +17,7 @@ import { useFavicon } from "./useFavicon";
 import { SliceContextMenu } from "./SliceContextMenu";
 import { TabSearchOverlay } from "./TabSearchOverlay";
 import { matchesCombo } from "./matchesCombo";
-
-function tabInitial(name: string | null | undefined): string {
-  const trimmed = (name ?? "").trim();
-  if (!trimmed) return "?";
-  const codepoints = Array.from(trimmed);
-  return codepoints[0]?.toUpperCase() ?? "?";
-}
+import { tabInitial } from "./tabUtils";
 
 function firstTabUrl(tab: Tab): string | null {
   for (const item of tab.items) {

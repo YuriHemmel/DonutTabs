@@ -3,17 +3,12 @@ import { useTranslation } from "react-i18next";
 import type { Tab } from "../core/types/Tab";
 import { searchTabs } from "./searchTabs";
 import { IconRenderer } from "./IconRenderer";
+import { tabInitial } from "./tabUtils";
 
 export interface TabSearchOverlayProps {
   tabs: Tab[];
   onSelect: (tabId: string) => void;
   onClose: () => void;
-}
-
-function tabInitial(name: string | null | undefined): string {
-  const trimmed = (name ?? "").trim();
-  if (!trimmed) return "?";
-  return Array.from(trimmed)[0]?.toUpperCase() ?? "?";
 }
 
 export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
@@ -109,6 +104,7 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
       }}
       onKeyDown={handleKeyDown}
       role="dialog"
+      aria-modal="true"
       aria-label={t("donut.search.placeholder")}
     >
       <div style={dialogStyle}>

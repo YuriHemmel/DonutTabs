@@ -54,38 +54,26 @@ describe("TabSearchOverlay", () => {
     expect(screen.queryByTestId("search-row-1")).toBeNull();
   });
 
-  it("ArrowDown moves the selection (with wrap-around)", () => {
-    const { container } = render(<></>);
-    container.remove();
-    // re-render via the helper for a fresh I18n provider
-    return renderOverlay(SAMPLE).then(() => {
-      // Initial selection = 0
-      expect(
-        screen
-          .getByTestId("search-row-0")
-          .getAttribute("aria-selected"),
-      ).toBe("true");
-      fireEvent.keyDown(screen.getByTestId("search-overlay"), {
-        key: "ArrowDown",
-      });
-      expect(
-        screen
-          .getByTestId("search-row-1")
-          .getAttribute("aria-selected"),
-      ).toBe("true");
-      // wrap from last back to first
-      fireEvent.keyDown(screen.getByTestId("search-overlay"), {
-        key: "ArrowDown",
-      });
-      fireEvent.keyDown(screen.getByTestId("search-overlay"), {
-        key: "ArrowDown",
-      });
-      expect(
-        screen
-          .getByTestId("search-row-0")
-          .getAttribute("aria-selected"),
-      ).toBe("true");
+  it("ArrowDown moves the selection (with wrap-around)", async () => {
+    await renderOverlay(SAMPLE);
+    expect(
+      screen.getByTestId("search-row-0").getAttribute("aria-selected"),
+    ).toBe("true");
+    fireEvent.keyDown(screen.getByTestId("search-overlay"), {
+      key: "ArrowDown",
     });
+    expect(
+      screen.getByTestId("search-row-1").getAttribute("aria-selected"),
+    ).toBe("true");
+    fireEvent.keyDown(screen.getByTestId("search-overlay"), {
+      key: "ArrowDown",
+    });
+    fireEvent.keyDown(screen.getByTestId("search-overlay"), {
+      key: "ArrowDown",
+    });
+    expect(
+      screen.getByTestId("search-row-0").getAttribute("aria-selected"),
+    ).toBe("true");
   });
 
   it("Enter on the highlighted row calls onSelect with that tab id", async () => {
@@ -128,5 +116,12 @@ describe("TabSearchOverlay", () => {
     const { onClose } = await renderOverlay(SAMPLE);
     fireEvent.mouseDown(screen.getByTestId("search-overlay"));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("dialog exposes aria-modal=true for screen readers", async () => {
+    await renderOverlay(SAMPLE);
+    expect(
+      screen.getByTestId("search-overlay").getAttribute("aria-modal"),
+    ).toBe("true");
   });
 });
