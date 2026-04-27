@@ -15,6 +15,8 @@ async function renderSection(overrides: Partial<{
   onLanguageChange: (l: Language) => void;
   onAutostartChange: (e: boolean) => void;
   onSetActiveProfile: () => void;
+  onExportConfig: () => void;
+  onImportConfig: () => void;
 }> = {}) {
   const i18n = await createI18n("pt-BR");
   const props = {
@@ -89,5 +91,29 @@ describe("AppearanceSection", () => {
     const { props } = await renderSection({ autostart: false });
     await user.click(screen.getByTestId("autostart-toggle"));
     expect(props.onAutostartChange).toHaveBeenCalledWith(true);
+  });
+
+  it("does not render export/import buttons when callbacks are absent", async () => {
+    await renderSection();
+    expect(screen.queryByTestId("export-config")).toBeNull();
+    expect(screen.queryByTestId("import-config")).toBeNull();
+  });
+
+  it("renders and invokes the export-config callback when clicked", async () => {
+    const user = userEvent.setup();
+    const onExportConfig = vi.fn();
+    await renderSection({ onExportConfig });
+    const btn = screen.getByTestId("export-config");
+    await user.click(btn);
+    expect(onExportConfig).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders and invokes the import-config callback when clicked", async () => {
+    const user = userEvent.setup();
+    const onImportConfig = vi.fn();
+    await renderSection({ onImportConfig });
+    const btn = screen.getByTestId("import-config");
+    await user.click(btn);
+    expect(onImportConfig).toHaveBeenCalledTimes(1);
   });
 });

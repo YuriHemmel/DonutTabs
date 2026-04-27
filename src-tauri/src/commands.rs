@@ -3,11 +3,25 @@ use crate::config::schema::{Config, Language, Profile, Tab, Theme};
 use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, TauriOpener};
-use crate::shortcut::ActiveShortcut;
+use crate::shortcut::{self, ActiveShortcut};
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, RwLock};
 use tauri::{Emitter, Manager};
+use ts_rs::TS;
 use uuid::Uuid;
+
+/// Resultado do `import_config`: a config nova já em vigor + flag indicando
+/// se o atalho global foi re-registrado com sucesso. `false` significa que
+/// a config foi gravada/carregada mas o combo do novo perfil ativo colidiu
+/// com outro app — o atalho anterior segue bound até reinício.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct ImportResult {
+    pub config: Config,
+    pub shortcut_reconciled: bool,
+}
 
 pub const CONFIG_CHANGED_EVENT: &str = "config-changed";
 pub const SETTINGS_INTENT_EVENT: &str = "settings-intent";
@@ -414,6 +428,64 @@ pub async fn fetch_favicon<R: tauri::Runtime>(
         .app_config_dir()
         .map_err(|e| AppError::io("favicon_fetch", &[("reason", e.to_string())]))?;
     favicon::fetch_favicon(&url, &base).await
+}
+
+#[tauri::command]
+pub fn export_config(
+    state: tauri::State<'_, AppState>,
+    target_path: String,
+) -> Result<(), AppError> {
+    let cfg = state.config.read().unwrap().clone();
+    do_export(&cfg, Path::new(&target_path))
+}
+
+#[tauri::command]
+pub fn import_config<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    source_path: String,
+) -> Result<ImportResult, AppError> {
+    let new_cfg = do_import(Path::new(&source_path))?;
+    save_atomic(&state.config_path, &new_cfg)?;
+
+    // Reconcile global shortcut to the new active profile. Failure (combo
+    // collision) is non-fatal: the import already succeeded on disk + memory;
+    // the shortcut just stays bound to the previous combo until restart.
+    // Same trade-off as set_active_profile. The frontend surfaces a localized
+    // warning when `shortcut_reconciled` is `false`.
+    let new_combo = active_profile(&new_cfg)?.shortcut.clone();
+    let shortcut_reconciled = match shortcut::set_from_config(
+        &app,
+        &state.active_shortcut,
+        &new_combo,
+    ) {
+        Ok(()) => true,
+        Err(e) => {
+            eprintln!(
+                    "[import_config] shortcut reconcile failed ({e:?}); keeping previous global shortcut bound"
+                );
+            false
+        }
+    };
+
+    *state.config.write().unwrap() = new_cfg.clone();
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &new_cfg);
+    Ok(ImportResult {
+        config: new_cfg,
+        shortcut_reconciled,
+    })
+}
+
+/// Pure helper: validate + atomic-write `cfg` to `target`. Used by
+/// `export_config` and unit-tested directly.
+pub(crate) fn do_export(cfg: &Config, target: &Path) -> AppResult<()> {
+    save_atomic(target, cfg)
+}
+
+/// Pure helper: load + validate (and migrate v1→v2) from `source`. Used by
+/// `import_config` and unit-tested directly.
+pub(crate) fn do_import(source: &Path) -> AppResult<Config> {
+    load_from_path(source)
 }
 
 pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
@@ -1121,5 +1193,102 @@ mod tests {
         save_with_rollback(&mut cfg, &path).unwrap();
         let loaded = crate::config::io::load_from_path(&path).unwrap();
         assert_eq!(loaded.pagination.items_per_page, 7);
+    }
+
+    // ---------- import / export helpers ----------
+
+    #[test]
+    fn do_export_writes_a_round_trippable_file() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let target = dir.path().join("export.json");
+        let mut cfg = Config::default();
+        cfg.pagination.items_per_page = 7;
+        cfg.profiles[0].tabs.push(sample_tab("Exported"));
+
+        do_export(&cfg, &target).unwrap();
+        assert!(target.exists());
+
+        let loaded = do_import(&target).unwrap();
+        assert_eq!(loaded, cfg);
+    }
+
+    #[test]
+    fn do_export_rejects_invalid_config() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let target = dir.path().join("export.json");
+        let mut cfg = Config::default();
+        cfg.pagination.items_per_page = 99; // out of [4, 8]
+
+        let err = do_export(&cfg, &target).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "items_per_page_out_of_range"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+        // No partial write should be left behind on validation failure.
+        assert!(!target.exists());
+    }
+
+    #[test]
+    fn do_import_rejects_malformed_json() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("garbage.json");
+        std::fs::write(&source, "{not valid json").unwrap();
+        let err = do_import(&source).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "json_parse"),
+            other => panic!("expected Config(json_parse), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_import_rejects_semantically_invalid_config() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("bad.json");
+        let mut cfg = Config::default();
+        cfg.pagination.items_per_page = 99;
+        // Bypass validation by writing the JSON directly.
+        std::fs::write(&source, serde_json::to_string(&cfg).unwrap()).unwrap();
+        let err = do_import(&source).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "items_per_page_out_of_range"),
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_import_migrates_v1_payload_to_v2() {
+        // V1 snapshot: top-level `version: 1` + tabs/shortcut/theme at the
+        // root (the legacy shape `migrate_to_v2` knows how to read).
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("legacy.json");
+        let v1_json = r#"{
+            "version": 1,
+            "shortcut": "CommandOrControl+Shift+Space",
+            "appearance": { "theme": "dark", "language": "auto" },
+            "interaction": {
+                "spawnPosition": "cursor",
+                "selectionMode": "clickOrRelease",
+                "hoverHoldMs": 800
+            },
+            "pagination": { "itemsPerPage": 6, "wheelDirection": "standard" },
+            "system": { "autostart": false },
+            "tabs": [
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "name": "Legacy",
+                    "icon": null,
+                    "order": 0,
+                    "openMode": "reuseOrNewWindow",
+                    "items": [{ "kind": "url", "value": "https://x.test" }]
+                }
+            ]
+        }"#;
+        std::fs::write(&source, v1_json).unwrap();
+
+        let migrated = do_import(&source).unwrap();
+        assert_eq!(migrated.version, 2);
+        assert_eq!(migrated.profiles.len(), 1);
+        assert_eq!(migrated.profiles[0].tabs.len(), 1);
+        assert_eq!(migrated.profiles[0].tabs[0].name.as_deref(), Some("Legacy"));
     }
 }

@@ -10,6 +10,10 @@ export interface AppearanceSectionProps {
   onThemeChange: (theme: Theme) => void;
   onLanguageChange: (language: Language) => void;
   onAutostartChange: (enabled: boolean) => void;
+  /** Backup do config.json para um arquivo arbitrário escolhido pelo user. */
+  onExportConfig?: () => void;
+  /** Substitui o config inteiro por um JSON externo. */
+  onImportConfig?: () => void;
   /** Quando o perfil sob edição não é o ativo, mostra um botão pra ativá-lo. */
   onSetActiveProfile?: () => void;
 }
@@ -28,6 +32,8 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   onThemeChange,
   onLanguageChange,
   onAutostartChange,
+  onExportConfig,
+  onImportConfig,
   onSetActiveProfile,
 }) => {
   const { t } = useTranslation();
@@ -105,6 +111,61 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
         <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
           {t("settings.system.autostartHint")}
         </small>
+
+        {(onExportConfig || onImportConfig) && (
+          <div
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid var(--input-border)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {onExportConfig && (
+                <button
+                  type="button"
+                  data-testid="export-config"
+                  onClick={onExportConfig}
+                  style={{
+                    background: "transparent",
+                    color: "var(--fg)",
+                    border: "1px solid var(--ghost-border)",
+                    borderRadius: 4,
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                    font: "inherit",
+                  }}
+                >
+                  {t("settings.system.exportButton")}
+                </button>
+              )}
+              {onImportConfig && (
+                <button
+                  type="button"
+                  data-testid="import-config"
+                  onClick={onImportConfig}
+                  style={{
+                    background: "transparent",
+                    color: "var(--fg)",
+                    border: "1px solid var(--ghost-border)",
+                    borderRadius: 4,
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                    font: "inherit",
+                  }}
+                >
+                  {t("settings.system.importButton")}
+                </button>
+              )}
+            </div>
+            <small style={{ color: "var(--muted)" }}>
+              {t("settings.system.exportImportHint")}
+            </small>
+          </div>
+        )}
       </fieldset>
 
       {onSetActiveProfile && (

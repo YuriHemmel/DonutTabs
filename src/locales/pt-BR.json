@@ -87,7 +87,13 @@
     "system": {
       "title": "Sistema",
       "autostart": "Iniciar automaticamente com o sistema",
-      "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador."
+      "autostartHint": "Quando ativado, o DonutTabs sobe na bandeja ao ligar o computador.",
+      "exportButton": "Exportar configuração…",
+      "importButton": "Importar configuração…",
+      "exportImportHint": "Backup / restauração do config.json para sincronizar entre máquinas.",
+      "exportSuccess": "Configuração exportada para {{path}}.",
+      "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
+      "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações."
     },
     "icon": {
       "modalTitle": "Escolher ícone",

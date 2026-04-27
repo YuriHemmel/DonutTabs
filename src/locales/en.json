@@ -87,7 +87,13 @@
     "system": {
       "title": "System",
       "autostart": "Start automatically with the system",
-      "autostartHint": "When enabled, DonutTabs starts in the tray on system boot."
+      "autostartHint": "When enabled, DonutTabs starts in the tray on system boot.",
+      "exportButton": "Export configuration…",
+      "importButton": "Import configuration…",
+      "exportImportHint": "Backup / restore the config.json to sync between machines.",
+      "exportSuccess": "Configuration exported to {{path}}.",
+      "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
+      "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings."
     },
     "icon": {
       "modalTitle": "Pick an icon",
