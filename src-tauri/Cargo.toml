@@ -29,6 +29,7 @@ ts-rs = { version = "9", features = ["serde-compat", "uuid-impl"] }
 mouse_position = "0.1"
 url = "2"
 tauri-plugin-autostart = "2.5.1"
+tauri-plugin-dialog = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 sha2 = "0.10"
 regex = "1"

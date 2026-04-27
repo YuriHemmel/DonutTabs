@@ -46,13 +46,13 @@ describe("TabEditor", () => {
     expect(props.onSave).not.toHaveBeenCalled();
   });
 
-  it("requires at least one URL", async () => {
+  it("requires at least one item", async () => {
     const user = userEvent.setup();
     const { props } = await renderEditor();
     await user.type(screen.getByLabelText(/nome/i), "A");
-    await user.click(screen.getByRole("button", { name: /remover url/i }));
+    await user.click(screen.getByRole("button", { name: /remover item/i }));
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
-    expect(screen.getByText(/adicione ao menos uma url/i)).toBeTruthy();
+    expect(screen.getByText(/adicione ao menos um item/i)).toBeTruthy();
     expect(props.onSave).not.toHaveBeenCalled();
   });
 
@@ -162,5 +162,69 @@ describe("TabEditor", () => {
     expect(iconInput.value).toBe("★");
     fireEvent.change(iconInput, { target: { value: "→" } });
     expect(iconInput.value).toBe("→");
+  });
+
+  it("saves a tab with mixed url + file + folder items", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "Mix");
+    // first row already URL — fill it
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "https://a.test" },
+    });
+    // add file row
+    await user.click(screen.getByTestId("add-item-file"));
+    fireEvent.change(screen.getByTestId("item-value-1"), {
+      target: { value: "C:/x.txt" },
+    });
+    // add folder row
+    await user.click(screen.getByTestId("add-item-folder"));
+    fireEvent.change(screen.getByTestId("item-value-2"), {
+      target: { value: "/tmp" },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([
+      { kind: "url", value: "https://a.test" },
+      { kind: "file", path: "C:/x.txt" },
+      { kind: "folder", path: "/tmp" },
+    ]);
+  });
+
+  it("saves a file-only tab with no URL items", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "OnlyFile");
+    // remove default url row
+    await user.click(screen.getByTestId("item-remove-0"));
+    // add file row
+    await user.click(screen.getByTestId("add-item-file"));
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "/home/me/doc.pdf" },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([
+      { kind: "file", path: "/home/me/doc.pdf" },
+    ]);
+  });
+
+  it("file/folder items with empty paths are filtered out at submit", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "Filter");
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "https://kept.test" },
+    });
+    await user.click(screen.getByTestId("add-item-file"));
+    // leave file row empty
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([
+      { kind: "url", value: "https://kept.test" },
+    ]);
   });
 });

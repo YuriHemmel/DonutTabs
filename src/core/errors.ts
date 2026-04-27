@@ -21,6 +21,21 @@ function snakeToCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 }
 
+const ITEM_KIND_LABEL_KEYS: Record<string, string> = {
+  url: "settings.editor.itemKindUrl",
+  file: "settings.editor.itemKindFile",
+  folder: "settings.editor.itemKindFolder",
+};
+
+function localizeContext(
+  context: Record<string, string>,
+  t: TFunction,
+): Record<string, string> {
+  const kindKey = context.kind && ITEM_KIND_LABEL_KEYS[context.kind];
+  if (!kindKey) return context;
+  return { ...context, kind: t(kindKey) };
+}
+
 /**
  * Produz mensagem traduzida para um `AppError` vindo do Rust.
  *
@@ -35,8 +50,9 @@ export function translateAppError(err: unknown, t: TFunction): string {
   }
   const camel = snakeToCamel(err.message.code);
   const specificKey = `errors.${err.kind}.${camel}`;
+  const localizedContext = localizeContext(err.message.context, t);
   const translated = t(specificKey, {
-    ...err.message.context,
+    ...localizedContext,
     defaultValue: "",
   });
   if (translated) return translated;

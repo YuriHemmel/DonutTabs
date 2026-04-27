@@ -130,6 +130,10 @@ pub enum OpenMode {
 pub enum Item {
     #[serde(rename_all = "camelCase")]
     Url { value: String },
+    #[serde(rename_all = "camelCase")]
+    File { path: String },
+    #[serde(rename_all = "camelCase")]
+    Folder { path: String },
 }
 
 impl Default for Profile {
@@ -250,5 +254,63 @@ mod tests {
         assert_eq!(serde_json::to_string(&Language::PtBr).unwrap(), "\"ptBr\"");
         assert_eq!(serde_json::to_string(&Language::En).unwrap(), "\"en\"");
         assert_eq!(serde_json::to_string(&Language::Auto).unwrap(), "\"auto\"");
+    }
+
+    #[test]
+    fn item_url_wire_format() {
+        let it = Item::Url {
+            value: "https://x.test".into(),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert_eq!(json, "{\"kind\":\"url\",\"value\":\"https://x.test\"}");
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_file_wire_format() {
+        let it = Item::File {
+            path: "C:/Users/me/doc.pdf".into(),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert_eq!(json, "{\"kind\":\"file\",\"path\":\"C:/Users/me/doc.pdf\"}");
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_folder_wire_format() {
+        let it = Item::Folder {
+            path: "/home/me/projects".into(),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert_eq!(json, "{\"kind\":\"folder\",\"path\":\"/home/me/projects\"}");
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn tab_with_mixed_items_roundtrips() {
+        let tab = Tab {
+            id: Uuid::nil(),
+            name: Some("mix".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![
+                Item::Url {
+                    value: "https://a.test".into(),
+                },
+                Item::File {
+                    path: "/tmp/x.txt".into(),
+                },
+                Item::Folder {
+                    path: "/tmp/dir".into(),
+                },
+            ],
+        };
+        let json = serde_json::to_string(&tab).unwrap();
+        let back: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(tab, back);
     }
 }

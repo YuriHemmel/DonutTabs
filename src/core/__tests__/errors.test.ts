@@ -67,4 +67,40 @@ describe("translateAppError", () => {
     const text = translateAppError(null, i18nPt.t.bind(i18nPt));
     expect(text.length).toBeGreaterThan(0);
   });
+
+  it("localizes the `kind` context for path_empty (PT)", () => {
+    const fileErr = {
+      kind: "config",
+      message: {
+        code: "path_empty",
+        context: { tabId: "t1", profileId: "p1", kind: "file" },
+      },
+    };
+    const folderErr = {
+      kind: "config",
+      message: {
+        code: "path_empty",
+        context: { tabId: "t1", profileId: "p1", kind: "folder" },
+      },
+    };
+    expect(translateAppError(fileErr, i18nPt.t.bind(i18nPt))).toContain(
+      "Arquivo",
+    );
+    expect(translateAppError(folderErr, i18nPt.t.bind(i18nPt))).toContain(
+      "Pasta",
+    );
+  });
+
+  it("localizes the `kind` context for path_empty (EN)", () => {
+    const folderErr = {
+      kind: "config",
+      message: {
+        code: "path_empty",
+        context: { tabId: "t1", profileId: "p1", kind: "folder" },
+      },
+    };
+    expect(translateAppError(folderErr, i18nEn.t.bind(i18nEn))).toContain(
+      "Folder",
+    );
+  });
 });

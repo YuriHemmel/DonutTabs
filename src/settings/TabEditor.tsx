@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { UrlListEditor } from "./UrlListEditor";
+import { ItemListEditor, type ItemDraft } from "./ItemListEditor";
 import { translateAppError } from "../core/errors";
 import { stripLetters, graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
 import type { Tab } from "../core/types/Tab";
+import type { Item } from "../core/types/Item";
 import type { OpenMode } from "../core/types/OpenMode";
 
 const LUCIDE_PREFIX = "lucide:";
@@ -25,11 +26,21 @@ interface FormState {
   name: string;
   icon: string;
   openMode: OpenMode;
-  urls: string[];
+  items: ItemDraft[];
 }
 
 function randomUuid(): string {
   return crypto.randomUUID();
+}
+
+function itemToDraft(it: Item): ItemDraft {
+  if (it.kind === "url") return { kind: "url", value: it.value };
+  return { kind: it.kind, value: it.path };
+}
+
+function draftToItem(d: ItemDraft): Item {
+  if (d.kind === "url") return { kind: "url", value: d.value };
+  return { kind: d.kind, path: d.value };
 }
 
 function fromTab(tab: Tab | null): FormState {
@@ -39,7 +50,7 @@ function fromTab(tab: Tab | null): FormState {
       name: "",
       icon: "",
       openMode: "reuseOrNewWindow",
-      urls: [""],
+      items: [{ kind: "url", value: "" }],
     };
   }
   return {
@@ -47,9 +58,7 @@ function fromTab(tab: Tab | null): FormState {
     name: tab.name ?? "",
     icon: tab.icon ?? "",
     openMode: tab.openMode,
-    urls: tab.items.length
-      ? tab.items.map((it) => (it.kind === "url" ? it.value : ""))
-      : [""],
+    items: tab.items.length ? tab.items.map(itemToDraft) : [{ kind: "url", value: "" }],
   };
 }
 
@@ -88,19 +97,24 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       return;
     }
 
-    const urls = state.urls.map((u) => u.trim()).filter((u) => u.length > 0);
-    if (urls.length === 0) {
-      setValidation(t("settings.editor.validationAtLeastOneUrl"));
+    const trimmed: ItemDraft[] = state.items
+      .map((it) => ({ kind: it.kind, value: it.value.trim() }))
+      .filter((it) => it.value.length > 0);
+    if (trimmed.length === 0) {
+      setValidation(t("settings.editor.validationAtLeastOneItem"));
       return;
     }
 
-    for (const u of urls) {
-      try {
-        new URL(u);
-      } catch {
-        setValidation(t("settings.editor.validationInvalidUrl", { value: u }));
-        return;
+    for (const it of trimmed) {
+      if (it.kind === "url") {
+        try {
+          new URL(it.value);
+        } catch {
+          setValidation(t("settings.editor.validationInvalidUrl", { value: it.value }));
+          return;
+        }
       }
+      // file/folder: only emptiness matters; existence is checked at launch.
     }
 
     setValidation(null);
@@ -111,7 +125,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       icon: icon.length > 0 ? icon : null,
       order: initial?.order ?? 0,
       openMode: state.openMode,
-      items: urls.map((value) => ({ kind: "url", value })),
+      items: trimmed.map(draftToItem),
     };
 
     setSaving(true);
@@ -216,8 +230,11 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span>{t("settings.editor.urls")}</span>
-        <UrlListEditor values={state.urls} onChange={(urls) => setState({ ...state, urls })} />
+        <span>{t("settings.editor.items")}</span>
+        <ItemListEditor
+          values={state.items}
+          onChange={(items) => setState({ ...state, items })}
+        />
       </div>
 
       {validation && (

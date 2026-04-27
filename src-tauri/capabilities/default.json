@@ -13,6 +13,9 @@
     "global-shortcut:default",
     "opener:default",
     "opener:allow-open-url",
-    "autostart:default"
+    "opener:allow-open-path",
+    "autostart:default",
+    "dialog:default",
+    "dialog:allow-open"
   ]
 }
