@@ -352,11 +352,18 @@ export const SettingsApp: React.FC = () => {
           }}
           onImportConfig={() => {
             void (async () => {
-              const path = await dialog.pickFile();
+              const path = await dialog.pickFile({
+                filters: [
+                  { name: "DonutTabs config", extensions: ["json"] },
+                ],
+              });
               if (!path) return;
               if (!window.confirm(t("settings.system.importConfirm"))) return;
               try {
-                await ipc.importConfig(path);
+                const result = await ipc.importConfig(path);
+                if (!result.shortcutReconciled) {
+                  window.alert(t("settings.system.importShortcutWarning"));
+                }
               } catch (err) {
                 window.alert(translateAppError(err, t));
               }

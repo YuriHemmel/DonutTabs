@@ -5,6 +5,7 @@ import type { Tab } from "./types/Tab";
 import type { Theme } from "./types/Theme";
 import type { Language } from "./types/Language";
 import type { FaviconResult } from "./types/FaviconResult";
+import type { ImportResult } from "./types/ImportResult";
 
 export type SettingsIntent = "new-tab" | `edit-tab:${string}` | "new-profile";
 
@@ -48,20 +49,33 @@ export const ipc = {
   exportConfig: (targetPath: string) =>
     invoke<void>("export_config", { targetPath }),
   importConfig: (sourcePath: string) =>
-    invoke<Config>("import_config", { sourcePath }),
+    invoke<ImportResult>("import_config", { sourcePath }),
 };
+
+export interface DialogFilter {
+  name: string;
+  extensions: string[];
+}
 
 export interface SaveAsOptions {
   defaultPath?: string;
-  filters?: { name: string; extensions: string[] }[];
+  filters?: DialogFilter[];
+}
+
+export interface PickFileOptions {
+  filters?: DialogFilter[];
 }
 
 /** Native file/folder picker wrappers. Return absolute path or `null` when
  *  the user cancels. Result is `string | null` (Tauri's `open` returns
  *  `string[]` only when `multiple: true`, which we don't use here). */
 export const dialog = {
-  pickFile: async (): Promise<string | null> => {
-    const r = await openDialog({ multiple: false, directory: false });
+  pickFile: async (opts: PickFileOptions = {}): Promise<string | null> => {
+    const r = await openDialog({
+      multiple: false,
+      directory: false,
+      filters: opts.filters,
+    });
     return typeof r === "string" ? r : null;
   },
   pickFolder: async (): Promise<string | null> => {

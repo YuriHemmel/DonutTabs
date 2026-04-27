@@ -4,10 +4,24 @@ use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, TauriOpener};
 use crate::shortcut::{self, ActiveShortcut};
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, RwLock};
 use tauri::{Emitter, Manager};
+use ts_rs::TS;
 use uuid::Uuid;
+
+/// Resultado do `import_config`: a config nova já em vigor + flag indicando
+/// se o atalho global foi re-registrado com sucesso. `false` significa que
+/// a config foi gravada/carregada mas o combo do novo perfil ativo colidiu
+/// com outro app — o atalho anterior segue bound até reinício.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct ImportResult {
+    pub config: Config,
+    pub shortcut_reconciled: bool,
+}
 
 pub const CONFIG_CHANGED_EVENT: &str = "config-changed";
 pub const SETTINGS_INTENT_EVENT: &str = "settings-intent";
@@ -430,24 +444,36 @@ pub fn import_config<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     state: tauri::State<'_, AppState>,
     source_path: String,
-) -> Result<Config, AppError> {
+) -> Result<ImportResult, AppError> {
     let new_cfg = do_import(Path::new(&source_path))?;
     save_atomic(&state.config_path, &new_cfg)?;
 
     // Reconcile global shortcut to the new active profile. Failure (combo
     // collision) is non-fatal: the import already succeeded on disk + memory;
     // the shortcut just stays bound to the previous combo until restart.
-    // Same trade-off as set_active_profile.
+    // Same trade-off as set_active_profile. The frontend surfaces a localized
+    // warning when `shortcut_reconciled` is `false`.
     let new_combo = active_profile(&new_cfg)?.shortcut.clone();
-    if let Err(e) = shortcut::set_from_config(&app, &state.active_shortcut, &new_combo) {
-        eprintln!(
-            "[import_config] shortcut reconcile failed ({e:?}); keeping previous global shortcut bound"
-        );
-    }
+    let shortcut_reconciled = match shortcut::set_from_config(
+        &app,
+        &state.active_shortcut,
+        &new_combo,
+    ) {
+        Ok(()) => true,
+        Err(e) => {
+            eprintln!(
+                    "[import_config] shortcut reconcile failed ({e:?}); keeping previous global shortcut bound"
+                );
+            false
+        }
+    };
 
     *state.config.write().unwrap() = new_cfg.clone();
     let _ = app.emit(CONFIG_CHANGED_EVENT, &new_cfg);
-    Ok(new_cfg)
+    Ok(ImportResult {
+        config: new_cfg,
+        shortcut_reconciled,
+    })
 }
 
 /// Pure helper: validate + atomic-write `cfg` to `target`. Used by
