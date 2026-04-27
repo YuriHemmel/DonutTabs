@@ -1,0 +1,178 @@
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { dialog } from "../core/ipc";
+
+export type ItemKind = "url" | "file" | "folder";
+
+export interface ItemDraft {
+  kind: ItemKind;
+  value: string;
+}
+
+export interface ItemListEditorProps {
+  values: ItemDraft[];
+  onChange: (next: ItemDraft[]) => void;
+}
+
+const KIND_OPTIONS: ReadonlyArray<ItemKind> = ["url", "file", "folder"];
+
+export const ItemListEditor: React.FC<ItemListEditorProps> = ({
+  values,
+  onChange,
+}) => {
+  const { t } = useTranslation();
+
+  const updateAt = (i: number, patch: Partial<ItemDraft>) => {
+    const next = values.map((v, idx) => (idx === i ? { ...v, ...patch } : v));
+    onChange(next);
+  };
+
+  const removeAt = (i: number) => {
+    onChange(values.filter((_, idx) => idx !== i));
+  };
+
+  const add = (kind: ItemKind) => {
+    onChange([...values, { kind, value: "" }]);
+  };
+
+  const browse = async (i: number, kind: ItemKind) => {
+    const path = kind === "folder" ? await dialog.pickFolder() : await dialog.pickFile();
+    if (path) updateAt(i, { value: path });
+  };
+
+  const placeholderFor = (kind: ItemKind) =>
+    t(
+      `settings.editor.itemPlaceholder${
+        kind === "url" ? "Url" : kind === "file" ? "File" : "Folder"
+      }`,
+    );
+
+  const labelFor = (kind: ItemKind) =>
+    t(
+      `settings.editor.itemKind${
+        kind === "url" ? "Url" : kind === "file" ? "File" : "Folder"
+      }`,
+    );
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    background: "var(--input-bg)",
+    color: "var(--fg)",
+    border: "1px solid var(--input-border)",
+    borderRadius: 4,
+    padding: "6px 8px",
+    font: "inherit",
+  };
+  const selectStyle: React.CSSProperties = {
+    ...inputStyle,
+    flex: "0 0 110px",
+  };
+  const ghostBtn: React.CSSProperties = {
+    background: "transparent",
+    color: "var(--fg)",
+    border: "1px solid var(--ghost-border)",
+    borderRadius: 4,
+    padding: "4px 10px",
+    cursor: "pointer",
+    font: "inherit",
+  };
+  const removeBtn: React.CSSProperties = {
+    background: "transparent",
+    color: "var(--danger-fg)",
+    border: "1px solid var(--danger-border)",
+    borderRadius: 4,
+    padding: "4px 10px",
+    cursor: "pointer",
+  };
+  const addBtn: React.CSSProperties = {
+    background: "transparent",
+    color: "var(--fg)",
+    border: "1px dashed var(--input-border)",
+    borderRadius: 4,
+    padding: "4px 10px",
+    cursor: "pointer",
+    fontSize: 12,
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {values.map((it, i) => (
+        <div
+          key={i}
+          data-testid={`item-row-${i}`}
+          style={{ display: "flex", gap: 6, alignItems: "center" }}
+        >
+          <select
+            aria-label={`${t("settings.editor.items")} ${i + 1} kind`}
+            data-testid={`item-kind-${i}`}
+            value={it.kind}
+            onChange={(e) =>
+              updateAt(i, { kind: e.target.value as ItemKind })
+            }
+            style={selectStyle}
+          >
+            {KIND_OPTIONS.map((k) => (
+              <option key={k} value={k}>
+                {labelFor(k)}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label={`${labelFor(it.kind)} ${i + 1}`}
+            data-testid={`item-value-${i}`}
+            value={it.value}
+            onChange={(e) => updateAt(i, { value: e.target.value })}
+            placeholder={placeholderFor(it.kind)}
+            style={inputStyle}
+          />
+          {it.kind !== "url" && (
+            <button
+              type="button"
+              data-testid={`item-browse-${i}`}
+              onClick={() => browse(i, it.kind)}
+              style={ghostBtn}
+            >
+              {t("settings.editor.browse")}
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label={t("settings.editor.removeItem")}
+            data-testid={`item-remove-${i}`}
+            onClick={() => removeAt(i)}
+            style={removeBtn}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          data-testid="add-item-url"
+          onClick={() => add("url")}
+          style={addBtn}
+        >
+          + {t("settings.editor.addItemUrl")}
+        </button>
+        <button
+          type="button"
+          data-testid="add-item-file"
+          onClick={() => add("file")}
+          style={addBtn}
+        >
+          + {t("settings.editor.addItemFile")}
+        </button>
+        <button
+          type="button"
+          data-testid="add-item-folder"
+          onClick={() => add("folder")}
+          style={addBtn}
+        >
+          + {t("settings.editor.addItemFolder")}
+        </button>
+      </div>
+    </div>
+  );
+};

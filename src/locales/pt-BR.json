@@ -6,6 +6,7 @@
       "tabMissingNameAndIcon": "Aba {{id}} precisa de nome ou ícone",
       "invalidUrl": "URL inválida na aba {{tabId}}: {{reason}}",
       "duplicateTabId": "ID de aba duplicado: {{id}}",
+      "pathEmpty": "Caminho de {{kind}} não pode ser vazio na aba {{tabId}}.",
       "noProfiles": "Configuração inválida: nenhum perfil cadastrado.",
       "activeProfileNotFound": "Perfil ativo não encontrado: {{activeProfileId}}",
       "duplicateProfileId": "ID de perfil duplicado: {{id}}",
@@ -132,10 +133,18 @@
       "openModeReuseOrNewWindow": "Reutilizar ou nova janela",
       "openModeNewWindow": "Nova janela",
       "openModeNewTab": "Nova aba",
-      "urls": "URLs",
-      "urlPlaceholder": "https://…",
-      "addUrl": "Adicionar URL",
-      "removeUrl": "Remover URL",
+      "items": "Itens",
+      "itemKindUrl": "URL",
+      "itemKindFile": "Arquivo",
+      "itemKindFolder": "Pasta",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\caminho\\arquivo.pdf",
+      "itemPlaceholderFolder": "C:\\caminho\\pasta",
+      "addItemUrl": "Adicionar URL",
+      "addItemFile": "Adicionar arquivo",
+      "addItemFolder": "Adicionar pasta",
+      "browse": "Procurar…",
+      "removeItem": "Remover item",
       "save": "Salvar",
       "saving": "Salvando…",
       "cancel": "Cancelar",
@@ -143,8 +152,9 @@
       "confirmDelete": "Excluir aba \"{{label}}\"? Essa ação não pode ser desfeita.",
       "validationNameOrIcon": "Preencha nome ou ícone.",
       "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone.",
-      "validationAtLeastOneUrl": "Adicione ao menos uma URL.",
-      "validationInvalidUrl": "URL inválida: {{value}}"
+      "validationAtLeastOneItem": "Adicione ao menos um item (URL, arquivo ou pasta).",
+      "validationInvalidUrl": "URL inválida: {{value}}",
+      "validationPathEmpty": "Caminho de {{kind}} não pode ser vazio."
     }
   }
 }

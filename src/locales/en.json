@@ -6,6 +6,7 @@
       "tabMissingNameAndIcon": "Tab {{id}} needs a name or an icon",
       "invalidUrl": "Invalid URL in tab {{tabId}}: {{reason}}",
       "duplicateTabId": "Duplicate tab id: {{id}}",
+      "pathEmpty": "{{kind}} path cannot be empty in tab {{tabId}}.",
       "noProfiles": "Invalid config: no profiles defined.",
       "activeProfileNotFound": "Active profile not found: {{activeProfileId}}",
       "duplicateProfileId": "Duplicate profile id: {{id}}",
@@ -132,10 +133,18 @@
       "openModeReuseOrNewWindow": "Reuse or new window",
       "openModeNewWindow": "New window",
       "openModeNewTab": "New tab",
-      "urls": "URLs",
-      "urlPlaceholder": "https://…",
-      "addUrl": "Add URL",
-      "removeUrl": "Remove URL",
+      "items": "Items",
+      "itemKindUrl": "URL",
+      "itemKindFile": "File",
+      "itemKindFolder": "Folder",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\path\\to\\file.pdf",
+      "itemPlaceholderFolder": "C:\\path\\to\\folder",
+      "addItemUrl": "Add URL",
+      "addItemFile": "Add file",
+      "addItemFolder": "Add folder",
+      "browse": "Browse…",
+      "removeItem": "Remove item",
       "save": "Save",
       "saving": "Saving…",
       "cancel": "Cancel",
@@ -143,8 +152,9 @@
       "confirmDelete": "Delete tab \"{{label}}\"? This cannot be undone.",
       "validationNameOrIcon": "Provide a name or an icon.",
       "validationIconTooLong": "The icon must be a single character or emoji.",
-      "validationAtLeastOneUrl": "Add at least one URL.",
-      "validationInvalidUrl": "Invalid URL: {{value}}"
+      "validationAtLeastOneItem": "Add at least one item (URL, file or folder).",
+      "validationInvalidUrl": "Invalid URL: {{value}}",
+      "validationPathEmpty": "{{kind}} path cannot be empty."
     }
   }
 }
