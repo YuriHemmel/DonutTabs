@@ -16,6 +16,52 @@ export interface ItemListEditorProps {
 
 const KIND_OPTIONS: ReadonlyArray<ItemKind> = ["url", "file", "folder"];
 
+const KIND_SUFFIX: Record<ItemKind, string> = {
+  url: "Url",
+  file: "File",
+  folder: "Folder",
+};
+
+const inputStyle: React.CSSProperties = {
+  flex: 1,
+  background: "var(--input-bg)",
+  color: "var(--fg)",
+  border: "1px solid var(--input-border)",
+  borderRadius: 4,
+  padding: "6px 8px",
+  font: "inherit",
+};
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  flex: "0 0 110px",
+};
+const ghostBtn: React.CSSProperties = {
+  background: "transparent",
+  color: "var(--fg)",
+  border: "1px solid var(--ghost-border)",
+  borderRadius: 4,
+  padding: "4px 10px",
+  cursor: "pointer",
+  font: "inherit",
+};
+const removeBtn: React.CSSProperties = {
+  background: "transparent",
+  color: "var(--danger-fg)",
+  border: "1px solid var(--danger-border)",
+  borderRadius: 4,
+  padding: "4px 10px",
+  cursor: "pointer",
+};
+const addBtn: React.CSSProperties = {
+  background: "transparent",
+  color: "var(--fg)",
+  border: "1px dashed var(--input-border)",
+  borderRadius: 4,
+  padding: "4px 10px",
+  cursor: "pointer",
+  fontSize: 12,
+};
+
 export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   values,
   onChange,
@@ -41,58 +87,10 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   };
 
   const placeholderFor = (kind: ItemKind) =>
-    t(
-      `settings.editor.itemPlaceholder${
-        kind === "url" ? "Url" : kind === "file" ? "File" : "Folder"
-      }`,
-    );
+    t(`settings.editor.itemPlaceholder${KIND_SUFFIX[kind]}`);
 
   const labelFor = (kind: ItemKind) =>
-    t(
-      `settings.editor.itemKind${
-        kind === "url" ? "Url" : kind === "file" ? "File" : "Folder"
-      }`,
-    );
-
-  const inputStyle: React.CSSProperties = {
-    flex: 1,
-    background: "var(--input-bg)",
-    color: "var(--fg)",
-    border: "1px solid var(--input-border)",
-    borderRadius: 4,
-    padding: "6px 8px",
-    font: "inherit",
-  };
-  const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    flex: "0 0 110px",
-  };
-  const ghostBtn: React.CSSProperties = {
-    background: "transparent",
-    color: "var(--fg)",
-    border: "1px solid var(--ghost-border)",
-    borderRadius: 4,
-    padding: "4px 10px",
-    cursor: "pointer",
-    font: "inherit",
-  };
-  const removeBtn: React.CSSProperties = {
-    background: "transparent",
-    color: "var(--danger-fg)",
-    border: "1px solid var(--danger-border)",
-    borderRadius: 4,
-    padding: "4px 10px",
-    cursor: "pointer",
-  };
-  const addBtn: React.CSSProperties = {
-    background: "transparent",
-    color: "var(--fg)",
-    border: "1px dashed var(--input-border)",
-    borderRadius: 4,
-    padding: "4px 10px",
-    cursor: "pointer",
-    fontSize: 12,
-  };
+    t(`settings.editor.itemKind${KIND_SUFFIX[kind]}`);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
