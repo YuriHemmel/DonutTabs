@@ -663,6 +663,7 @@ mod tests {
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![Item::Url {
                 value: "https://example.com".into(),
+                open_with: None,
             }],
         }
     }

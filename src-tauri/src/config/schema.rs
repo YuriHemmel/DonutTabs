@@ -129,11 +129,23 @@ pub enum OpenMode {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Item {
     #[serde(rename_all = "camelCase")]
-    Url { value: String },
+    Url {
+        value: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        open_with: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
-    File { path: String },
+    File {
+        path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        open_with: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
-    Folder { path: String },
+    Folder {
+        path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        open_with: Option<String>,
+    },
 }
 
 impl Default for Profile {
@@ -215,6 +227,7 @@ mod tests {
                 open_mode: OpenMode::ReuseOrNewWindow,
                 items: vec![Item::Url {
                     value: "https://example.com".into(),
+                    open_with: None,
                 }],
             }],
         };
@@ -260,6 +273,7 @@ mod tests {
     fn item_url_wire_format() {
         let it = Item::Url {
             value: "https://x.test".into(),
+            open_with: None,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert_eq!(json, "{\"kind\":\"url\",\"value\":\"https://x.test\"}");
@@ -271,6 +285,7 @@ mod tests {
     fn item_file_wire_format() {
         let it = Item::File {
             path: "C:/Users/me/doc.pdf".into(),
+            open_with: None,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert_eq!(json, "{\"kind\":\"file\",\"path\":\"C:/Users/me/doc.pdf\"}");
@@ -282,6 +297,7 @@ mod tests {
     fn item_folder_wire_format() {
         let it = Item::Folder {
             path: "/home/me/projects".into(),
+            open_with: None,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert_eq!(json, "{\"kind\":\"folder\",\"path\":\"/home/me/projects\"}");
@@ -300,17 +316,66 @@ mod tests {
             items: vec![
                 Item::Url {
                     value: "https://a.test".into(),
+                    open_with: None,
                 },
                 Item::File {
                     path: "/tmp/x.txt".into(),
+                    open_with: None,
                 },
                 Item::Folder {
                     path: "/tmp/dir".into(),
+                    open_with: None,
                 },
             ],
         };
         let json = serde_json::to_string(&tab).unwrap();
         let back: Tab = serde_json::from_str(&json).unwrap();
         assert_eq!(tab, back);
+    }
+
+    #[test]
+    fn item_with_open_with_round_trips_and_serializes_field() {
+        let it = Item::Url {
+            value: "https://x.test".into(),
+            open_with: Some("firefox".into()),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(json.contains("\"openWith\":\"firefox\""));
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_without_open_with_omits_field() {
+        let it = Item::File {
+            path: "/tmp/x".into(),
+            open_with: None,
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(
+            !json.contains("openWith"),
+            "field should be skipped when None: {json}"
+        );
+    }
+
+    #[test]
+    fn item_deserializes_legacy_payload_without_open_with() {
+        // Plano 10 payloads (no openWith key) must deserialize as None.
+        let url: Item = serde_json::from_str(r#"{"kind":"url","value":"https://x"}"#).unwrap();
+        assert_eq!(
+            url,
+            Item::Url {
+                value: "https://x".into(),
+                open_with: None
+            }
+        );
+        let file: Item = serde_json::from_str(r#"{"kind":"file","path":"/tmp/x"}"#).unwrap();
+        assert_eq!(
+            file,
+            Item::File {
+                path: "/tmp/x".into(),
+                open_with: None
+            }
+        );
     }
 }

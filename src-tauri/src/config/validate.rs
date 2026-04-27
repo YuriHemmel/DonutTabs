@@ -82,7 +82,7 @@ fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
     for tab in &profile.tabs {
         for item in &tab.items {
             match item {
-                Item::Url { value } => {
+                Item::Url { value, .. } => {
                     url::Url::parse(value).map_err(|e| {
                         AppError::config(
                             "invalid_url",
@@ -94,7 +94,7 @@ fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
                         )
                     })?;
                 }
-                Item::File { path } | Item::Folder { path } => {
+                Item::File { path, .. } | Item::Folder { path, .. } => {
                     if path.trim().is_empty() {
                         return Err(AppError::config(
                             "path_empty",
@@ -105,6 +105,18 @@ fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
                             ],
                         ));
                     }
+                }
+            }
+            if let Some(ow) = item_open_with(item) {
+                if ow.trim().is_empty() {
+                    return Err(AppError::config(
+                        "open_with_empty",
+                        &[
+                            ("tabId", tab.id.to_string()),
+                            ("profileId", profile.id.to_string()),
+                            ("kind", item_kind_label(item).to_string()),
+                        ],
+                    ));
                 }
             }
         }
@@ -131,6 +143,14 @@ fn item_kind_label(item: &Item) -> &'static str {
         Item::Url { .. } => "url",
         Item::File { .. } => "file",
         Item::Folder { .. } => "folder",
+    }
+}
+
+fn item_open_with(item: &Item) -> Option<&str> {
+    match item {
+        Item::Url { open_with, .. }
+        | Item::File { open_with, .. }
+        | Item::Folder { open_with, .. } => open_with.as_deref(),
     }
 }
 
@@ -229,6 +249,7 @@ mod tests {
             None,
             vec![Item::Url {
                 value: "not a url".into(),
+                open_with: None,
             }],
         ));
         match validate(&cfg).unwrap_err() {
@@ -270,6 +291,7 @@ mod tests {
             None,
             vec![Item::File {
                 path: "C:/x.txt".into(),
+                open_with: None,
             }],
         ));
         assert!(validate(&cfg).is_ok());
@@ -283,6 +305,7 @@ mod tests {
             None,
             vec![Item::Folder {
                 path: "/tmp".into(),
+                open_with: None,
             }],
         ));
         assert!(validate(&cfg).is_ok());
@@ -294,7 +317,10 @@ mod tests {
         cfg.profiles[0].tabs.push(tab_with(
             Some("F"),
             None,
-            vec![Item::File { path: "".into() }],
+            vec![Item::File {
+                path: "".into(),
+                open_with: None,
+            }],
         ));
         match validate(&cfg).unwrap_err() {
             AppError::Config { code, context } => {
@@ -311,7 +337,10 @@ mod tests {
         cfg.profiles[0].tabs.push(tab_with(
             Some("D"),
             None,
-            vec![Item::Folder { path: "   ".into() }],
+            vec![Item::Folder {
+                path: "   ".into(),
+                open_with: None,
+            }],
         ));
         match validate(&cfg).unwrap_err() {
             AppError::Config { code, context } => {
@@ -331,12 +360,15 @@ mod tests {
             vec![
                 Item::Url {
                     value: "https://a.test".into(),
+                    open_with: None,
                 },
                 Item::File {
                     path: "/tmp/x".into(),
+                    open_with: None,
                 },
                 Item::Folder {
                     path: "/tmp".into(),
+                    open_with: None,
                 },
             ],
         ));
@@ -366,6 +398,98 @@ mod tests {
         p2.tabs.push(t2);
         cfg.profiles.push(p2);
 
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn open_with_some_non_empty_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Work"),
+            None,
+            vec![Item::Url {
+                value: "https://work.test".into(),
+                open_with: Some("firefox".into()),
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn open_with_none_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Default"),
+            None,
+            vec![Item::Url {
+                value: "https://x.test".into(),
+                open_with: None,
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn open_with_empty_string_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("X"),
+            None,
+            vec![Item::Url {
+                value: "https://x.test".into(),
+                open_with: Some("".into()),
+            }],
+        ));
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "open_with_empty");
+                assert_eq!(context.get("kind").map(String::as_str), Some("url"));
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn open_with_whitespace_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("X"),
+            None,
+            vec![Item::File {
+                path: "/tmp/x".into(),
+                open_with: Some("   ".into()),
+            }],
+        ));
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "open_with_empty");
+                assert_eq!(context.get("kind").map(String::as_str), Some("file"));
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mixed_open_with_some_and_none_validates() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Mix"),
+            None,
+            vec![
+                Item::Url {
+                    value: "https://work.test".into(),
+                    open_with: Some("edge".into()),
+                },
+                Item::Url {
+                    value: "https://personal.test".into(),
+                    open_with: None,
+                },
+                Item::File {
+                    path: "/tmp/x".into(),
+                    open_with: Some("code".into()),
+                },
+            ],
+        ));
         assert!(validate(&cfg).is_ok());
     }
 }

@@ -1,9 +1,17 @@
 use crate::config::schema::{Item, Tab};
 use crate::errors::{AppError, AppResult};
 
+/// Abstraction over `tauri-plugin-opener` so launcher logic stays unit-testable.
+///
+/// Both methods accept an optional `with` (handler/program — e.g. `"firefox"`,
+/// `"code"`). `None` defers to the OS default. The string is forwarded as-is
+/// to the plugin — semantics depend on the OS:
+///   * Windows: executable on PATH or absolute `.exe` path
+///   * macOS: `.app` bundle name (e.g. `"Firefox"`)
+///   * Linux: program name on PATH
 pub trait Opener: Send + Sync {
-    fn open_url(&self, url: &str) -> Result<(), String>;
-    fn open_path(&self, path: &str) -> Result<(), String>;
+    fn open_url(&self, url: &str, with: Option<&str>) -> Result<(), String>;
+    fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String>;
 }
 
 /// Resultado da tentativa de abrir uma aba: lista de erros por item.
@@ -21,13 +29,13 @@ pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
     };
     for item in &tab.items {
         match item {
-            Item::Url { value } => {
-                if let Err(e) = opener.open_url(value) {
+            Item::Url { value, open_with } => {
+                if let Err(e) = opener.open_url(value, open_with.as_deref()) {
                     outcome.failures.push((value.clone(), e));
                 }
             }
-            Item::File { path } | Item::Folder { path } => {
-                if let Err(e) = opener.open_path(path) {
+            Item::File { path, open_with } | Item::Folder { path, open_with } => {
+                if let Err(e) = opener.open_path(path, open_with.as_deref()) {
                     outcome.failures.push((path.clone(), e));
                 }
             }
@@ -53,19 +61,19 @@ impl<'a, R: tauri::Runtime> TauriOpener<'a, R> {
 }
 
 impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
-    fn open_url(&self, url: &str) -> Result<(), String> {
+    fn open_url(&self, url: &str, with: Option<&str>) -> Result<(), String> {
         use tauri_plugin_opener::OpenerExt;
         self.app
             .opener()
-            .open_url(url, None::<&str>)
+            .open_url(url, with)
             .map_err(|e| e.to_string())
     }
 
-    fn open_path(&self, path: &str) -> Result<(), String> {
+    fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String> {
         use tauri_plugin_opener::OpenerExt;
         self.app
             .opener()
-            .open_path(path, None::<&str>)
+            .open_path(path, with)
             .map_err(|e| e.to_string())
     }
 }
@@ -77,9 +85,11 @@ mod tests {
     use std::sync::Mutex;
     use uuid::Uuid;
 
+    type Call = (String, Option<String>);
+
     struct MockOpener {
-        url_calls: Mutex<Vec<String>>,
-        path_calls: Mutex<Vec<String>>,
+        url_calls: Mutex<Vec<Call>>,
+        path_calls: Mutex<Vec<Call>>,
         fail_urls: Vec<String>,
         fail_paths: Vec<String>,
     }
@@ -96,8 +106,11 @@ mod tests {
     }
 
     impl Opener for MockOpener {
-        fn open_url(&self, url: &str) -> Result<(), String> {
-            self.url_calls.lock().unwrap().push(url.to_string());
+        fn open_url(&self, url: &str, with: Option<&str>) -> Result<(), String> {
+            self.url_calls
+                .lock()
+                .unwrap()
+                .push((url.to_string(), with.map(str::to_string)));
             if self.fail_urls.iter().any(|f| f == url) {
                 Err("simulated url failure".into())
             } else {
@@ -105,8 +118,11 @@ mod tests {
             }
         }
 
-        fn open_path(&self, path: &str) -> Result<(), String> {
-            self.path_calls.lock().unwrap().push(path.to_string());
+        fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String> {
+            self.path_calls
+                .lock()
+                .unwrap()
+                .push((path.to_string(), with.map(str::to_string)));
             if self.fail_paths.iter().any(|f| f == path) {
                 Err("simulated path failure".into())
             } else {
@@ -124,7 +140,10 @@ mod tests {
             open_mode: OpenMode::ReuseOrNewWindow,
             items: urls
                 .iter()
-                .map(|u| Item::Url { value: (*u).into() })
+                .map(|u| Item::Url {
+                    value: (*u).into(),
+                    open_with: None,
+                })
                 .collect(),
         }
     }
@@ -140,6 +159,15 @@ mod tests {
         }
     }
 
+    fn url_values(calls: &Mutex<Vec<Call>>) -> Vec<String> {
+        calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(v, _)| v.clone())
+            .collect()
+    }
+
     #[test]
     fn opens_all_urls_in_order() {
         let opener = MockOpener::new();
@@ -148,7 +176,7 @@ mod tests {
         assert!(outcome.failures.is_empty());
         assert_eq!(outcome.total, 3);
         assert_eq!(
-            *opener.url_calls.lock().unwrap(),
+            url_values(&opener.url_calls),
             vec!["https://a", "https://b", "https://c"]
         );
         assert!(opener.path_calls.lock().unwrap().is_empty());
@@ -193,20 +221,29 @@ mod tests {
         let tab = tab_with_items(vec![
             Item::Url {
                 value: "https://a".into(),
+                open_with: None,
             },
             Item::File {
                 path: "/tmp/x.txt".into(),
+                open_with: None,
             },
             Item::Folder {
                 path: "/tmp".into(),
+                open_with: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(outcome.total, 3);
-        assert_eq!(*opener.url_calls.lock().unwrap(), vec!["https://a"]);
+        assert_eq!(url_values(&opener.url_calls), vec!["https://a"]);
         assert_eq!(
-            *opener.path_calls.lock().unwrap(),
+            opener
+                .path_calls
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(p, _)| p.clone())
+                .collect::<Vec<_>>(),
             vec!["/tmp/x.txt", "/tmp"]
         );
     }
@@ -218,9 +255,11 @@ mod tests {
         let tab = tab_with_items(vec![
             Item::Url {
                 value: "https://a".into(),
+                open_with: None,
             },
             Item::File {
                 path: "/missing".into(),
+                open_with: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener).unwrap();
@@ -234,12 +273,52 @@ mod tests {
         let mut opener = MockOpener::new();
         opener.fail_paths = vec!["/a".into(), "/b".into()];
         let tab = tab_with_items(vec![
-            Item::File { path: "/a".into() },
-            Item::Folder { path: "/b".into() },
+            Item::File {
+                path: "/a".into(),
+                open_with: None,
+            },
+            Item::Folder {
+                path: "/b".into(),
+                open_with: None,
+            },
         ]);
         match launch_tab(&tab, &opener).unwrap_err() {
             AppError::Launcher { code, .. } => assert_eq!(code, "all_items_failed"),
             other => panic!("expected Launcher error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn open_with_is_forwarded_per_item() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                value: "https://work".into(),
+                open_with: Some("edge".into()),
+            },
+            Item::Url {
+                value: "https://personal".into(),
+                open_with: None,
+            },
+            Item::File {
+                path: "/tmp/x.txt".into(),
+                open_with: Some("code".into()),
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener).unwrap();
+        assert!(outcome.failures.is_empty());
+        let url_calls = opener.url_calls.lock().unwrap().clone();
+        assert_eq!(
+            url_calls,
+            vec![
+                ("https://work".to_string(), Some("edge".to_string())),
+                ("https://personal".to_string(), None),
+            ]
+        );
+        let path_calls = opener.path_calls.lock().unwrap().clone();
+        assert_eq!(
+            path_calls,
+            vec![("/tmp/x.txt".to_string(), Some("code".to_string()))]
+        );
     }
 }

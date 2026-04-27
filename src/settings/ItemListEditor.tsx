@@ -7,6 +7,8 @@ export type ItemKind = "url" | "file" | "folder";
 export interface ItemDraft {
   kind: ItemKind;
   value: string;
+  /** Optional handler/program. Empty string ⇔ unset (uses OS default). */
+  openWith: string;
 }
 
 export interface ItemListEditorProps {
@@ -35,6 +37,10 @@ const selectStyle: React.CSSProperties = {
   ...inputStyle,
   flex: "0 0 110px",
 };
+const openWithStyle: React.CSSProperties = {
+  ...inputStyle,
+  flex: "0 0 140px",
+};
 const ghostBtn: React.CSSProperties = {
   background: "transparent",
   color: "var(--fg)",
@@ -42,6 +48,14 @@ const ghostBtn: React.CSSProperties = {
   borderRadius: 4,
   padding: "4px 10px",
   cursor: "pointer",
+  font: "inherit",
+};
+const browseSpacer: React.CSSProperties = {
+  flex: "0 0 auto",
+  visibility: "hidden",
+  border: "1px solid transparent",
+  borderRadius: 4,
+  padding: "4px 10px",
   font: "inherit",
 };
 const removeBtn: React.CSSProperties = {
@@ -78,7 +92,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   };
 
   const add = (kind: ItemKind) => {
-    onChange([...values, { kind, value: "" }]);
+    onChange([...values, { kind, value: "", openWith: "" }]);
   };
 
   const browse = async (i: number, kind: ItemKind) => {
@@ -123,7 +137,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
             placeholder={placeholderFor(it.kind)}
             style={inputStyle}
           />
-          {it.kind !== "url" && (
+          {it.kind !== "url" ? (
             <button
               type="button"
               data-testid={`item-browse-${i}`}
@@ -132,7 +146,20 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
             >
               {t("settings.editor.browse")}
             </button>
+          ) : (
+            <div data-testid={`item-browse-spacer-${i}`} style={browseSpacer} aria-hidden>
+              {t("settings.editor.browse")}
+            </div>
           )}
+          <input
+            aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
+            data-testid={`item-open-with-${i}`}
+            value={it.openWith}
+            onChange={(e) => updateAt(i, { openWith: e.target.value })}
+            placeholder={t("settings.editor.openWithPlaceholder")}
+            title={t("settings.editor.openWithHint")}
+            style={openWithStyle}
+          />
           <button
             type="button"
             aria-label={t("settings.editor.removeItem")}

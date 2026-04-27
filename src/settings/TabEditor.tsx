@@ -34,13 +34,16 @@ function randomUuid(): string {
 }
 
 function itemToDraft(it: Item): ItemDraft {
-  if (it.kind === "url") return { kind: "url", value: it.value };
-  return { kind: it.kind, value: it.path };
+  const openWith = it.openWith ?? "";
+  if (it.kind === "url") return { kind: "url", value: it.value, openWith };
+  return { kind: it.kind, value: it.path, openWith };
 }
 
 function draftToItem(d: ItemDraft): Item {
-  if (d.kind === "url") return { kind: "url", value: d.value };
-  return { kind: d.kind, path: d.value };
+  const ow = d.openWith.trim();
+  const openWith = ow.length > 0 ? ow : null;
+  if (d.kind === "url") return { kind: "url", value: d.value, openWith };
+  return { kind: d.kind, path: d.value, openWith };
 }
 
 function fromTab(tab: Tab | null): FormState {
@@ -50,7 +53,7 @@ function fromTab(tab: Tab | null): FormState {
       name: "",
       icon: "",
       openMode: "reuseOrNewWindow",
-      items: [{ kind: "url", value: "" }],
+      items: [{ kind: "url", value: "", openWith: "" }],
     };
   }
   return {
@@ -58,7 +61,9 @@ function fromTab(tab: Tab | null): FormState {
     name: tab.name ?? "",
     icon: tab.icon ?? "",
     openMode: tab.openMode,
-    items: tab.items.length ? tab.items.map(itemToDraft) : [{ kind: "url", value: "" }],
+    items: tab.items.length
+      ? tab.items.map(itemToDraft)
+      : [{ kind: "url", value: "", openWith: "" }],
   };
 }
 
@@ -98,7 +103,11 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     }
 
     const trimmed: ItemDraft[] = state.items
-      .map((it) => ({ kind: it.kind, value: it.value.trim() }))
+      .map((it) => ({
+        kind: it.kind,
+        value: it.value.trim(),
+        openWith: it.openWith.trim(),
+      }))
       .filter((it) => it.value.length > 0);
     if (trimmed.length === 0) {
       setValidation(t("settings.editor.validationAtLeastOneItem"));
