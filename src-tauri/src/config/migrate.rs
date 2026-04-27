@@ -74,6 +74,7 @@ mod tests {
                 open_mode: OpenMode::ReuseOrNewWindow,
                 items: vec![Item::Url {
                     value: "https://a.test".into(),
+                    open_with: None,
                 }],
             }],
         }
