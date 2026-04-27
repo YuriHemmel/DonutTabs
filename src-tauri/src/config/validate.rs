@@ -1,5 +1,6 @@
 use super::schema::*;
 use crate::errors::{AppError, AppResult};
+use crate::shortcut;
 
 /// Retorna `Ok(())` se a config v2 é semanticamente válida.
 /// Retorna `Err(AppError::Config { code, context })` com o primeiro erro encontrado.
@@ -14,6 +15,11 @@ pub fn validate(config: &Config) -> AppResult<()> {
     if config.interaction.hover_hold_ms == 0 {
         return Err(AppError::config("hover_hold_ms_zero", &[]));
     }
+
+    if config.interaction.search_shortcut.trim().is_empty() {
+        return Err(AppError::config("search_shortcut_empty", &[]));
+    }
+    shortcut::validate_combo(&config.interaction.search_shortcut)?;
 
     if config.profiles.is_empty() {
         return Err(AppError::config("no_profiles", &[]));
@@ -490,6 +496,68 @@ mod tests {
                 },
             ],
         ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn default_search_shortcut_is_valid() {
+        // Default config carrega `CommandOrControl+F` — bate com `validate_combo`.
+        assert!(validate(&base_config()).is_ok());
+    }
+
+    #[test]
+    fn search_shortcut_empty_is_rejected() {
+        let mut cfg = base_config();
+        cfg.interaction.search_shortcut = "".into();
+        assert_config_code(validate(&cfg).unwrap_err(), "search_shortcut_empty");
+    }
+
+    #[test]
+    fn search_shortcut_whitespace_is_rejected() {
+        let mut cfg = base_config();
+        cfg.interaction.search_shortcut = "   ".into();
+        assert_config_code(validate(&cfg).unwrap_err(), "search_shortcut_empty");
+    }
+
+    #[test]
+    fn search_shortcut_garbage_is_rejected() {
+        let mut cfg = base_config();
+        cfg.interaction.search_shortcut = "garbage".into();
+        // `validate_combo` propaga `shortcut_parse_failed`.
+        match validate(&cfg).unwrap_err() {
+            AppError::Shortcut { code, .. } => assert_eq!(code, "shortcut_parse_failed"),
+            other => panic!("expected Shortcut error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn legacy_config_without_search_shortcut_deserializes_with_default() {
+        // Plano-12 payload (sem `searchShortcut` em `interaction`) precisa
+        // sobreviver ao roundtrip via `serde` graças ao `#[serde(default)]`.
+        let json = r#"{
+            "version": 2,
+            "activeProfileId": "11111111-1111-1111-1111-111111111111",
+            "profiles": [
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "name": "Padrão",
+                    "icon": null,
+                    "shortcut": "CommandOrControl+Shift+Space",
+                    "theme": "dark",
+                    "tabs": []
+                }
+            ],
+            "appearance": { "language": "auto" },
+            "interaction": {
+                "spawnPosition": "cursor",
+                "selectionMode": "clickOrRelease",
+                "hoverHoldMs": 800
+            },
+            "pagination": { "itemsPerPage": 6, "wheelDirection": "standard" },
+            "system": { "autostart": false }
+        }"#;
+        let cfg: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(cfg.interaction.search_shortcut, "CommandOrControl+F");
         assert!(validate(&cfg).is_ok());
     }
 }

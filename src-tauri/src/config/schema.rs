@@ -61,6 +61,15 @@ pub struct Interaction {
     pub spawn_position: SpawnPosition,
     pub selection_mode: SelectionMode,
     pub hover_hold_ms: u32,
+    /// Atalho window-level que abre o overlay de busca rápida no donut.
+    /// Formato Tauri (`CommandOrControl+F`). Configs do Plano 12 ou
+    /// anteriores deserializam usando `default_search_shortcut`.
+    #[serde(default = "default_search_shortcut")]
+    pub search_shortcut: String,
+}
+
+fn default_search_shortcut() -> String {
+    "CommandOrControl+F".to_string()
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
@@ -176,6 +185,7 @@ impl Default for Config {
                 spawn_position: SpawnPosition::Cursor,
                 selection_mode: SelectionMode::ClickOrRelease,
                 hover_hold_ms: 800,
+                search_shortcut: default_search_shortcut(),
             },
             pagination: Pagination {
                 items_per_page: 6,

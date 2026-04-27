@@ -60,6 +60,7 @@ mod tests {
                 spawn_position: SpawnPosition::Cursor,
                 selection_mode: SelectionMode::ClickOrRelease,
                 hover_hold_ms: 800,
+                search_shortcut: "CommandOrControl+F".into(),
             },
             pagination: Pagination {
                 items_per_page: 6,
