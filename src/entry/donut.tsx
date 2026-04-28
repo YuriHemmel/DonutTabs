@@ -8,6 +8,8 @@ import { Donut } from "../donut/Donut";
 import { ScriptConfirmModal } from "../donut/ScriptConfirmModal";
 import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
 import { initI18n, changeLanguage } from "../core/i18n";
+import { applyTokensAsCssVars } from "../core/theme";
+import { resolveThemeTokens } from "../core/themeTokens";
 import { translateAppError, isAppError } from "../core/errors";
 import type { Config } from "../core/types/Config";
 
@@ -69,6 +71,22 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
       unlisten?.();
     };
   }, []);
+
+  // Plano 15: aplica tokens visuais como CSS vars sempre que o config muda
+  // — alimenta CSS para superfícies não-SVG (toast, modals). Donut SVG
+  // continua consumindo via `tokens` prop + ThemeContext.
+  useEffect(() => {
+    if (!config) return;
+    const activeProfile = config.profiles.find(
+      (p) => p.id === config.activeProfileId,
+    );
+    if (!activeProfile) return;
+    const tokens = resolveThemeTokens(
+      activeProfile.theme,
+      activeProfile.themeOverrides,
+    );
+    applyTokensAsCssVars(tokens);
+  }, [config]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) void ipc.hideDonut();
@@ -172,6 +190,12 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
         (() => {
           const activeProfile =
             config.profiles.find((p) => p.id === config.activeProfileId) ?? null;
+          const tokens = activeProfile
+            ? resolveThemeTokens(
+                activeProfile.theme,
+                activeProfile.themeOverrides,
+              )
+            : undefined;
           return (
             <Donut
               tabs={activeProfile?.tabs ?? []}
@@ -180,6 +204,7 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
               wheelDirection={config.pagination.wheelDirection}
               hoverHoldMs={config.interaction.hoverHoldMs}
               searchShortcut={config.interaction.searchShortcut}
+              tokens={tokens}
               onSelect={handleSelect}
               onOpenSettings={handleOpenSettings}
               onEditTab={handleEditTab}
