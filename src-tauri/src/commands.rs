@@ -566,6 +566,12 @@ pub(crate) fn apply_set_profile_theme_overrides(
 /// dentro do `save_with_rollback`, então payloads inválidos (cor não-hex,
 /// alpha fora de [0,1], raios fora dos limites) já voltam como `AppError`
 /// de config sem persistir.
+///
+/// Aceita `profile_id` de **qualquer** perfil (não só o ativo). Permite
+/// customizar perfis em background sem precisar ativá-los; o donut só
+/// renderiza tokens do perfil ativo, então o efeito visual aparece quando
+/// o user troca de perfil. Isso é intencional — combina com `set_theme`,
+/// que também é per-profile.
 #[tauri::command]
 pub fn set_profile_theme_overrides<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,

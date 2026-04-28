@@ -8,8 +8,8 @@ import { Donut } from "../donut/Donut";
 import { ScriptConfirmModal } from "../donut/ScriptConfirmModal";
 import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
 import { initI18n, changeLanguage } from "../core/i18n";
-import { applyTokensAsCssVars } from "../core/theme";
-import { resolveThemeTokens } from "../core/themeTokens";
+import { applyTokensAsCssVars, watchSystemTheme } from "../core/theme";
+import { resolveThemeTokens, type ThemeTokens } from "../core/themeTokens";
 import { translateAppError, isAppError } from "../core/errors";
 import type { Config } from "../core/types/Config";
 
@@ -27,6 +27,7 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   const [config, setConfig] = useState<Config | null>(initialConfig);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [scriptPrompt, setScriptPrompt] = useState<ScriptPrompt | null>(null);
+  const [tokens, setTokens] = useState<ThemeTokens | undefined>(undefined);
 
   useEffect(() => {
     if (config) return;
@@ -74,18 +75,25 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
 
   // Plano 15: aplica tokens visuais como CSS vars sempre que o config muda
   // — alimenta CSS para superfícies não-SVG (toast, modals). Donut SVG
-  // continua consumindo via `tokens` prop + ThemeContext.
+  // continua consumindo via `tokens` prop + ThemeContext. Re-resolve em
+  // mudança do `prefers-color-scheme` para que perfis em `theme: auto`
+  // sigam o SO mesmo com o donut aberto sem trigger de config-changed.
   useEffect(() => {
     if (!config) return;
     const activeProfile = config.profiles.find(
       (p) => p.id === config.activeProfileId,
     );
     if (!activeProfile) return;
-    const tokens = resolveThemeTokens(
-      activeProfile.theme,
-      activeProfile.themeOverrides,
-    );
-    applyTokensAsCssVars(tokens);
+    const apply = () => {
+      const next = resolveThemeTokens(
+        activeProfile.theme,
+        activeProfile.themeOverrides,
+      );
+      setTokens(next);
+      applyTokensAsCssVars(next);
+    };
+    apply();
+    return watchSystemTheme(activeProfile.theme, apply);
   }, [config]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -190,12 +198,6 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
         (() => {
           const activeProfile =
             config.profiles.find((p) => p.id === config.activeProfileId) ?? null;
-          const tokens = activeProfile
-            ? resolveThemeTokens(
-                activeProfile.theme,
-                activeProfile.themeOverrides,
-              )
-            : undefined;
           return (
             <Donut
               tabs={activeProfile?.tabs ?? []}

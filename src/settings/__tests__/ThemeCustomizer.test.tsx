@@ -116,6 +116,26 @@ describe("ThemeCustomizer", () => {
     expect(onOverridesChange).toHaveBeenLastCalledWith(null);
   });
 
+  it("expands #RGB hex to #RRGGBB before binding to the color picker", async () => {
+    // `<input type="color">` exige `#RRGGBB`; `#abc` (válido no schema Rust)
+    // sem normalização é silenciosamente reescrito pelo navegador.
+    await renderCustomizer({
+      overrides: {
+        colors: {
+          sliceFill: "#abc",
+          sliceHighlight: null,
+          sliceStroke: null,
+          centerFill: null,
+          text: null,
+        },
+        dimensions: null,
+        alpha: null,
+      },
+    });
+    const sliceFill = screen.getByTestId("color-sliceFill") as HTMLInputElement;
+    expect(sliceFill.value).toBe("#aabbcc");
+  });
+
   it("preview reflects current overrides in real time", async () => {
     await renderCustomizer({
       overrides: {

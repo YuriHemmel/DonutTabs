@@ -76,6 +76,18 @@ function emptyOverrides(): ThemeOverrides {
   };
 }
 
+/**
+ * `<input type="color">` exige `#RRGGBB` (HTML spec); strings `#RGB` (3-char,
+ * aceitas pelo validate Rust) são silenciosamente reescritas pelo navegador.
+ * Expande pra 6 chars antes de bind no input para preservar o valor visível.
+ */
+function normalizeHexForPicker(hex: string): string {
+  if (hex.length === 4 && hex[0] === "#") {
+    return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+  return hex;
+}
+
 export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
   theme,
   overrides,
@@ -176,7 +188,7 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
                 <input
                   data-testid={`color-${key}`}
                   type="color"
-                  value={value}
+                  value={normalizeHexForPicker(value)}
                   onChange={(e) => setColor(key, e.target.value)}
                   style={{
                     width: 36,
