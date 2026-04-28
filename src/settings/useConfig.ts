@@ -5,6 +5,7 @@ import type { Config } from "../core/types/Config";
 import type { Tab } from "../core/types/Tab";
 import type { Theme } from "../core/types/Theme";
 import type { Language } from "../core/types/Language";
+import type { ThemeOverrides } from "../core/types/ThemeOverrides";
 
 export interface UseConfig {
   config: Config | null;
@@ -34,6 +35,10 @@ export interface UseConfig {
     trusted: boolean,
   ) => Promise<Config>;
   setProfileAllowScripts: (profileId: string, allow: boolean) => Promise<Config>;
+  setProfileThemeOverrides: (
+    profileId: string,
+    overrides: ThemeOverrides | null,
+  ) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -184,6 +189,15 @@ export function useConfig(): UseConfig {
     [],
   );
 
+  const setProfileThemeOverrides = useCallback(
+    async (profileId: string, overrides: ThemeOverrides | null) => {
+      const next = await ipc.setProfileThemeOverrides(profileId, overrides);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
   return {
     config,
     loadError,
@@ -202,5 +216,6 @@ export function useConfig(): UseConfig {
     setSearchShortcut,
     setScriptTrusted,
     setProfileAllowScripts,
+    setProfileThemeOverrides,
   };
 }

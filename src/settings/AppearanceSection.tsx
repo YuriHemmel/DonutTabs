@@ -2,6 +2,8 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Theme } from "../core/types/Theme";
 import type { Language } from "../core/types/Language";
+import type { ThemeOverrides } from "../core/types/ThemeOverrides";
+import { ThemeCustomizer } from "./ThemeCustomizer";
 
 export interface AppearanceSectionProps {
   theme: Theme;
@@ -19,6 +21,9 @@ export interface AppearanceSectionProps {
   /** Plano 14: kill-switch global de scripts no perfil ativo. */
   allowScripts?: boolean;
   onAllowScriptsChange?: (allow: boolean) => void;
+  /** Plano 15: overrides cosméticos do perfil em edição. */
+  themeOverrides?: ThemeOverrides | null;
+  onThemeOverridesChange?: (overrides: ThemeOverrides | null) => void;
 }
 
 const THEMES: Theme[] = ["dark", "light", "auto"];
@@ -40,6 +45,8 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   onSetActiveProfile,
   allowScripts,
   onAllowScriptsChange,
+  themeOverrides,
+  onThemeOverridesChange,
 }) => {
   const { t } = useTranslation();
 
@@ -75,6 +82,14 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           </label>
         ))}
       </fieldset>
+
+      {onThemeOverridesChange && (
+        <ThemeCustomizer
+          theme={theme}
+          overrides={themeOverrides ?? null}
+          onOverridesChange={onThemeOverridesChange}
+        />
+      )}
 
       <label
         style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 320 }}
