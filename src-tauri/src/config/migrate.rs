@@ -25,6 +25,9 @@ pub fn migrate_to_v2(v1: ConfigV1) -> Config {
                 items: t.items,
             })
             .collect(),
+        // Plano 14: kill-switch default-closed. Configs v1 não conheciam
+        // `kind: "script"`, então não há tabs com scripts pra ativar.
+        allow_scripts: false,
     };
     Config {
         version: 2,

@@ -25,6 +25,14 @@ pub struct Profile {
     pub shortcut: String,
     pub theme: Theme,
     pub tabs: Vec<Tab>,
+    /// Kill-switch global por perfil para items `kind: "script"`. Default
+    /// `false` (princípio do menor privilégio). Quando `false`, o launcher
+    /// bloqueia toda execução de script no perfil — independente do flag
+    /// `trusted` do item — e o frontend mostra erro localizado em vez do
+    /// modal de confirmação. Plano-13 e configs anteriores deserializam
+    /// como `false` graças ao `#[serde(default)]`.
+    #[serde(default)]
+    pub allow_scripts: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -155,6 +163,22 @@ pub enum Item {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         open_with: Option<String>,
     },
+    /// Plano 14 — friendly app name (`"firefox"`, `"Visual Studio Code"`).
+    /// Sem `open_with`: apps são spawned por nome via `tauri-plugin-shell`,
+    /// não roteados via OS handler.
+    #[serde(rename_all = "camelCase")]
+    App { name: String },
+    /// Plano 14 — comando shell arbitrário. **Alto risco** — gating duplo:
+    /// `trusted: false` exige confirmação no `<ScriptConfirmModal>` na
+    /// primeira execução; `Profile.allow_scripts: false` bloqueia toda
+    /// execução de script no perfil. Configs Plano-13 sem `trusted` no JSON
+    /// deserializam como `false`.
+    #[serde(rename_all = "camelCase")]
+    Script {
+        command: String,
+        #[serde(default)]
+        trusted: bool,
+    },
 }
 
 impl Default for Profile {
@@ -166,6 +190,7 @@ impl Default for Profile {
             shortcut: "CommandOrControl+Shift+Space".into(),
             theme: Theme::Dark,
             tabs: vec![],
+            allow_scripts: false,
         }
     }
 }
@@ -240,6 +265,7 @@ mod tests {
                     open_with: None,
                 }],
             }],
+            allow_scripts: false,
         };
         let json = serde_json::to_string(&p).unwrap();
         let parsed: Profile = serde_json::from_str(&json).unwrap();
@@ -387,5 +413,68 @@ mod tests {
                 open_with: None
             }
         );
+    }
+
+    #[test]
+    fn item_app_wire_format() {
+        let it = Item::App {
+            name: "firefox".into(),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert_eq!(json, "{\"kind\":\"app\",\"name\":\"firefox\"}");
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_script_with_trusted_round_trips() {
+        let it = Item::Script {
+            command: "git pull".into(),
+            trusted: true,
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(json.contains("\"trusted\":true"));
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_script_without_trusted_field_defaults_to_false() {
+        // Configs Plano-13 e anteriores não têm `trusted` no JSON; precisa
+        // deserializar como `false` (default mais seguro).
+        let it: Item = serde_json::from_str(r#"{"kind":"script","command":"ls"}"#).unwrap();
+        assert_eq!(
+            it,
+            Item::Script {
+                command: "ls".into(),
+                trusted: false
+            }
+        );
+    }
+
+    #[test]
+    fn profile_without_allow_scripts_field_defaults_to_false() {
+        // Plano-13 payloads (no allowScripts key) need to deserialize with
+        // false — kill-switch default-closed.
+        let json = r#"{
+            "id": "11111111-1111-1111-1111-111111111111",
+            "name": "Padrão",
+            "icon": null,
+            "shortcut": "CommandOrControl+Shift+Space",
+            "theme": "dark",
+            "tabs": []
+        }"#;
+        let p: Profile = serde_json::from_str(json).unwrap();
+        assert!(!p.allow_scripts);
+    }
+
+    #[test]
+    fn profile_with_allow_scripts_round_trips() {
+        let mut p = Profile::default();
+        p.allow_scripts = true;
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains("\"allowScripts\":true"));
+        let back: Profile = serde_json::from_str(&json).unwrap();
+        assert_eq!(p, back);
     }
 }

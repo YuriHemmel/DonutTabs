@@ -2,4 +2,13 @@
 import type { Tab } from "./Tab";
 import type { Theme } from "./Theme";
 
-export type Profile = { id: string, name: string, icon: string | null, shortcut: string, theme: Theme, tabs: Array<Tab>, };
+export type Profile = { id: string, name: string, icon: string | null, shortcut: string, theme: Theme, tabs: Array<Tab>, 
+/**
+ * Kill-switch global por perfil para items `kind: "script"`. Default
+ * `false` (princípio do menor privilégio). Quando `false`, o launcher
+ * bloqueia toda execução de script no perfil — independente do flag
+ * `trusted` do item — e o frontend mostra erro localizado em vez do
+ * modal de confirmação. Plano-13 e configs anteriores deserializam
+ * como `false` graças ao `#[serde(default)]`.
+ */
+allowScripts: boolean, };
