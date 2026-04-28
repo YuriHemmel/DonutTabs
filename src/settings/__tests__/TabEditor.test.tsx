@@ -257,7 +257,9 @@ describe("TabEditor", () => {
     });
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
-    expect(payload.items[0].openWith).toBeNull();
+    const first = payload.items[0];
+    if (first.kind !== "url") throw new Error("expected url item");
+    expect(first.openWith).toBeNull();
   });
 
   it("prefills openWith from an existing tab item", async () => {
@@ -271,5 +273,56 @@ describe("TabEditor", () => {
     expect(
       (screen.getByTestId("item-open-with-0") as HTMLInputElement).value,
     ).toBe("edge");
+  });
+
+  it("saves an app item with the right kind and name", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "Browser");
+    // Default row is URL; remove and add app
+    await user.click(screen.getByTestId("item-remove-0"));
+    await user.click(screen.getByTestId("add-item-app"));
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "firefox" },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([{ kind: "app", name: "firefox" }]);
+  });
+
+  it("saves a script item with trusted=false by default", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    await user.type(screen.getByLabelText(/nome/i), "Build");
+    await user.click(screen.getByTestId("item-remove-0"));
+    await user.click(screen.getByTestId("add-item-script"));
+    fireEvent.change(screen.getByTestId("item-value-0"), {
+      target: { value: "cargo build" },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([
+      { kind: "script", command: "cargo build", trusted: false },
+    ]);
+  });
+
+  it("preserves trusted=true when editing a script item", async () => {
+    const tabWithTrustedScript: Tab = {
+      ...existing,
+      items: [{ kind: "script", command: "git pull", trusted: true }],
+    };
+    const user = userEvent.setup();
+    const { props } = await renderEditor({
+      mode: "edit",
+      initial: tabWithTrustedScript,
+    });
+    expect(
+      (screen.getByTestId("item-script-trusted-0") as HTMLInputElement).checked,
+    ).toBe(true);
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.items).toEqual([
+      { kind: "script", command: "git pull", trusted: true },
+    ]);
   });
 });

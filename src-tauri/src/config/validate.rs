@@ -112,6 +112,28 @@ fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
                         ));
                     }
                 }
+                Item::App { name } => {
+                    if name.trim().is_empty() {
+                        return Err(AppError::config(
+                            "app_name_empty",
+                            &[
+                                ("tabId", tab.id.to_string()),
+                                ("profileId", profile.id.to_string()),
+                            ],
+                        ));
+                    }
+                }
+                Item::Script { command, .. } => {
+                    if command.trim().is_empty() {
+                        return Err(AppError::config(
+                            "script_command_empty",
+                            &[
+                                ("tabId", tab.id.to_string()),
+                                ("profileId", profile.id.to_string()),
+                            ],
+                        ));
+                    }
+                }
             }
             if let Some(ow) = item_open_with(item) {
                 if ow.trim().is_empty() {
@@ -149,6 +171,8 @@ fn item_kind_label(item: &Item) -> &'static str {
         Item::Url { .. } => "url",
         Item::File { .. } => "file",
         Item::Folder { .. } => "folder",
+        Item::App { .. } => "app",
+        Item::Script { .. } => "script",
     }
 }
 
@@ -157,6 +181,9 @@ fn item_open_with(item: &Item) -> Option<&str> {
         Item::Url { open_with, .. }
         | Item::File { open_with, .. }
         | Item::Folder { open_with, .. } => open_with.as_deref(),
+        // App e Script não têm open_with — apps são spawned por nome,
+        // scripts via shell. Routing por OS handler não se aplica.
+        Item::App { .. } | Item::Script { .. } => None,
     }
 }
 
@@ -398,6 +425,7 @@ mod tests {
             shortcut: "Ctrl+Alt+P".into(),
             theme: cfg.profiles[0].theme,
             tabs: vec![],
+            allow_scripts: false,
         };
         let mut t2 = tab_with(Some("B"), None, vec![]);
         t2.id = shared_tab_id;
@@ -558,6 +586,102 @@ mod tests {
         }"#;
         let cfg: Config = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.interaction.search_shortcut, "CommandOrControl+F");
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn app_item_with_non_empty_name_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Browser"),
+            None,
+            vec![Item::App {
+                name: "firefox".into(),
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn app_item_with_empty_name_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("X"),
+            None,
+            vec![Item::App { name: "".into() }],
+        ));
+        assert_config_code(validate(&cfg).unwrap_err(), "app_name_empty");
+    }
+
+    #[test]
+    fn app_item_with_whitespace_name_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("X"),
+            None,
+            vec![Item::App { name: "   ".into() }],
+        ));
+        assert_config_code(validate(&cfg).unwrap_err(), "app_name_empty");
+    }
+
+    #[test]
+    fn script_item_with_non_empty_command_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Build"),
+            None,
+            vec![Item::Script {
+                command: "cargo build".into(),
+                trusted: false,
+            }],
+        ));
+        // Validate is structural — não importa se profile.allow_scripts é
+        // false ou trusted é false; runtime gating cuida disso.
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn script_item_with_empty_command_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("X"),
+            None,
+            vec![Item::Script {
+                command: "".into(),
+                trusted: false,
+            }],
+        ));
+        assert_config_code(validate(&cfg).unwrap_err(), "script_command_empty");
+    }
+
+    #[test]
+    fn full_mix_of_five_item_kinds_validates() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Mix"),
+            None,
+            vec![
+                Item::Url {
+                    value: "https://a.test".into(),
+                    open_with: None,
+                },
+                Item::File {
+                    path: "/tmp/x".into(),
+                    open_with: None,
+                },
+                Item::Folder {
+                    path: "/tmp".into(),
+                    open_with: None,
+                },
+                Item::App {
+                    name: "code".into(),
+                },
+                Item::Script {
+                    command: "git pull".into(),
+                    trusted: false,
+                },
+            ],
+        ));
         assert!(validate(&cfg).is_ok());
     }
 }

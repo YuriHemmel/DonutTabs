@@ -10,6 +10,7 @@ const profile = (id: string, name: string, overrides: Partial<Profile> = {}): Pr
   shortcut: "Ctrl+Space",
   theme: "dark",
   tabs: [],
+  allowScripts: false,
   ...overrides,
 });
 

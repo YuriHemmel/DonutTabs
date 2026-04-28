@@ -82,6 +82,7 @@ export const SettingsApp: React.FC = () => {
     reorderTabs,
     reorderProfiles,
     setSearchShortcut,
+    setProfileAllowScripts,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -377,6 +378,10 @@ export const SettingsApp: React.FC = () => {
                 }
               : undefined
           }
+          allowScripts={selectedProfile.allowScripts}
+          onAllowScriptsChange={(allow) => {
+            void setProfileAllowScripts(selectedProfile.id, allow);
+          }}
         />
       )}
 

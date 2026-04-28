@@ -34,16 +34,50 @@ function randomUuid(): string {
 }
 
 function itemToDraft(it: Item): ItemDraft {
-  const openWith = it.openWith ?? "";
-  if (it.kind === "url") return { kind: "url", value: it.value, openWith };
-  return { kind: it.kind, value: it.path, openWith };
+  if (it.kind === "url") {
+    return { kind: "url", value: it.value, openWith: it.openWith ?? "" };
+  }
+  if (it.kind === "file" || it.kind === "folder") {
+    return { kind: it.kind, value: it.path, openWith: it.openWith ?? "" };
+  }
+  if (it.kind === "app") {
+    return { kind: "app", value: it.name, openWith: "" };
+  }
+  // kind === "script"
+  return {
+    kind: "script",
+    value: it.command,
+    openWith: "",
+    trusted: it.trusted,
+  };
 }
 
 function draftToItem(d: ItemDraft): Item {
-  const ow = d.openWith.trim();
-  const openWith = ow.length > 0 ? ow : null;
-  if (d.kind === "url") return { kind: "url", value: d.value, openWith };
-  return { kind: d.kind, path: d.value, openWith };
+  if (d.kind === "url") {
+    const ow = d.openWith.trim();
+    return {
+      kind: "url",
+      value: d.value,
+      openWith: ow.length > 0 ? ow : null,
+    };
+  }
+  if (d.kind === "file" || d.kind === "folder") {
+    const ow = d.openWith.trim();
+    return {
+      kind: d.kind,
+      path: d.value,
+      openWith: ow.length > 0 ? ow : null,
+    };
+  }
+  if (d.kind === "app") {
+    return { kind: "app", name: d.value };
+  }
+  // kind === "script" — novos sempre nascem trusted=false; edits preservam.
+  return {
+    kind: "script",
+    command: d.value,
+    trusted: d.trusted ?? false,
+  };
 }
 
 function fromTab(tab: Tab | null): FormState {
@@ -107,6 +141,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         kind: it.kind,
         value: it.value.trim(),
         openWith: it.openWith.trim(),
+        trusted: it.trusted,
       }))
       .filter((it) => it.value.length > 0);
     if (trimmed.length === 0) {

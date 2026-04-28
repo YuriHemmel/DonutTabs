@@ -11,7 +11,16 @@ export type SettingsIntent = "new-tab" | `edit-tab:${string}` | "new-profile";
 
 export const ipc = {
   getConfig: () => invoke<Config>("get_config"),
-  openTab: (tabId: string) => invoke<void>("open_tab", { tabId }),
+  /** `forceItemIndex`: índice do Script untrusted que o user acabou de
+   *  confirmar via `<ScriptConfirmModal>` (one-shot). Bypassa o trust-check
+   *  só desse índice — qualquer outro script untrusted no tab segue
+   *  bloqueando, e o modal reabre na próxima iteração. `allow_scripts`
+   *  continua bloqueando. */
+  openTab: (tabId: string, forceItemIndex?: number) =>
+    invoke<void>("open_tab", {
+      tabId,
+      forceItemIndex: forceItemIndex ?? null,
+    }),
   hideDonut: () => invoke<void>("hide_donut"),
   saveTab: (tab: Tab, profileId?: string) =>
     invoke<Config>("save_tab", { tab, profileId: profileId ?? null }),
@@ -52,6 +61,26 @@ export const ipc = {
     invoke<ImportResult>("import_config", { sourcePath }),
   setSearchShortcut: (combo: string) =>
     invoke<Config>("set_search_shortcut", { combo }),
+  /** `expectedCommand`: comando que o user viu no modal. Backend rejeita com
+   *  `script_command_mismatch` se o item foi editado por outra janela entre
+   *  o modal abrir e o user confirmar — evita autorizar comando que o user
+   *  não autorizou. */
+  setScriptTrusted: (
+    profileId: string,
+    tabId: string,
+    itemIndex: number,
+    expectedCommand: string,
+    trusted: boolean,
+  ) =>
+    invoke<Config>("set_script_trusted", {
+      profileId,
+      tabId,
+      itemIndex,
+      expectedCommand,
+      trusted,
+    }),
+  setProfileAllowScripts: (profileId: string, allow: boolean) =>
+    invoke<Config>("set_profile_allow_scripts", { profileId, allow }),
 };
 
 export interface DialogFilter {

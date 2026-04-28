@@ -2,13 +2,18 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { dialog } from "../core/ipc";
 
-export type ItemKind = "url" | "file" | "folder";
+export type ItemKind = "url" | "file" | "folder" | "app" | "script";
 
 export interface ItemDraft {
   kind: ItemKind;
+  /** Para url=value, file/folder=path, app=name, script=command. */
   value: string;
-  /** Optional handler/program. Empty string ⇔ unset (uses OS default). */
+  /** Optional handler/program. Empty string ⇔ unset (uses OS default).
+   *  Não se aplica a `app`/`script` (sempre empty para esses kinds). */
   openWith: string;
+  /** Só `kind: "script"` carrega esse flag. Default `false`; flipped via
+   *  `<ScriptConfirmModal>` ou checkbox no editor. */
+  trusted?: boolean;
 }
 
 export interface ItemListEditorProps {
@@ -16,12 +21,20 @@ export interface ItemListEditorProps {
   onChange: (next: ItemDraft[]) => void;
 }
 
-const KIND_OPTIONS: ReadonlyArray<ItemKind> = ["url", "file", "folder"];
+const KIND_OPTIONS: ReadonlyArray<ItemKind> = [
+  "url",
+  "file",
+  "folder",
+  "app",
+  "script",
+];
 
 const KIND_SUFFIX: Record<ItemKind, string> = {
   url: "Url",
   file: "File",
   folder: "Folder",
+  app: "App",
+  script: "Script",
 };
 
 const inputStyle: React.CSSProperties = {
@@ -50,14 +63,6 @@ const ghostBtn: React.CSSProperties = {
   cursor: "pointer",
   font: "inherit",
 };
-const browseSpacer: React.CSSProperties = {
-  flex: "0 0 auto",
-  visibility: "hidden",
-  border: "1px solid transparent",
-  borderRadius: 4,
-  padding: "4px 10px",
-  font: "inherit",
-};
 const removeBtn: React.CSSProperties = {
   background: "transparent",
   color: "var(--danger-fg)",
@@ -76,6 +81,10 @@ const addBtn: React.CSSProperties = {
   fontSize: 12,
 };
 
+const usesOpenWith = (k: ItemKind) => k === "url" || k === "file" || k === "folder";
+const usesBrowse = (k: ItemKind) => k === "file" || k === "folder";
+const isScript = (k: ItemKind) => k === "script";
+
 export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   values,
   onChange,
@@ -92,11 +101,14 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   };
 
   const add = (kind: ItemKind) => {
-    onChange([...values, { kind, value: "", openWith: "" }]);
+    const draft: ItemDraft = { kind, value: "", openWith: "" };
+    if (isScript(kind)) draft.trusted = false;
+    onChange([...values, draft]);
   };
 
   const browse = async (i: number, kind: ItemKind) => {
-    const path = kind === "folder" ? await dialog.pickFolder() : await dialog.pickFile();
+    const path =
+      kind === "folder" ? await dialog.pickFolder() : await dialog.pickFile();
     if (path) updateAt(i, { value: path });
   };
 
@@ -112,63 +124,100 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
         <div
           key={i}
           data-testid={`item-row-${i}`}
-          style={{ display: "flex", gap: 6, alignItems: "center" }}
+          style={{ display: "flex", flexDirection: "column", gap: 4 }}
         >
-          <select
-            aria-label={`${t("settings.editor.items")} ${i + 1} kind`}
-            data-testid={`item-kind-${i}`}
-            value={it.kind}
-            onChange={(e) =>
-              updateAt(i, { kind: e.target.value as ItemKind })
-            }
-            style={selectStyle}
-          >
-            {KIND_OPTIONS.map((k) => (
-              <option key={k} value={k}>
-                {labelFor(k)}
-              </option>
-            ))}
-          </select>
-          <input
-            aria-label={`${labelFor(it.kind)} ${i + 1}`}
-            data-testid={`item-value-${i}`}
-            value={it.value}
-            onChange={(e) => updateAt(i, { value: e.target.value })}
-            placeholder={placeholderFor(it.kind)}
-            style={inputStyle}
-          />
-          {it.kind !== "url" ? (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <select
+              aria-label={`${t("settings.editor.items")} ${i + 1} kind`}
+              data-testid={`item-kind-${i}`}
+              value={it.kind}
+              onChange={(e) =>
+                updateAt(i, { kind: e.target.value as ItemKind })
+              }
+              style={selectStyle}
+            >
+              {KIND_OPTIONS.map((k) => (
+                <option key={k} value={k}>
+                  {labelFor(k)}
+                </option>
+              ))}
+            </select>
+            {isScript(it.kind) ? (
+              <textarea
+                aria-label={`${labelFor(it.kind)} ${i + 1}`}
+                data-testid={`item-value-${i}`}
+                value={it.value}
+                onChange={(e) => updateAt(i, { value: e.target.value })}
+                placeholder={placeholderFor(it.kind)}
+                rows={3}
+                style={{
+                  ...inputStyle,
+                  fontFamily: "ui-monospace, Menlo, Consolas, monospace",
+                  fontSize: 12,
+                  resize: "vertical",
+                }}
+              />
+            ) : (
+              <input
+                aria-label={`${labelFor(it.kind)} ${i + 1}`}
+                data-testid={`item-value-${i}`}
+                value={it.value}
+                onChange={(e) => updateAt(i, { value: e.target.value })}
+                placeholder={placeholderFor(it.kind)}
+                style={inputStyle}
+              />
+            )}
+            {usesBrowse(it.kind) && (
+              <button
+                type="button"
+                data-testid={`item-browse-${i}`}
+                onClick={() => browse(i, it.kind)}
+                style={ghostBtn}
+              >
+                {t("settings.editor.browse")}
+              </button>
+            )}
+            {usesOpenWith(it.kind) && (
+              <input
+                aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
+                data-testid={`item-open-with-${i}`}
+                value={it.openWith}
+                onChange={(e) => updateAt(i, { openWith: e.target.value })}
+                placeholder={t("settings.editor.openWithPlaceholder")}
+                title={t("settings.editor.openWithHint")}
+                style={openWithStyle}
+              />
+            )}
             <button
               type="button"
-              data-testid={`item-browse-${i}`}
-              onClick={() => browse(i, it.kind)}
-              style={ghostBtn}
+              aria-label={t("settings.editor.removeItem")}
+              data-testid={`item-remove-${i}`}
+              onClick={() => removeAt(i)}
+              style={removeBtn}
             >
-              {t("settings.editor.browse")}
+              ✕
             </button>
-          ) : (
-            <div data-testid={`item-browse-spacer-${i}`} style={browseSpacer} aria-hidden>
-              {t("settings.editor.browse")}
-            </div>
+          </div>
+          {isScript(it.kind) && (
+            <label
+              style={{
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                fontSize: 12,
+                color: "var(--muted)",
+                paddingLeft: 116,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid={`item-script-trusted-${i}`}
+                checked={!!it.trusted}
+                onChange={(e) => updateAt(i, { trusted: e.target.checked })}
+              />
+              {t("settings.editor.scriptTrustedLabel")}
+            </label>
           )}
-          <input
-            aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
-            data-testid={`item-open-with-${i}`}
-            value={it.openWith}
-            onChange={(e) => updateAt(i, { openWith: e.target.value })}
-            placeholder={t("settings.editor.openWithPlaceholder")}
-            title={t("settings.editor.openWithHint")}
-            style={openWithStyle}
-          />
-          <button
-            type="button"
-            aria-label={t("settings.editor.removeItem")}
-            data-testid={`item-remove-${i}`}
-            onClick={() => removeAt(i)}
-            style={removeBtn}
-          >
-            ✕
-          </button>
         </div>
       ))}
 
@@ -196,6 +245,22 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
           style={addBtn}
         >
           + {t("settings.editor.addItemFolder")}
+        </button>
+        <button
+          type="button"
+          data-testid="add-item-app"
+          onClick={() => add("app")}
+          style={addBtn}
+        >
+          + {t("settings.editor.addItemApp")}
+        </button>
+        <button
+          type="button"
+          data-testid="add-item-script"
+          onClick={() => add("script")}
+          style={addBtn}
+        >
+          + {t("settings.editor.addItemScript")}
         </button>
       </div>
     </div>

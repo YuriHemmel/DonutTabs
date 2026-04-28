@@ -8,6 +8,8 @@
       "duplicateTabId": "ID de aba duplicado: {{id}}",
       "pathEmpty": "{{kind}}: caminho não pode ser vazio na aba {{tabId}}.",
       "openWithEmpty": "Programa para abrir não pode ser vazio na aba {{tabId}} (item {{kind}}).",
+      "appNameEmpty": "Nome do app não pode ser vazio na aba {{tabId}}.",
+      "scriptCommandEmpty": "Comando do script não pode ser vazio na aba {{tabId}}.",
       "searchShortcutEmpty": "Atalho de busca não pode ser vazio.",
       "noProfiles": "Configuração inválida: nenhum perfil cadastrado.",
       "activeProfileNotFound": "Perfil ativo não encontrado: {{activeProfileId}}",
@@ -24,6 +26,11 @@
       "allItemsFailed": "Nenhum dos {{total}} links pôde ser aberto",
       "partialFailure": "{{failed}} de {{total}} links não puderam ser abertos",
       "tabNotFound": "Aba {{id}} não encontrada",
+      "scriptBlocked": "Script não autorizado — confirme antes de executar.",
+      "scriptsDisabled": "Scripts estão desabilitados neste perfil.",
+      "scriptCommandMismatch": "Script foi alterado desde que você confirmou — reabra a aba para revisar.",
+      "itemKindMismatch": "Tipo de item incompatível ({{got}} ≠ {{expected}}).",
+      "itemIndexOutOfRange": "Índice de item fora do intervalo: {{itemIndex}}.",
       "unknown": "Erro ao abrir aba: {{code}}"
     },
     "shortcut": {
@@ -62,6 +69,14 @@
       "placeholder": "Buscar aba…",
       "empty": "Nenhuma aba encontrada",
       "shortcutHint": "↑↓ navegar · Enter abrir · Esc fechar"
+    },
+    "scriptModal": {
+      "title": "Executar script?",
+      "commandLabel": "Comando:",
+      "warning": "Scripts têm acesso completo aos seus arquivos e configurações. Execute apenas comandos que você reconhece.",
+      "trustLabel": "Confiar nesta aba (não perguntar de novo)",
+      "run": "Executar",
+      "cancel": "Cancelar"
     }
   },
   "settings": {
@@ -98,6 +113,8 @@
       "importButton": "Importar configuração…",
       "exportImportHint": "Backup / restauração do config.json para sincronizar entre máquinas.",
       "exportSuccess": "Configuração exportada para {{path}}.",
+      "allowScriptsLabel": "Permitir scripts neste perfil",
+      "allowScriptsHint": "Scripts shell sempre pedem confirmação na primeira execução. Desabilite pra bloquear todos os scripts deste perfil.",
       "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
       "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações."
     },
@@ -159,6 +176,13 @@
       "addItemFile": "Adicionar arquivo",
       "addItemFolder": "Adicionar pasta",
       "browse": "Procurar…",
+      "itemKindApp": "App",
+      "itemKindScript": "Script",
+      "itemPlaceholderApp": "ex.: firefox, code",
+      "itemPlaceholderScript": "ex.: git pull && cargo test",
+      "addItemApp": "Adicionar app",
+      "addItemScript": "Adicionar script",
+      "scriptTrustedLabel": "Confiar (executa sem confirmação)",
       "openWithLabel": "Abrir com",
       "openWithPlaceholder": "ex.: firefox, code",
       "openWithHint": "Programa/handler do SO. Vazio = padrão do sistema.",

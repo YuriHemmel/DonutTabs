@@ -8,6 +8,8 @@
       "duplicateTabId": "Duplicate tab id: {{id}}",
       "pathEmpty": "{{kind}} path cannot be empty in tab {{tabId}}.",
       "openWithEmpty": "Open-with program cannot be empty in tab {{tabId}} ({{kind}} item).",
+      "appNameEmpty": "App name cannot be empty in tab {{tabId}}.",
+      "scriptCommandEmpty": "Script command cannot be empty in tab {{tabId}}.",
       "searchShortcutEmpty": "Search shortcut cannot be empty.",
       "noProfiles": "Invalid config: no profiles defined.",
       "activeProfileNotFound": "Active profile not found: {{activeProfileId}}",
@@ -24,6 +26,11 @@
       "allItemsFailed": "None of the {{total}} links could be opened",
       "partialFailure": "{{failed}} of {{total}} links could not be opened",
       "tabNotFound": "Tab {{id}} not found",
+      "scriptBlocked": "Script not authorized — confirm before running.",
+      "scriptsDisabled": "Scripts are disabled in this profile.",
+      "scriptCommandMismatch": "Script changed since you confirmed — open the tab again to review.",
+      "itemKindMismatch": "Item kind mismatch ({{got}} ≠ {{expected}}).",
+      "itemIndexOutOfRange": "Item index out of range: {{itemIndex}}.",
       "unknown": "Failed to open tab: {{code}}"
     },
     "shortcut": {
@@ -62,6 +69,14 @@
       "placeholder": "Search tab…",
       "empty": "No matching tab",
       "shortcutHint": "↑↓ navigate · Enter open · Esc close"
+    },
+    "scriptModal": {
+      "title": "Run script?",
+      "commandLabel": "Command:",
+      "warning": "Scripts have full access to your files and settings. Only run commands you recognize.",
+      "trustLabel": "Trust this tab (don't ask again)",
+      "run": "Run",
+      "cancel": "Cancel"
     }
   },
   "settings": {
@@ -98,6 +113,8 @@
       "importButton": "Import configuration…",
       "exportImportHint": "Backup / restore the config.json to sync between machines.",
       "exportSuccess": "Configuration exported to {{path}}.",
+      "allowScriptsLabel": "Allow scripts in this profile",
+      "allowScriptsHint": "Shell scripts always require confirmation on first execution. Disable to block all scripts in this profile.",
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
       "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings."
     },
@@ -159,6 +176,13 @@
       "addItemFile": "Add file",
       "addItemFolder": "Add folder",
       "browse": "Browse…",
+      "itemKindApp": "App",
+      "itemKindScript": "Script",
+      "itemPlaceholderApp": "e.g. firefox, code",
+      "itemPlaceholderScript": "e.g. git pull && cargo test",
+      "addItemApp": "Add app",
+      "addItemScript": "Add script",
+      "scriptTrustedLabel": "Trust (run without confirmation)",
       "openWithLabel": "Open with",
       "openWithPlaceholder": "e.g. firefox, code",
       "openWithHint": "OS program/handler. Empty = system default.",

@@ -26,6 +26,14 @@ export interface UseConfig {
   reorderTabs: (profileId: string, orderedIds: string[]) => Promise<Config>;
   reorderProfiles: (orderedIds: string[]) => Promise<Config>;
   setSearchShortcut: (combo: string) => Promise<Config>;
+  setScriptTrusted: (
+    profileId: string,
+    tabId: string,
+    itemIndex: number,
+    expectedCommand: string,
+    trusted: boolean,
+  ) => Promise<Config>;
+  setProfileAllowScripts: (profileId: string, allow: boolean) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -146,6 +154,36 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setScriptTrusted = useCallback(
+    async (
+      profileId: string,
+      tabId: string,
+      itemIndex: number,
+      expectedCommand: string,
+      trusted: boolean,
+    ) => {
+      const next = await ipc.setScriptTrusted(
+        profileId,
+        tabId,
+        itemIndex,
+        expectedCommand,
+        trusted,
+      );
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
+  const setProfileAllowScripts = useCallback(
+    async (profileId: string, allow: boolean) => {
+      const next = await ipc.setProfileAllowScripts(profileId, allow);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
   return {
     config,
     loadError,
@@ -162,5 +200,7 @@ export function useConfig(): UseConfig {
     reorderTabs,
     reorderProfiles,
     setSearchShortcut,
+    setScriptTrusted,
+    setProfileAllowScripts,
   };
 }
