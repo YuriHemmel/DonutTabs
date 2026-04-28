@@ -28,6 +28,7 @@
       "tabNotFound": "Tab {{id}} not found",
       "scriptBlocked": "Script not authorized — confirm before running.",
       "scriptsDisabled": "Scripts are disabled in this profile.",
+      "scriptCommandMismatch": "Script changed since you confirmed — open the tab again to review.",
       "itemKindMismatch": "Item kind mismatch ({{got}} ≠ {{expected}}).",
       "itemIndexOutOfRange": "Item index out of range: {{itemIndex}}.",
       "unknown": "Failed to open tab: {{code}}"

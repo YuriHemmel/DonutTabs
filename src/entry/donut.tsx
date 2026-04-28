@@ -109,17 +109,21 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     setScriptPrompt(null);
     try {
       if (trustForever) {
+        // expectedCommand blinda contra reorder/edit em outra janela entre
+        // o modal abrir e o user confirmar.
         await ipc.setScriptTrusted(
           prompt.profileId,
           prompt.tabId,
           prompt.itemIndex,
+          prompt.command,
           true,
         );
         // setScriptTrusted persiste; openTab agora passa pelo gating sem force.
         await ipc.openTab(prompt.tabId);
       } else {
-        // One-shot: bypassa trust mas respeita allow_scripts.
-        await ipc.openTab(prompt.tabId, true);
+        // One-shot: bypassa trust apenas do índice prompted. Outros scripts
+        // untrusted no tab seguem bloqueando — modal reabre se for o caso.
+        await ipc.openTab(prompt.tabId, prompt.itemIndex);
       }
       void ipc.hideDonut();
     } catch (err) {

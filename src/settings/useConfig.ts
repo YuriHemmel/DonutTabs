@@ -30,6 +30,7 @@ export interface UseConfig {
     profileId: string,
     tabId: string,
     itemIndex: number,
+    expectedCommand: string,
     trusted: boolean,
   ) => Promise<Config>;
   setProfileAllowScripts: (profileId: string, allow: boolean) => Promise<Config>;
@@ -154,8 +155,20 @@ export function useConfig(): UseConfig {
   }, []);
 
   const setScriptTrusted = useCallback(
-    async (profileId: string, tabId: string, itemIndex: number, trusted: boolean) => {
-      const next = await ipc.setScriptTrusted(profileId, tabId, itemIndex, trusted);
+    async (
+      profileId: string,
+      tabId: string,
+      itemIndex: number,
+      expectedCommand: string,
+      trusted: boolean,
+    ) => {
+      const next = await ipc.setScriptTrusted(
+        profileId,
+        tabId,
+        itemIndex,
+        expectedCommand,
+        trusted,
+      );
       setConfig(next);
       return next;
     },

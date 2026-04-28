@@ -45,7 +45,7 @@ pub fn open_tab<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     state: tauri::State<'_, AppState>,
     tab_id: Uuid,
-    force: Option<bool>,
+    force_item_index: Option<usize>,
 ) -> Result<(), AppError> {
     let cfg = state.config.read().unwrap();
     let active = active_profile(&cfg)?;
@@ -55,21 +55,13 @@ pub fn open_tab<R: tauri::Runtime>(
         .find(|t| t.id == tab_id)
         .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", tab_id.to_string())]))?;
 
-    // Plano 14: gating de scripts antes do launch_tab. `force: true` bypassa
-    // o trust check (vem do `<ScriptConfirmModal>` quando o user clicou
-    // "Executar uma vez"), mas `allow_scripts: false` segue bloqueando —
-    // não há override one-shot pro kill-switch global.
-    if !force.unwrap_or(false) {
-        if let Some(blocked) = check_script_gating(active, tab) {
-            return Err(blocked);
-        }
-    } else if !active.allow_scripts && tab_has_script(tab) {
-        // Force-run não burla allow_scripts. Modal não deveria abrir nesse
-        // caso, mas defesa em camadas.
-        return Err(AppError::launcher(
-            "scripts_disabled",
-            &[("profileId", active.id.to_string())],
-        ));
+    // Plano 14: `force_item_index` vem do `<ScriptConfirmModal>` (Run sem
+    // checkbox = one-shot). Bypassa o trust check apenas do índice prompted;
+    // qualquer outro script untrusted no mesmo tab segue bloqueando, e o
+    // modal reabre na próxima iteração. `allow_scripts: false` continua
+    // bloqueando independente do force.
+    if let Some(blocked) = check_script_gating(active, tab, force_item_index) {
+        return Err(blocked);
     }
 
     let opener = TauriOpener::new(&app);
@@ -77,14 +69,17 @@ pub fn open_tab<R: tauri::Runtime>(
     Ok(())
 }
 
-fn tab_has_script(tab: &Tab) -> bool {
-    tab.items.iter().any(|i| matches!(i, Item::Script { .. }))
-}
-
 /// Verifica se há algum item Script no tab que precise de confirmação ou
 /// esteja bloqueado pelo kill-switch do perfil. Retorna `Some(error)` no
 /// primeiro bloqueio encontrado, ou `None` se o tab pode ser launched.
-pub(crate) fn check_script_gating(profile: &Profile, tab: &Tab) -> Option<AppError> {
+///
+/// `skip_trust_at` (one-shot from modal) ignora o trust check para o
+/// índice indicado — o `allow_scripts` kill-switch ainda se aplica.
+pub(crate) fn check_script_gating(
+    profile: &Profile,
+    tab: &Tab,
+    skip_trust_at: Option<usize>,
+) -> Option<AppError> {
     for (idx, item) in tab.items.iter().enumerate() {
         if let Item::Script { command, trusted } = item {
             if !profile.allow_scripts {
@@ -95,6 +90,9 @@ pub(crate) fn check_script_gating(profile: &Profile, tab: &Tab) -> Option<AppErr
                         ("tabId", tab.id.to_string()),
                     ],
                 ));
+            }
+            if Some(idx) == skip_trust_at {
+                continue;
             }
             if !trusted {
                 return Some(AppError::launcher(
@@ -502,10 +500,10 @@ pub fn set_search_shortcut<R: tauri::Runtime>(
 
 /// Plano 14 — marca um item Script de uma aba como confiável (ou desfaz a
 /// confiança). Trust persistido evita que o `<ScriptConfirmModal>` apareça
-/// nas próximas execuções. Identificação por `(profile_id, tab_id, item_index)`
-/// em vez de id próprio porque items não têm uuid hoje — ficaria over-engineered
-/// pra esse use case. Index instabilidade entre saves não preocupa: o frontend
-/// chama esse comando logo após o modal, mesma tab/index do request.
+/// nas próximas execuções. Identificação por `(profile_id, tab_id, item_index)`;
+/// `expected_command` blinda contra reorder/edit em outra janela entre o
+/// modal abrir e o user confirmar — flipa só se o comando atual ainda bate
+/// com o que o user viu, caso contrário retorna `script_command_mismatch`.
 #[tauri::command]
 pub fn set_script_trusted<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -513,11 +511,19 @@ pub fn set_script_trusted<R: tauri::Runtime>(
     profile_id: Uuid,
     tab_id: Uuid,
     item_index: usize,
+    expected_command: String,
     trusted: bool,
 ) -> Result<Config, AppError> {
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
-        apply_set_script_trusted(&mut cfg, profile_id, tab_id, item_index, trusted)?;
+        apply_set_script_trusted(
+            &mut cfg,
+            profile_id,
+            tab_id,
+            item_index,
+            &expected_command,
+            trusted,
+        )?;
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -550,6 +556,7 @@ pub(crate) fn apply_set_script_trusted(
     profile_id: Uuid,
     tab_id: Uuid,
     item_index: usize,
+    expected_command: &str,
     trusted: bool,
 ) -> AppResult<()> {
     let profile = profile_by_id_mut(cfg, profile_id)?;
@@ -570,8 +577,17 @@ pub(crate) fn apply_set_script_trusted(
     match item {
         Item::Script {
             trusted: t,
-            command: _,
+            command,
         } => {
+            if command != expected_command {
+                return Err(AppError::launcher(
+                    "script_command_mismatch",
+                    &[
+                        ("tabId", tab_id.to_string()),
+                        ("itemIndex", item_index.to_string()),
+                    ],
+                ));
+            }
             *t = trusted;
             Ok(())
         }
@@ -1505,7 +1521,7 @@ mod tests {
             open_with: None,
         }]);
         let p = profile_with(false, vec![]);
-        assert!(check_script_gating(&p, &tab).is_none());
+        assert!(check_script_gating(&p, &tab, None).is_none());
     }
 
     #[test]
@@ -1515,7 +1531,7 @@ mod tests {
             trusted: true,
         }]);
         let p = profile_with(false, vec![]);
-        match check_script_gating(&p, &tab).unwrap() {
+        match check_script_gating(&p, &tab, None).unwrap() {
             AppError::Launcher { code, .. } => assert_eq!(code, "scripts_disabled"),
             other => panic!("expected Launcher, got {other:?}"),
         }
@@ -1528,7 +1544,7 @@ mod tests {
             trusted: false,
         }]);
         let p = profile_with(true, vec![]);
-        match check_script_gating(&p, &tab).unwrap() {
+        match check_script_gating(&p, &tab, None).unwrap() {
             AppError::Launcher { code, context } => {
                 assert_eq!(code, "script_blocked");
                 assert_eq!(context.get("command").map(String::as_str), Some("ls"));
@@ -1545,7 +1561,66 @@ mod tests {
             trusted: true,
         }]);
         let p = profile_with(true, vec![]);
-        assert!(check_script_gating(&p, &tab).is_none());
+        assert!(check_script_gating(&p, &tab, None).is_none());
+    }
+
+    #[test]
+    fn check_script_gating_skip_index_bypasses_only_that_item_trust() {
+        // Modal one-shot: user confirmou item 0; item 1 segue untrusted →
+        // gating ainda bloqueia, modal reabre na próxima iteração.
+        let tab = tab_with(vec![
+            Item::Script {
+                command: "git pull".into(),
+                trusted: false,
+            },
+            Item::Script {
+                command: "rm -rf /tmp/x".into(),
+                trusted: false,
+            },
+        ]);
+        let p = profile_with(true, vec![]);
+        match check_script_gating(&p, &tab, Some(0)).unwrap() {
+            AppError::Launcher { code, context } => {
+                assert_eq!(code, "script_blocked");
+                assert_eq!(context.get("itemIndex").map(String::as_str), Some("1"));
+                assert_eq!(
+                    context.get("command").map(String::as_str),
+                    Some("rm -rf /tmp/x")
+                );
+            }
+            other => panic!("expected Launcher, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn check_script_gating_skip_index_passes_when_only_one_untrusted() {
+        let tab = tab_with(vec![
+            Item::Script {
+                command: "git pull".into(),
+                trusted: false,
+            },
+            Item::Script {
+                command: "cargo test".into(),
+                trusted: true,
+            },
+        ]);
+        let p = profile_with(true, vec![]);
+        assert!(check_script_gating(&p, &tab, Some(0)).is_none());
+    }
+
+    #[test]
+    fn check_script_gating_skip_index_still_respects_kill_switch() {
+        // force_item_index não é override do allow_scripts. allow_scripts==false
+        // bloqueia mesmo que o user tenha confirmado um item específico.
+        let tab = tab_with(vec![Item::Script {
+            command: "ls".into(),
+            trusted: true,
+        }]);
+        let p = profile_with(false, vec![]);
+        match check_script_gating(&p, &tab, Some(0)).unwrap() {
+            AppError::Launcher { code, .. } => assert_eq!(code, "scripts_disabled"),
+            other => panic!("expected Launcher, got {other:?}"),
+        }
     }
 
     #[test]
@@ -1565,7 +1640,7 @@ mod tests {
         let tid = tab.id;
         cfg.profiles[0].tabs.push(tab);
 
-        apply_set_script_trusted(&mut cfg, pid, tid, 1, true).unwrap();
+        apply_set_script_trusted(&mut cfg, pid, tid, 1, "ls", true).unwrap();
         match &cfg.profiles[0].tabs[0].items[1] {
             Item::Script { trusted, .. } => assert!(*trusted),
             other => panic!("expected Script, got {other:?}"),
@@ -1583,7 +1658,7 @@ mod tests {
         let tid = tab.id;
         cfg.profiles[0].tabs.push(tab);
 
-        match apply_set_script_trusted(&mut cfg, pid, tid, 0, true).unwrap_err() {
+        match apply_set_script_trusted(&mut cfg, pid, tid, 0, "anything", true).unwrap_err() {
             AppError::Launcher { code, .. } => assert_eq!(code, "item_kind_mismatch"),
             other => panic!("expected Launcher, got {other:?}"),
         }
@@ -1597,9 +1672,33 @@ mod tests {
         let tid = tab.id;
         cfg.profiles[0].tabs.push(tab);
 
-        match apply_set_script_trusted(&mut cfg, pid, tid, 0, true).unwrap_err() {
+        match apply_set_script_trusted(&mut cfg, pid, tid, 0, "anything", true).unwrap_err() {
             AppError::Launcher { code, .. } => assert_eq!(code, "item_index_out_of_range"),
             other => panic!("expected Launcher, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_set_script_trusted_rejects_when_command_changed() {
+        // User viu "ls" no modal; outra janela editou pra "rm -rf /". Trust
+        // não pode pousar em command que o user não autorizou.
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        let tab = tab_with(vec![Item::Script {
+            command: "rm -rf /".into(),
+            trusted: false,
+        }]);
+        let tid = tab.id;
+        cfg.profiles[0].tabs.push(tab);
+
+        match apply_set_script_trusted(&mut cfg, pid, tid, 0, "ls", true).unwrap_err() {
+            AppError::Launcher { code, .. } => assert_eq!(code, "script_command_mismatch"),
+            other => panic!("expected Launcher, got {other:?}"),
+        }
+        // Garante que o flag NÃO foi flipado no item alterado.
+        match &cfg.profiles[0].tabs[0].items[0] {
+            Item::Script { trusted, .. } => assert!(!*trusted),
+            other => panic!("expected Script, got {other:?}"),
         }
     }
 }

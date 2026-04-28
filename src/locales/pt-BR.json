@@ -28,6 +28,7 @@
       "tabNotFound": "Aba {{id}} não encontrada",
       "scriptBlocked": "Script não autorizado — confirme antes de executar.",
       "scriptsDisabled": "Scripts estão desabilitados neste perfil.",
+      "scriptCommandMismatch": "Script foi alterado desde que você confirmou — reabra a aba para revisar.",
       "itemKindMismatch": "Tipo de item incompatível ({{got}} ≠ {{expected}}).",
       "itemIndexOutOfRange": "Índice de item fora do intervalo: {{itemIndex}}.",
       "unknown": "Erro ao abrir aba: {{code}}"
