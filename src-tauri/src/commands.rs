@@ -1,5 +1,5 @@
 use crate::config::io::{load_from_path, save_atomic};
-use crate::config::schema::{Config, Item, Language, Profile, Tab, Theme};
+use crate::config::schema::{Config, Item, Language, Profile, Tab, Theme, ThemeOverrides};
 use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, TauriOpener};
@@ -551,6 +551,38 @@ pub fn set_profile_allow_scripts<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+pub(crate) fn apply_set_profile_theme_overrides(
+    cfg: &mut Config,
+    profile_id: Uuid,
+    overrides: Option<ThemeOverrides>,
+) -> AppResult<()> {
+    let profile = profile_by_id_mut(cfg, profile_id)?;
+    profile.theme_overrides = overrides;
+    Ok(())
+}
+
+/// Plano 15 — substitui (ou limpa) os overrides cosméticos do perfil. `None`
+/// remove a customização e o donut volta ao preset puro. Validate roda
+/// dentro do `save_with_rollback`, então payloads inválidos (cor não-hex,
+/// alpha fora de [0,1], raios fora dos limites) já voltam como `AppError`
+/// de config sem persistir.
+#[tauri::command]
+pub fn set_profile_theme_overrides<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    profile_id: Uuid,
+    overrides: Option<ThemeOverrides>,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_profile_theme_overrides(&mut cfg, profile_id, overrides)?;
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 pub(crate) fn apply_set_script_trusted(
     cfg: &mut Config,
     profile_id: Uuid,
@@ -822,6 +854,7 @@ pub(crate) fn build_new_profile(name: &str, icon: Option<String>) -> AppResult<P
         theme: Theme::Dark,
         tabs: vec![],
         allow_scripts: false,
+        theme_overrides: None,
     })
 }
 
@@ -1047,6 +1080,7 @@ mod tests {
             theme: Theme::Dark,
             tabs: vec![],
             allow_scripts: false,
+            theme_overrides: None,
         };
         let p2_id = p2.id;
         cfg.profiles.push(p2);
@@ -1511,6 +1545,7 @@ mod tests {
             theme: Theme::Dark,
             tabs,
             allow_scripts,
+            theme_overrides: None,
         }
     }
 
@@ -1699,6 +1734,52 @@ mod tests {
         match &cfg.profiles[0].tabs[0].items[0] {
             Item::Script { trusted, .. } => assert!(!*trusted),
             other => panic!("expected Script, got {other:?}"),
+        }
+    }
+
+    // ---------- apply_set_profile_theme_overrides ----------
+
+    #[test]
+    fn apply_set_profile_theme_overrides_sets_some() {
+        use crate::config::schema::{ThemeColors, ThemeOverrides};
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        let overrides = ThemeOverrides {
+            colors: Some(ThemeColors {
+                slice_fill: Some("#102030".into()),
+                ..ThemeColors::default()
+            }),
+            dimensions: None,
+            alpha: None,
+        };
+        apply_set_profile_theme_overrides(&mut cfg, pid, Some(overrides.clone())).unwrap();
+        assert_eq!(cfg.profiles[0].theme_overrides, Some(overrides));
+    }
+
+    #[test]
+    fn apply_set_profile_theme_overrides_clears_with_none() {
+        use crate::config::schema::{ThemeColors, ThemeOverrides};
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: Some(ThemeColors {
+                slice_fill: Some("#abcdef".into()),
+                ..ThemeColors::default()
+            }),
+            dimensions: None,
+            alpha: None,
+        });
+        apply_set_profile_theme_overrides(&mut cfg, pid, None).unwrap();
+        assert!(cfg.profiles[0].theme_overrides.is_none());
+    }
+
+    #[test]
+    fn apply_set_profile_theme_overrides_rejects_unknown_profile() {
+        let mut cfg = Config::default();
+        let bogus = Uuid::new_v4();
+        match apply_set_profile_theme_overrides(&mut cfg, bogus, None).unwrap_err() {
+            AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
+            other => panic!("expected Config error, got {other:?}"),
         }
     }
 }
