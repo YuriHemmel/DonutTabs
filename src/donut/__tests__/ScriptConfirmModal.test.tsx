@@ -68,4 +68,17 @@ describe("ScriptConfirmModal", () => {
       screen.getByTestId("script-confirm-overlay").getAttribute("aria-modal"),
     ).toBe("true");
   });
+
+  it("clicking the backdrop dispatches onCancel", async () => {
+    const { onCancel } = await renderModal("ls");
+    const overlay = screen.getByTestId("script-confirm-overlay");
+    fireEvent.mouseDown(overlay, { target: overlay });
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("clicking inside the dialog box does NOT cancel", async () => {
+    const { onCancel } = await renderModal("ls");
+    fireEvent.mouseDown(screen.getByTestId("script-confirm-command"));
+    expect(onCancel).not.toHaveBeenCalled();
+  });
 });

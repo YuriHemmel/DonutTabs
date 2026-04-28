@@ -198,7 +198,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
               ✕
             </button>
           </div>
-          {isScript(it.kind) && it.trusted !== undefined && (
+          {isScript(it.kind) && (
             <label
               style={{
                 display: "flex",

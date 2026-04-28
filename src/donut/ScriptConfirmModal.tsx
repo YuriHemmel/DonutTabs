@@ -44,6 +44,11 @@ export const ScriptConfirmModal: React.FC<ScriptConfirmModalProps> = ({
       aria-modal="true"
       aria-label={t("donut.scriptModal.title")}
       onKeyDown={handleKeyDown}
+      onMouseDown={(e) => {
+        // Click no backdrop (fora da caixa do dialog) cancela. UX padrão de
+        // modal — Esc + Cancel + clique-fora são caminhos equivalentes.
+        if (e.target === e.currentTarget) onCancel();
+      }}
       style={{
         position: "fixed",
         inset: 0,

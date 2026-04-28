@@ -231,4 +231,15 @@ describe("ItemListEditor", () => {
     const optionValues = Array.from(select.options).map((o) => o.value);
     expect(optionValues).toEqual(["url", "file", "folder", "app", "script"]);
   });
+
+  it("trust checkbox renders for script rows even when `trusted` is undefined", async () => {
+    // Bug fix: o checkbox dependia de `it.trusted !== undefined`. Isso fazia
+    // com que trocar kind via dropdown (que não inicializa trusted) escondesse
+    // o checkbox e impedisse o user de marcar trust antes de salvar. Agora
+    // renderiza sempre que kind === "script", tratando undefined como unchecked.
+    await renderEditor([{ kind: "script", value: "ls", openWith: "" }]);
+    const cb = screen.getByTestId("item-script-trusted-0") as HTMLInputElement;
+    expect(cb).toBeTruthy();
+    expect(cb.checked).toBe(false);
+  });
 });
