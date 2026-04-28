@@ -12,20 +12,8 @@ Built with **Tauri 2** (Rust core) + **React 19 + TypeScript** (frontend) + **Vi
 
 Before making non-trivial changes, read:
 
-- [docs/Plano.md](docs/Plano.md) — design spec with the "why" of every architectural decision, the phased roadmap, and extensibility hooks in the schema
-- [docs/plans/01-fundacao.md](docs/plans/01-fundacao.md) — the executed implementation plan for the current MVP (Plano 1)
-- [docs/plans/02-i18n.md](docs/plans/02-i18n.md) — the executed implementation plan for i18n + structured AppError (Plano 2)
-- [docs/plans/03-settings-crud.md](docs/plans/03-settings-crud.md) — the executed implementation plan for the Settings window / CRUD (Plano 3)
-- [docs/plans/04-settings-preferencias.md](docs/plans/04-settings-preferencias.md) — the executed implementation plan for Settings preferences (Plano 4)
-- [docs/plans/05-donut-gestos.md](docs/plans/05-donut-gestos.md) — the executed implementation plan for donut gestures: pagination + hover-hold (Plano 5)
-- [docs/plans/06-perfis.md](docs/plans/06-perfis.md) — the executed implementation plan for profiles (schema v2 + switcher) (Plano 6)
-- [docs/plans/07-perfil-autostart.md](docs/plans/07-perfil-autostart.md) — the executed implementation plan for inline profile editor + OS autostart (Plano 7)
-- [docs/plans/08-drag-and-drop.md](docs/plans/08-drag-and-drop.md) — the executed implementation plan for drag-and-drop (reorder tabs + profiles) (Plano 8)
-- [docs/plans/09-menu-contexto-favicons.md](docs/plans/09-menu-contexto-favicons.md) — the executed implementation plan for right-click context menu + favicons + Lucide icons (Plano 9)
-- [docs/plans/10-items-file-folder.md](docs/plans/10-items-file-folder.md) — the executed implementation plan for `kind: "file"` and `kind: "folder"` items (Plano 10)
-- [docs/plans/11-openwith-per-item.md](docs/plans/11-openwith-per-item.md) — the executed implementation plan for per-item `openWith` (Plano 11)
-- [docs/plans/12-import-export-config.md](docs/plans/12-import-export-config.md) — the executed implementation plan for config import/export (Plano 12)
-- [docs/plans/13-busca-rapida.md](docs/plans/13-busca-rapida.md) — the executed implementation plan for quick tab search (Plano 13)
+- `docs/Plano.md` (local-only, gitignored) — design spec with the "why" of every architectural decision, the phased roadmap, and extensibility hooks in the schema
+- `docs/plans/NN-*.md` (local-only, gitignored) — per-Plano executed implementation plans (01-fundacao, 02-i18n, 03-settings-crud, 04-settings-preferencias, 05-donut-gestos, 06-perfis, 07-perfil-autostart, 08-drag-and-drop, 09-menu-contexto-favicons, 10-items-file-folder, 11-openwith-per-item, 12-import-export-config, 13-busca-rapida, 14-app-script)
 - [docs/qa-smoke.md](docs/qa-smoke.md) — manual smoke checklist for the three OSes
 
 The user speaks Portuguese; all docs, commit messages, and user-facing strings in the app should be in Portuguese.
