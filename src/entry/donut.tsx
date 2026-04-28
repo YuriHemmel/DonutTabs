@@ -5,17 +5,26 @@ import i18next from "i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { Donut } from "../donut/Donut";
+import { ScriptConfirmModal } from "../donut/ScriptConfirmModal";
 import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
 import { initI18n, changeLanguage } from "../core/i18n";
-import { translateAppError } from "../core/errors";
+import { translateAppError, isAppError } from "../core/errors";
 import type { Config } from "../core/types/Config";
 
 const WINDOW_SIZE = 420;
+
+interface ScriptPrompt {
+  tabId: string;
+  command: string;
+  profileId: string;
+  itemIndex: number;
+}
 
 function App({ initialConfig }: { initialConfig: Config | null }) {
   const { t } = useTranslation();
   const [config, setConfig] = useState<Config | null>(initialConfig);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [scriptPrompt, setScriptPrompt] = useState<ScriptPrompt | null>(null);
 
   useEffect(() => {
     if (config) return;
@@ -70,8 +79,57 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
       await ipc.openTab(tabId);
       void ipc.hideDonut();
     } catch (err) {
+      // Plano 14: `script_blocked` significa que o tab tem um Script
+      // untrusted no perfil ativo. Abrimos o `<ScriptConfirmModal>` em vez
+      // do toast — donut continua visível para o user decidir.
+      // `scripts_disabled` (kill-switch fechado) cai no toast normal.
+      if (
+        isAppError(err) &&
+        err.kind === "launcher" &&
+        err.message.code === "script_blocked"
+      ) {
+        const ctx = err.message.context ?? {};
+        if (config) {
+          setScriptPrompt({
+            tabId,
+            command: ctx.command ?? "",
+            profileId: ctx.profileId ?? config.activeProfileId,
+            itemIndex: parseInt(ctx.itemIndex ?? "0", 10) || 0,
+          });
+          return;
+        }
+      }
       setErrorMsg(translateAppError(err, t));
     }
+  };
+
+  const handleScriptConfirm = async (trustForever: boolean) => {
+    if (!scriptPrompt) return;
+    const prompt = scriptPrompt;
+    setScriptPrompt(null);
+    try {
+      if (trustForever) {
+        await ipc.setScriptTrusted(
+          prompt.profileId,
+          prompt.tabId,
+          prompt.itemIndex,
+          true,
+        );
+        // setScriptTrusted persiste; openTab agora passa pelo gating sem force.
+        await ipc.openTab(prompt.tabId);
+      } else {
+        // One-shot: bypassa trust mas respeita allow_scripts.
+        await ipc.openTab(prompt.tabId, true);
+      }
+      void ipc.hideDonut();
+    } catch (err) {
+      setErrorMsg(translateAppError(err, t));
+    }
+  };
+
+  const handleScriptCancel = () => {
+    setScriptPrompt(null);
+    // Donut continua aberto — user pode tentar outra aba.
   };
 
   const handleOpenSettings = async (intent?: import("../core/ipc").SettingsIntent) => {
@@ -169,6 +227,15 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
             {t("donut.toastDismiss")}
           </button>
         </div>
+      )}
+      {scriptPrompt && (
+        <ScriptConfirmModal
+          command={scriptPrompt.command}
+          onConfirm={(trustForever) => {
+            void handleScriptConfirm(trustForever);
+          }}
+          onCancel={handleScriptCancel}
+        />
       )}
     </div>
   );

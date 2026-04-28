@@ -11,7 +11,8 @@ export type SettingsIntent = "new-tab" | `edit-tab:${string}` | "new-profile";
 
 export const ipc = {
   getConfig: () => invoke<Config>("get_config"),
-  openTab: (tabId: string) => invoke<void>("open_tab", { tabId }),
+  openTab: (tabId: string, force?: boolean) =>
+    invoke<void>("open_tab", { tabId, force: force ?? false }),
   hideDonut: () => invoke<void>("hide_donut"),
   saveTab: (tab: Tab, profileId?: string) =>
     invoke<Config>("save_tab", { tab, profileId: profileId ?? null }),
