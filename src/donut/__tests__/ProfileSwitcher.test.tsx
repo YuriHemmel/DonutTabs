@@ -11,6 +11,7 @@ const profile = (id: string, name: string, overrides: Partial<Profile> = {}): Pr
   theme: "dark",
   tabs: [],
   allowScripts: false,
+  themeOverrides: null,
   ...overrides,
 });
 

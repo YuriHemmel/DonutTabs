@@ -6,6 +6,7 @@ import type { Theme } from "./types/Theme";
 import type { Language } from "./types/Language";
 import type { FaviconResult } from "./types/FaviconResult";
 import type { ImportResult } from "./types/ImportResult";
+import type { ThemeOverrides } from "./types/ThemeOverrides";
 
 export type SettingsIntent = "new-tab" | `edit-tab:${string}` | "new-profile";
 
@@ -81,6 +82,14 @@ export const ipc = {
     }),
   setProfileAllowScripts: (profileId: string, allow: boolean) =>
     invoke<Config>("set_profile_allow_scripts", { profileId, allow }),
+  /** Plano 15 — substitui (ou limpa, com `null`) os overrides cosméticos do
+   *  perfil indicado. Validate roda no backend; payloads inválidos voltam
+   *  como `AppError` de config sem persistir. */
+  setProfileThemeOverrides: (profileId: string, overrides: ThemeOverrides | null) =>
+    invoke<Config>("set_profile_theme_overrides", {
+      profileId,
+      overrides,
+    }),
 };
 
 export interface DialogFilter {

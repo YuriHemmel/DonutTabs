@@ -4,28 +4,35 @@ import i18next from "i18next";
 import { listen } from "@tauri-apps/api/event";
 import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
 import { initI18n, changeLanguage } from "../core/i18n";
-import { applyTheme, watchSystemTheme } from "../core/theme";
+import { applyTheme, applyTokensAsCssVars, watchSystemTheme } from "../core/theme";
+import { resolveThemeTokens } from "../core/themeTokens";
 import { SettingsApp } from "../settings/SettingsApp";
 import type { Config } from "../core/types/Config";
-import type { Theme } from "../core/types/Theme";
+import type { Profile } from "../core/types/Profile";
 
 let unwatchSystemTheme: () => void = () => {};
 
-function activeProfileTheme(cfg: Config): Theme {
-  return (
-    cfg.profiles.find((p) => p.id === cfg.activeProfileId)?.theme ?? "dark"
-  );
+function activeProfile(cfg: Config): Profile | null {
+  return cfg.profiles.find((p) => p.id === cfg.activeProfileId) ?? null;
+}
+
+function applyTokensFor(profile: Profile) {
+  const tokens = resolveThemeTokens(profile.theme, profile.themeOverrides);
+  applyTokensAsCssVars(tokens);
 }
 
 async function reactToConfig(cfg: Config) {
   await changeLanguage(cfg.appearance.language);
   document.title = i18next.t("settings.title");
 
-  const theme = activeProfileTheme(cfg);
+  const profile = activeProfile(cfg);
+  const theme = profile?.theme ?? "dark";
   unwatchSystemTheme();
   applyTheme(theme);
+  if (profile) applyTokensFor(profile);
   unwatchSystemTheme = watchSystemTheme(theme, () => {
     applyTheme(theme);
+    if (profile) applyTokensFor(profile);
   });
 }
 
@@ -42,10 +49,13 @@ async function bootstrap() {
 
   if (cfg) {
     document.title = i18next.t("settings.title");
-    const theme = activeProfileTheme(cfg);
+    const profile = activeProfile(cfg);
+    const theme = profile?.theme ?? "dark";
     applyTheme(theme);
+    if (profile) applyTokensFor(profile);
     unwatchSystemTheme = watchSystemTheme(theme, () => {
       applyTheme(theme);
+      if (profile) applyTokensFor(profile);
     });
   }
 

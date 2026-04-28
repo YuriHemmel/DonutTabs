@@ -33,6 +33,60 @@ pub struct Profile {
     /// como `false` graças ao `#[serde(default)]`.
     #[serde(default)]
     pub allow_scripts: bool,
+    /// Plano 15 — overrides cosméticos que se aplicam por cima do preset
+    /// `theme` (cores, transparência do overlay, ratios de raio interno/
+    /// externo). `None` = usa apenas o preset. Cada campo de cor/dimensão
+    /// dentro do struct também é `Option`, então o usuário customiza só
+    /// um subset. Configs Plano-14 e anteriores deserializam como `None`
+    /// graças ao `#[serde(default)]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_overrides: Option<ThemeOverrides>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeOverrides {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colors: Option<ThemeColors>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dimensions: Option<ThemeDimensions>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alpha: Option<ThemeAlpha>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeColors {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slice_fill: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slice_highlight: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slice_stroke: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub center_fill: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeDimensions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inner_ratio: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outer_ratio: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeAlpha {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlay: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -191,6 +245,7 @@ impl Default for Profile {
             theme: Theme::Dark,
             tabs: vec![],
             allow_scripts: false,
+            theme_overrides: None,
         }
     }
 }
@@ -266,6 +321,7 @@ mod tests {
                 }],
             }],
             allow_scripts: false,
+            theme_overrides: None,
         };
         let json = serde_json::to_string(&p).unwrap();
         let parsed: Profile = serde_json::from_str(&json).unwrap();
@@ -476,5 +532,100 @@ mod tests {
         assert!(json.contains("\"allowScripts\":true"));
         let back: Profile = serde_json::from_str(&json).unwrap();
         assert_eq!(p, back);
+    }
+
+    #[test]
+    fn profile_default_omits_theme_overrides_in_json() {
+        // Plano 15: theme_overrides=None deve ser elidido no JSON pra não
+        // poluir configs de usuários que não customizaram nada.
+        let p = Profile::default();
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(
+            !json.contains("themeOverrides"),
+            "field should be skipped when None: {json}"
+        );
+    }
+
+    #[test]
+    fn profile_without_theme_overrides_field_defaults_to_none() {
+        // Plano 14 e anteriores não têm `themeOverrides` no JSON; precisa
+        // deserializar como `None`.
+        let json = r#"{
+            "id": "11111111-1111-1111-1111-111111111111",
+            "name": "Padrão",
+            "icon": null,
+            "shortcut": "CommandOrControl+Shift+Space",
+            "theme": "dark",
+            "tabs": [],
+            "allowScripts": false
+        }"#;
+        let p: Profile = serde_json::from_str(json).unwrap();
+        assert!(p.theme_overrides.is_none());
+    }
+
+    #[test]
+    fn profile_with_theme_overrides_round_trips() {
+        let mut p = Profile::default();
+        p.theme_overrides = Some(ThemeOverrides {
+            colors: Some(ThemeColors {
+                slice_fill: Some("#abc123".into()),
+                slice_highlight: None,
+                slice_stroke: None,
+                center_fill: None,
+                text: Some("#ffffff".into()),
+            }),
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.25),
+                outer_ratio: None,
+            }),
+            alpha: Some(ThemeAlpha { overlay: Some(0.7) }),
+        });
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains("\"themeOverrides\""));
+        assert!(json.contains("\"sliceFill\":\"#abc123\""));
+        assert!(json.contains("\"innerRatio\":0.25"));
+        assert!(json.contains("\"overlay\":0.7"));
+        let back: Profile = serde_json::from_str(&json).unwrap();
+        assert_eq!(p, back);
+    }
+
+    #[test]
+    fn theme_overrides_partial_subset_omits_unset_subgroups() {
+        // Override apenas em `colors`: `dimensions` e `alpha` ausentes não
+        // serializam nem como `null` nem como objeto vazio.
+        let o = ThemeOverrides {
+            colors: Some(ThemeColors {
+                slice_fill: Some("#102030".into()),
+                ..ThemeColors::default()
+            }),
+            dimensions: None,
+            alpha: None,
+        };
+        let json = serde_json::to_string(&o).unwrap();
+        assert!(json.contains("\"colors\""));
+        assert!(!json.contains("\"dimensions\""));
+        assert!(!json.contains("\"alpha\""));
+        // E as cores não-setadas dentro de `colors` também são elididas.
+        assert!(!json.contains("\"sliceHighlight\""));
+        assert!(!json.contains("\"centerFill\""));
+    }
+
+    #[test]
+    fn theme_overrides_default_is_empty_struct() {
+        // `ThemeOverrides::default()` deve serializar como `{}` — sem campos.
+        let o = ThemeOverrides::default();
+        let json = serde_json::to_string(&o).unwrap();
+        assert_eq!(json, "{}");
+        let back: ThemeOverrides = serde_json::from_str(&json).unwrap();
+        assert_eq!(o, back);
+    }
+
+    #[test]
+    fn theme_overrides_deserializes_empty_subgroups() {
+        // `{"colors":{}}` deve virar `Some(ThemeColors::default())`, não None.
+        // Isso documenta que `Option` está no nível do sub-grupo, não dentro.
+        let o: ThemeOverrides = serde_json::from_str(r#"{"colors":{}}"#).unwrap();
+        assert!(o.colors.is_some());
+        assert_eq!(o.colors.unwrap(), ThemeColors::default());
     }
 }

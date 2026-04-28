@@ -1,4 +1,5 @@
 import React from "react";
+import { useTheme } from "./themeContext";
 
 export interface CenterCircleProps {
   cx: number;
@@ -14,10 +15,27 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({
   r,
   onGearClick,
   onProfileSwitcherClick,
-}) => (
+}) => {
+  const tokens = useTheme();
+  return (
   <g>
-    <circle cx={cx} cy={cy} r={r} fill="#141a28" stroke="#3a4968" strokeWidth={1} />
-    <line x1={cx} y1={cy - r} x2={cx} y2={cy + r} stroke="#3a4968" strokeWidth={1} />
+    <circle
+      cx={cx}
+      cy={cy}
+      r={r}
+      fill={tokens.colors.centerFill}
+      fillOpacity={tokens.alpha.overlay}
+      stroke={tokens.colors.sliceStroke}
+      strokeWidth={1}
+    />
+    <line
+      x1={cx}
+      y1={cy - r}
+      x2={cx}
+      y2={cy + r}
+      stroke={tokens.colors.sliceStroke}
+      strokeWidth={1}
+    />
     <text
       x={cx - r / 2}
       y={cy}
@@ -71,4 +89,5 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({
       />
     )}
   </g>
-);
+  );
+};

@@ -83,6 +83,7 @@ export const SettingsApp: React.FC = () => {
     reorderProfiles,
     setSearchShortcut,
     setProfileAllowScripts,
+    setProfileThemeOverrides,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -381,6 +382,10 @@ export const SettingsApp: React.FC = () => {
           allowScripts={selectedProfile.allowScripts}
           onAllowScriptsChange={(allow) => {
             void setProfileAllowScripts(selectedProfile.id, allow);
+          }}
+          themeOverrides={selectedProfile.themeOverrides}
+          onThemeOverridesChange={(overrides) => {
+            void setProfileThemeOverrides(selectedProfile.id, overrides);
           }}
         />
       )}

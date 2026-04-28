@@ -28,6 +28,8 @@ pub fn migrate_to_v2(v1: ConfigV1) -> Config {
         // Plano 14: kill-switch default-closed. Configs v1 não conheciam
         // `kind: "script"`, então não há tabs com scripts pra ativar.
         allow_scripts: false,
+        // Plano 15: configs v1 não têm overrides cosméticos.
+        theme_overrides: None,
     };
     Config {
         version: 2,

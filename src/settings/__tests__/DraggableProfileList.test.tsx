@@ -14,6 +14,7 @@ const profile = (overrides: Partial<Profile> = {}): Profile => ({
   theme: "dark",
   tabs: [],
   allowScripts: false,
+  themeOverrides: null,
   ...overrides,
 });
 

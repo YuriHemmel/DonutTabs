@@ -57,8 +57,105 @@ pub fn validate(config: &Config) -> AppResult<()> {
             ));
         }
         validate_profile_tabs(profile)?;
+        if let Some(overrides) = &profile.theme_overrides {
+            validate_theme_overrides(profile, overrides)?;
+        }
     }
 
+    Ok(())
+}
+
+/// Aceita `#RGB` ou `#RRGGBB` (case-insensitive). Sem alpha — alpha vive em
+/// `ThemeAlpha`. Sem `rgb()`/nomes/hsl — formato canônico via color picker
+/// nativo do navegador é sempre `#RRGGBB`.
+pub(crate) fn is_hex_color(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    if bytes.first() != Some(&b'#') {
+        return false;
+    }
+    let rest = &bytes[1..];
+    if rest.len() != 3 && rest.len() != 6 {
+        return false;
+    }
+    rest.iter().all(|b| b.is_ascii_hexdigit())
+}
+
+fn validate_theme_overrides(profile: &Profile, overrides: &ThemeOverrides) -> AppResult<()> {
+    if let Some(colors) = &overrides.colors {
+        let entries = [
+            ("sliceFill", colors.slice_fill.as_deref()),
+            ("sliceHighlight", colors.slice_highlight.as_deref()),
+            ("sliceStroke", colors.slice_stroke.as_deref()),
+            ("centerFill", colors.center_fill.as_deref()),
+            ("text", colors.text.as_deref()),
+        ];
+        for (field, value) in entries {
+            if let Some(v) = value {
+                if !is_hex_color(v) {
+                    return Err(AppError::config(
+                        "theme_color_invalid",
+                        &[
+                            ("profileId", profile.id.to_string()),
+                            ("field", field.to_string()),
+                            ("value", v.to_string()),
+                        ],
+                    ));
+                }
+            }
+        }
+    }
+    if let Some(alpha) = &overrides.alpha {
+        if let Some(v) = alpha.overlay {
+            if !v.is_finite() || !(0.0..=1.0).contains(&v) {
+                return Err(AppError::config(
+                    "theme_alpha_out_of_range",
+                    &[
+                        ("profileId", profile.id.to_string()),
+                        ("field", "overlay".to_string()),
+                        ("value", v.to_string()),
+                    ],
+                ));
+            }
+        }
+    }
+    if let Some(dims) = &overrides.dimensions {
+        if let Some(inner) = dims.inner_ratio {
+            if !inner.is_finite() || !(0.05..=0.45).contains(&inner) {
+                return Err(AppError::config(
+                    "theme_radius_out_of_range",
+                    &[
+                        ("profileId", profile.id.to_string()),
+                        ("field", "innerRatio".to_string()),
+                        ("value", inner.to_string()),
+                    ],
+                ));
+            }
+        }
+        if let Some(outer) = dims.outer_ratio {
+            if !outer.is_finite() || !(0.30..=0.50).contains(&outer) {
+                return Err(AppError::config(
+                    "theme_radius_out_of_range",
+                    &[
+                        ("profileId", profile.id.to_string()),
+                        ("field", "outerRatio".to_string()),
+                        ("value", outer.to_string()),
+                    ],
+                ));
+            }
+        }
+        if let (Some(inner), Some(outer)) = (dims.inner_ratio, dims.outer_ratio) {
+            if inner >= outer {
+                return Err(AppError::config(
+                    "theme_radius_inverted",
+                    &[
+                        ("profileId", profile.id.to_string()),
+                        ("inner", inner.to_string()),
+                        ("outer", outer.to_string()),
+                    ],
+                ));
+            }
+        }
+    }
     Ok(())
 }
 
@@ -426,6 +523,7 @@ mod tests {
             theme: cfg.profiles[0].theme,
             tabs: vec![],
             allow_scripts: false,
+            theme_overrides: None,
         };
         let mut t2 = tab_with(Some("B"), None, vec![]);
         t2.id = shared_tab_id;
@@ -652,6 +750,265 @@ mod tests {
             }],
         ));
         assert_config_code(validate(&cfg).unwrap_err(), "script_command_empty");
+    }
+
+    #[test]
+    fn is_hex_color_accepts_rgb_and_rrggbb() {
+        assert!(is_hex_color("#abc"));
+        assert!(is_hex_color("#ABC"));
+        assert!(is_hex_color("#aabbcc"));
+        assert!(is_hex_color("#AABBCC"));
+        assert!(is_hex_color("#0f0"));
+        assert!(is_hex_color("#123456"));
+    }
+
+    #[test]
+    fn is_hex_color_rejects_invalid_formats() {
+        assert!(!is_hex_color(""));
+        assert!(!is_hex_color("abc"));
+        assert!(!is_hex_color("#"));
+        assert!(!is_hex_color("#xx"));
+        assert!(!is_hex_color("#1234"));
+        assert!(!is_hex_color("#12345"));
+        assert!(!is_hex_color("#1234567"));
+        assert!(!is_hex_color("#abcdeg"));
+        assert!(!is_hex_color("red"));
+        assert!(!is_hex_color("rgb(1,2,3)"));
+    }
+
+    #[test]
+    fn theme_overrides_none_validates() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = None;
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn theme_overrides_valid_colors_validate() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: Some(ThemeColors {
+                slice_fill: Some("#102030".into()),
+                slice_highlight: Some("#abc".into()),
+                slice_stroke: Some("#3a4968".into()),
+                center_fill: None,
+                text: Some("#ffffff".into()),
+            }),
+            dimensions: None,
+            alpha: None,
+        });
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn theme_overrides_invalid_color_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: Some(ThemeColors {
+                slice_fill: Some("not-a-color".into()),
+                ..ThemeColors::default()
+            }),
+            dimensions: None,
+            alpha: None,
+        });
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "theme_color_invalid");
+                assert_eq!(context.get("field").map(String::as_str), Some("sliceFill"));
+                assert_eq!(
+                    context.get("value").map(String::as_str),
+                    Some("not-a-color"),
+                );
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn theme_overrides_alpha_in_bounds_validates() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: None,
+            alpha: Some(ThemeAlpha { overlay: Some(0.0) }),
+        });
+        assert!(validate(&cfg).is_ok());
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: None,
+            alpha: Some(ThemeAlpha { overlay: Some(1.0) }),
+        });
+        assert!(validate(&cfg).is_ok());
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: None,
+            alpha: Some(ThemeAlpha { overlay: Some(0.5) }),
+        });
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn theme_overrides_alpha_out_of_range_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: None,
+            alpha: Some(ThemeAlpha {
+                overlay: Some(-0.1),
+            }),
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_alpha_out_of_range");
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: None,
+            alpha: Some(ThemeAlpha { overlay: Some(1.5) }),
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_alpha_out_of_range");
+    }
+
+    #[test]
+    fn theme_overrides_alpha_nan_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: None,
+            alpha: Some(ThemeAlpha {
+                overlay: Some(f32::NAN),
+            }),
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_alpha_out_of_range");
+    }
+
+    #[test]
+    fn theme_overrides_radius_in_bounds_validate() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.05),
+                outer_ratio: Some(0.50),
+            }),
+            alpha: None,
+        });
+        assert!(validate(&cfg).is_ok());
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.45),
+                outer_ratio: Some(0.50),
+            }),
+            alpha: None,
+        });
+        assert!(validate(&cfg).is_ok());
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.20),
+                outer_ratio: Some(0.30),
+            }),
+            alpha: None,
+        });
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn theme_overrides_inner_radius_out_of_range_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.04),
+                outer_ratio: None,
+            }),
+            alpha: None,
+        });
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "theme_radius_out_of_range");
+                assert_eq!(context.get("field").map(String::as_str), Some("innerRatio"),);
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.46),
+                outer_ratio: None,
+            }),
+            alpha: None,
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_radius_out_of_range");
+    }
+
+    #[test]
+    fn theme_overrides_outer_radius_out_of_range_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: None,
+                outer_ratio: Some(0.29),
+            }),
+            alpha: None,
+        });
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "theme_radius_out_of_range");
+                assert_eq!(context.get("field").map(String::as_str), Some("outerRatio"),);
+            }
+            other => panic!("expected Config error, got {other:?}"),
+        }
+
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: None,
+                outer_ratio: Some(0.51),
+            }),
+            alpha: None,
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_radius_out_of_range");
+    }
+
+    #[test]
+    fn theme_overrides_inverted_radius_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.40),
+                outer_ratio: Some(0.30),
+            }),
+            alpha: None,
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_radius_inverted");
+
+        // inner == outer também é inválido (donut degeneraria em anel zero).
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.40),
+                outer_ratio: Some(0.40),
+            }),
+            alpha: None,
+        });
+        assert_config_code(validate(&cfg).unwrap_err(), "theme_radius_inverted");
+    }
+
+    #[test]
+    fn theme_overrides_partial_dimensions_skips_inversion_check() {
+        // Só inner setado: não há como comparar — só valida o range individual.
+        let mut cfg = base_config();
+        cfg.profiles[0].theme_overrides = Some(ThemeOverrides {
+            colors: None,
+            dimensions: Some(ThemeDimensions {
+                inner_ratio: Some(0.40),
+                outer_ratio: None,
+            }),
+            alpha: None,
+        });
+        assert!(validate(&cfg).is_ok());
     }
 
     #[test]
