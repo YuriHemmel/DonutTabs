@@ -16,6 +16,9 @@ export interface AppearanceSectionProps {
   onImportConfig?: () => void;
   /** Quando o perfil sob edição não é o ativo, mostra um botão pra ativá-lo. */
   onSetActiveProfile?: () => void;
+  /** Plano 14: kill-switch global de scripts no perfil ativo. */
+  allowScripts?: boolean;
+  onAllowScriptsChange?: (allow: boolean) => void;
 }
 
 const THEMES: Theme[] = ["dark", "light", "auto"];
@@ -35,6 +38,8 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   onExportConfig,
   onImportConfig,
   onSetActiveProfile,
+  allowScripts,
+  onAllowScriptsChange,
 }) => {
   const { t } = useTranslation();
 
@@ -111,6 +116,42 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
         <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
           {t("settings.system.autostartHint")}
         </small>
+
+        {allowScripts !== undefined && onAllowScriptsChange && (
+          <div
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid var(--input-border)",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                padding: 4,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="allow-scripts-toggle"
+                checked={allowScripts}
+                onChange={(e) => onAllowScriptsChange(e.target.checked)}
+              />
+              {t("settings.system.allowScriptsLabel")}
+            </label>
+            <small
+              style={{
+                color: "var(--muted)",
+                display: "block",
+                paddingLeft: 26,
+              }}
+            >
+              {t("settings.system.allowScriptsHint")}
+            </small>
+          </div>
+        )}
 
         {(onExportConfig || onImportConfig) && (
           <div
