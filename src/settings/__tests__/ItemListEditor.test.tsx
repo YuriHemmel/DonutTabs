@@ -58,15 +58,6 @@ describe("ItemListEditor", () => {
     expect(screen.getByTestId("item-browse-2")).toBeTruthy();
   });
 
-  it("renders an invisible spacer in URL rows so the openWith column aligns", async () => {
-    await renderEditor([
-      { kind: "url", value: "https://a", openWith: "" },
-      { kind: "file", value: "/tmp/x", openWith: "" },
-    ]);
-    expect(screen.getByTestId("item-browse-spacer-0")).toBeTruthy();
-    expect(screen.queryByTestId("item-browse-spacer-1")).toBeNull();
-  });
-
   it("preserves the input value when switching kind", async () => {
     const { onChange } = await renderEditor([
       { kind: "url", value: "https://keepme", openWith: "" },
@@ -188,5 +179,56 @@ describe("ItemListEditor", () => {
     expect(
       (screen.getByTestId("item-open-with-0") as HTMLInputElement).value,
     ).toBe("edge");
+  });
+
+  it("hides browse + openWith for app rows; uses input not textarea", async () => {
+    await renderEditor([{ kind: "app", value: "firefox", openWith: "" }]);
+    expect(screen.queryByTestId("item-browse-0")).toBeNull();
+    expect(screen.queryByTestId("item-open-with-0")).toBeNull();
+    // App uses single-line <input>, not <textarea>.
+    expect(screen.getByTestId("item-value-0").tagName).toBe("INPUT");
+  });
+
+  it("renders a textarea + trust checkbox for script rows", async () => {
+    await renderEditor([
+      { kind: "script", value: "git pull", openWith: "", trusted: false },
+    ]);
+    expect(screen.queryByTestId("item-browse-0")).toBeNull();
+    expect(screen.queryByTestId("item-open-with-0")).toBeNull();
+    expect(screen.getByTestId("item-value-0").tagName).toBe("TEXTAREA");
+    expect(screen.getByTestId("item-script-trusted-0")).toBeTruthy();
+  });
+
+  it("toggling trust checkbox emits onChange with the new flag", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "script", value: "ls", openWith: "", trusted: false },
+    ]);
+    fireEvent.click(screen.getByTestId("item-script-trusted-0"));
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "script", value: "ls", openWith: "", trusted: true },
+    ]);
+  });
+
+  it("'+ Adicionar app' appends app row with empty value", async () => {
+    const { onChange } = await renderEditor([]);
+    fireEvent.click(screen.getByTestId("add-item-app"));
+    expect(onChange).toHaveBeenCalledWith([
+      { kind: "app", value: "", openWith: "" },
+    ]);
+  });
+
+  it("'+ Adicionar script' appends script row with trusted=false", async () => {
+    const { onChange } = await renderEditor([]);
+    fireEvent.click(screen.getByTestId("add-item-script"));
+    expect(onChange).toHaveBeenCalledWith([
+      { kind: "script", value: "", openWith: "", trusted: false },
+    ]);
+  });
+
+  it("renders all five kind options in the selector", async () => {
+    await renderEditor([{ kind: "url", value: "", openWith: "" }]);
+    const select = screen.getByTestId("item-kind-0") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toEqual(["url", "file", "folder", "app", "script"]);
   });
 });

@@ -33,6 +33,7 @@ const existing: Profile = {
   shortcut: "Ctrl+Space",
   theme: "dark",
   tabs: [],
+  allowScripts: false,
 };
 
 describe("ProfileEditor", () => {

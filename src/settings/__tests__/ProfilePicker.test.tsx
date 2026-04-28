@@ -13,6 +13,7 @@ const profile = (overrides: Partial<Profile> = {}): Profile => ({
   shortcut: "Ctrl+Space",
   theme: "dark",
   tabs: [],
+  allowScripts: false,
   ...overrides,
 });
 
