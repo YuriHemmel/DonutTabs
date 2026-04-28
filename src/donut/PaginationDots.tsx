@@ -1,4 +1,5 @@
 import React from "react";
+import { useTheme } from "./themeContext";
 
 export interface PaginationDotsProps {
   total: number;
@@ -20,6 +21,7 @@ export const PaginationDots: React.FC<PaginationDotsProps> = ({
   cy,
   onChange,
 }) => {
+  const tokens = useTheme();
   if (total <= 1) return null;
   const gap = 14;
   const r = 4;
@@ -57,7 +59,7 @@ export const PaginationDots: React.FC<PaginationDotsProps> = ({
               cx={startX + i * gap}
               cy={cy}
               r={r}
-              fill={isActive ? "#dde" : "#445"}
+              fill={isActive ? tokens.colors.sliceHighlight : tokens.colors.sliceStroke}
             />
           </g>
         );

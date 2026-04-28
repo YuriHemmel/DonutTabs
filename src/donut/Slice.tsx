@@ -1,5 +1,6 @@
 import React from "react";
 import { arcPath } from "./geometry";
+import { useTheme } from "./themeContext";
 
 export interface SliceProps {
   cx: number; cy: number;
@@ -16,6 +17,7 @@ export interface SliceProps {
 }
 
 export const Slice: React.FC<SliceProps> = (p) => {
+  const tokens = useTheme();
   const d = arcPath(p);
   const mid = (p.startAngle + p.endAngle) / 2;
   const labelR = (p.innerR + p.outerR) / 2;
@@ -28,12 +30,13 @@ export const Slice: React.FC<SliceProps> = (p) => {
       <path
         data-testid="donut-slice"
         d={d}
-        fill={p.highlighted ? "#2a3b5a" : "#1b2436"}
+        fill={p.highlighted ? tokens.colors.sliceHighlight : tokens.colors.sliceFill}
+        fillOpacity={tokens.alpha.overlay}
         fillRule="evenodd"
-        stroke="#3a4968"
+        stroke={tokens.colors.sliceStroke}
         strokeWidth={1}
       />
-      <g transform={`translate(${lx} ${ly})`} textAnchor="middle" fill="#eaeaea">
+      <g transform={`translate(${lx} ${ly})`} textAnchor="middle" fill={tokens.colors.text}>
         {p.iconNode !== undefined ? (
           <g transform={`translate(0 ${p.label ? -8 : 0})`}>{p.iconNode}</g>
         ) : (

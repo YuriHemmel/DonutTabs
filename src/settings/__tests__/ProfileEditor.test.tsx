@@ -34,6 +34,7 @@ const existing: Profile = {
   theme: "dark",
   tabs: [],
   allowScripts: false,
+  themeOverrides: null,
 };
 
 describe("ProfileEditor", () => {

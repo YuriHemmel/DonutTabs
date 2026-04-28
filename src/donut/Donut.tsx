@@ -18,6 +18,8 @@ import { SliceContextMenu } from "./SliceContextMenu";
 import { TabSearchOverlay } from "./TabSearchOverlay";
 import { matchesCombo } from "./matchesCombo";
 import { tabInitial } from "./tabUtils";
+import { ThemeContext } from "./themeContext";
+import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
 
 function firstTabUrl(tab: Tab): string | null {
   for (const item of tab.items) {
@@ -60,6 +62,10 @@ export interface DonutProps {
    *  rápida das abas do perfil ativo. Quando ausente, o overlay fica
    *  desabilitado. */
   searchShortcut?: string;
+  /** Plano 15 — tokens visuais resolvidos (preset + overrides do perfil
+   *  ativo). Quando ausente, default = preset dark. Os ratios internos
+   *  controlam o raio interno/externo do donut. */
+  tokens?: ThemeTokens;
   onSelect: (tabId: string) => void;
   onOpenSettings?: (intent?: SettingsIntent) => void;
   onEditTab?: (tabId: string) => void;
@@ -74,6 +80,8 @@ export interface DonutProps {
 
 const PLUS_KEY = "__plus__";
 
+const DEFAULT_TOKENS: ThemeTokens = resolvePresetTokens("dark");
+
 export const Donut: React.FC<DonutProps> = ({
   tabs,
   size,
@@ -81,6 +89,7 @@ export const Donut: React.FC<DonutProps> = ({
   wheelDirection,
   hoverHoldMs = 800,
   searchShortcut,
+  tokens,
   onSelect,
   onOpenSettings,
   onEditTab,
@@ -90,10 +99,11 @@ export const Donut: React.FC<DonutProps> = ({
   onSelectProfile,
   onCreateProfile,
 }) => {
+  const effectiveTokens = tokens ?? DEFAULT_TOKENS;
   const cx = size / 2;
   const cy = size / 2;
-  const outerR = size * 0.46;
-  const innerR = size * 0.22;
+  const outerR = size * effectiveTokens.dimensions.outerRatio;
+  const innerR = size * effectiveTokens.dimensions.innerRatio;
 
   const { t } = useTranslation();
   const [mode, setMode] = useState<"tabs" | "profiles">("tabs");
@@ -209,6 +219,7 @@ export const Donut: React.FC<DonutProps> = ({
 
   if (mode === "profiles" && profiles && activeProfileId && onSelectProfile) {
     return (
+      <ThemeContext.Provider value={effectiveTokens}>
       <svg
         width={size}
         height={size}
@@ -238,10 +249,12 @@ export const Donut: React.FC<DonutProps> = ({
           onProfileSwitcherClick={() => setMode("tabs")}
         />
       </svg>
+      </ThemeContext.Provider>
     );
   }
 
   return (
+    <ThemeContext.Provider value={effectiveTokens}>
     <>
     <svg
       width={size}
@@ -393,5 +406,6 @@ export const Donut: React.FC<DonutProps> = ({
       />
     )}
     </>
+    </ThemeContext.Provider>
   );
 };
