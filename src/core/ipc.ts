@@ -52,6 +52,20 @@ export const ipc = {
     invoke<ImportResult>("import_config", { sourcePath }),
   setSearchShortcut: (combo: string) =>
     invoke<Config>("set_search_shortcut", { combo }),
+  setScriptTrusted: (
+    profileId: string,
+    tabId: string,
+    itemIndex: number,
+    trusted: boolean,
+  ) =>
+    invoke<Config>("set_script_trusted", {
+      profileId,
+      tabId,
+      itemIndex,
+      trusted,
+    }),
+  setProfileAllowScripts: (profileId: string, allow: boolean) =>
+    invoke<Config>("set_profile_allow_scripts", { profileId, allow }),
 };
 
 export interface DialogFilter {
