@@ -81,7 +81,11 @@
       "trustLabel": "Confiar nesta aba (não perguntar de novo)",
       "run": "Executar",
       "cancel": "Cancelar"
-    }
+    },
+    "breadcrumb": {
+      "root": "Início"
+    },
+    "confirmCascadeDelete": "Excluir grupo \"{{label}}\"? {{count}} sub-itens serão removidos."
   },
   "settings": {
     "title": "Configurações",
@@ -211,7 +215,20 @@
       "validationNameOrIcon": "Preencha nome ou ícone.",
       "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone.",
       "validationAtLeastOneItem": "Adicione ao menos um item (URL, arquivo ou pasta).",
-      "validationInvalidUrl": "URL inválida: {{value}}"
+      "validationInvalidUrl": "URL inválida: {{value}}",
+      "tabKindLeaf": "Aba (links)",
+      "tabKindGroup": "Grupo (sub-donut)",
+      "kindLabel": "Tipo",
+      "groupChildrenLabel": "Conteúdo do grupo",
+      "groupChildrenEmpty": "Nenhum item ainda. Adicione abas ou subgrupos.",
+      "addChildTab": "+ Adicionar aba",
+      "addChildGroup": "+ Adicionar subgrupo",
+      "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui."
+    },
+    "tree": {
+      "groupBadge": "Grupo",
+      "childCount_one": "{{count}} aba",
+      "childCount_other": "{{count}} abas"
     }
   }
 }

@@ -81,7 +81,11 @@
       "trustLabel": "Trust this tab (don't ask again)",
       "run": "Run",
       "cancel": "Cancel"
-    }
+    },
+    "breadcrumb": {
+      "root": "Home"
+    },
+    "confirmCascadeDelete": "Delete group \"{{label}}\"? {{count}} sub-items will be removed."
   },
   "settings": {
     "title": "Settings",
@@ -211,7 +215,20 @@
       "validationNameOrIcon": "Provide a name or an icon.",
       "validationIconTooLong": "The icon must be a single character or emoji.",
       "validationAtLeastOneItem": "Add at least one item (URL, file or folder).",
-      "validationInvalidUrl": "Invalid URL: {{value}}"
+      "validationInvalidUrl": "Invalid URL: {{value}}",
+      "tabKindLeaf": "Tab (links)",
+      "tabKindGroup": "Group (sub-donut)",
+      "kindLabel": "Type",
+      "groupChildrenLabel": "Group contents",
+      "groupChildrenEmpty": "No items yet. Add tabs or subgroups.",
+      "addChildTab": "+ Add tab",
+      "addChildGroup": "+ Add subgroup",
+      "maxDepthHint": "Maximum depth reached — cannot add more subgroups here."
+    },
+    "tree": {
+      "groupBadge": "Group",
+      "childCount_one": "{{count}} tab",
+      "childCount_other": "{{count}} tabs"
     }
   }
 }
