@@ -220,6 +220,8 @@
       "validationIconTooLong": "Use apenas um único caractere ou emoji no ícone.",
       "validationAtLeastOneItem": "Adicione ao menos um item (URL, arquivo ou pasta).",
       "validationInvalidUrl": "URL inválida: {{value}}",
+      "appPickerButton": "📋 Procurar app",
+      "appPickerHint": "Lista os aplicativos instalados detectados pelo sistema.",
       "tabKindLeaf": "Aba (links)",
       "tabKindGroup": "Grupo (sub-donut)",
       "kindLabel": "Tipo",
@@ -234,6 +236,15 @@
       "groupBadge": "Grupo",
       "childCount_one": "{{count}} aba",
       "childCount_other": "{{count}} abas"
+    },
+    "appPicker": {
+      "title": "Selecionar aplicativo",
+      "loading": "Carregando aplicativos…",
+      "empty": "Nenhum aplicativo detectado. Digite o nome manualmente no campo.",
+      "searchPlaceholder": "Buscar aplicativo…",
+      "errorFetch": "Falha ao listar aplicativos: {{reason}}",
+      "refresh": "Atualizar lista",
+      "cancel": "Cancelar"
     }
   }
 }

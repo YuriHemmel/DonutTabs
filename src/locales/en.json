@@ -220,6 +220,8 @@
       "validationIconTooLong": "The icon must be a single character or emoji.",
       "validationAtLeastOneItem": "Add at least one item (URL, file or folder).",
       "validationInvalidUrl": "Invalid URL: {{value}}",
+      "appPickerButton": "📋 Browse apps",
+      "appPickerHint": "Lists applications installed and detected by the system.",
       "tabKindLeaf": "Tab (links)",
       "tabKindGroup": "Group (sub-donut)",
       "kindLabel": "Type",
@@ -234,6 +236,15 @@
       "groupBadge": "Group",
       "childCount_one": "{{count}} tab",
       "childCount_other": "{{count}} tabs"
+    },
+    "appPicker": {
+      "title": "Select application",
+      "loading": "Loading applications…",
+      "empty": "No application detected. Type the name manually in the field.",
+      "searchPlaceholder": "Search application…",
+      "errorFetch": "Failed to list applications: {{reason}}",
+      "refresh": "Refresh list",
+      "cancel": "Cancel"
     }
   }
 }

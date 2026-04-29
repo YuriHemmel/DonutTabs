@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dialog } from "../core/ipc";
+import { AppPicker } from "./AppPicker";
 
 export type ItemKind = "url" | "file" | "folder" | "app" | "script";
 
@@ -84,12 +85,16 @@ const addBtn: React.CSSProperties = {
 const usesOpenWith = (k: ItemKind) => k === "url" || k === "file" || k === "folder";
 const usesBrowse = (k: ItemKind) => k === "file" || k === "folder";
 const isScript = (k: ItemKind) => k === "script";
+const isApp = (k: ItemKind) => k === "app";
 
 export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   values,
   onChange,
 }) => {
   const { t } = useTranslation();
+  /** Plano 17 — index do row de `kind: "app"` aberto no `<AppPicker>`,
+   *  ou `null` quando o picker está fechado. */
+  const [appPickerIndex, setAppPickerIndex] = useState<number | null>(null);
 
   const updateAt = (i: number, patch: Partial<ItemDraft>) => {
     const next = values.map((v, idx) => (idx === i ? { ...v, ...patch } : v));
@@ -177,6 +182,17 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                 {t("settings.editor.browse")}
               </button>
             )}
+            {isApp(it.kind) && (
+              <button
+                type="button"
+                data-testid={`item-app-picker-${i}`}
+                title={t("settings.editor.appPickerHint")}
+                onClick={() => setAppPickerIndex(i)}
+                style={ghostBtn}
+              >
+                {t("settings.editor.appPickerButton")}
+              </button>
+            )}
             {usesOpenWith(it.kind) && (
               <input
                 aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
@@ -220,6 +236,14 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
           )}
         </div>
       ))}
+
+      <AppPicker
+        open={appPickerIndex !== null}
+        onSelect={(name) => {
+          if (appPickerIndex !== null) updateAt(appPickerIndex, { value: name });
+        }}
+        onClose={() => setAppPickerIndex(null)}
+      />
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         <button

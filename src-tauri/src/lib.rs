@@ -1,3 +1,4 @@
+mod apps_picker;
 mod commands;
 mod config;
 mod donut_window;
@@ -137,6 +138,7 @@ pub fn run() {
             commands::set_script_trusted,
             commands::set_profile_allow_scripts,
             commands::set_profile_theme_overrides,
+            commands::list_installed_apps,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

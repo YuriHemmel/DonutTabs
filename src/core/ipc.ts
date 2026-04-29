@@ -6,6 +6,7 @@ import type { Theme } from "./types/Theme";
 import type { Language } from "./types/Language";
 import type { FaviconResult } from "./types/FaviconResult";
 import type { ImportResult } from "./types/ImportResult";
+import type { InstalledApp } from "./types/InstalledApp";
 import type { ThemeOverrides } from "./types/ThemeOverrides";
 
 export type SettingsIntent =
@@ -106,6 +107,9 @@ export const ipc = {
       profileId,
       overrides,
     }),
+  /** Plano 17 — devolve a lista de apps instalados no SO (cross-OS via
+   *  `apps_picker/`). Read-only; não toca config. */
+  listInstalledApps: () => invoke<InstalledApp[]>("list_installed_apps"),
 };
 
 export interface DialogFilter {

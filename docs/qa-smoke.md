@@ -22,6 +22,18 @@ Rodar este checklist antes de considerar o Plano 1 concluído. Repetir em cada S
 - [ ] **Tray → Abrir donut**: abre donut (no cursor atual).
 - [ ] **Tray → Sair**: app encerra limpamente. Atalho global deixa de responder.
 
+## Plano 17 — picker visual de apps
+
+- [ ] Settings → Adicionar aba → kind = App → row mostra botão "📋 Procurar app".
+- [ ] Click no botão abre `<AppPicker>` modal; **Windows**: lista contém apps comuns (Firefox, Edge, Chrome, etc.) detectados via App Paths registry + Start Menu.
+- [ ] **macOS**: lista contém apps de `/Applications` (ex.: Safari, Finder, etc.) — verificar nome do bundle sem `.app`.
+- [ ] **Linux**: lista contém apps com `.desktop` em `/usr/share/applications` (ex.: Firefox, GNOME Terminal). Apps com `NoDisplay=true` não aparecem.
+- [ ] Filtro por substring funciona em `name` E `path` (digitar "fox" filtra Firefox; digitar fragmento de path também filtra).
+- [ ] Teclado: ↑/↓ navega highlight, Enter seleciona, Esc fecha sem mudança.
+- [ ] Click numa row preenche `value` do draft no Settings; salvar a aba e testar via donut: app abre.
+- [ ] Botão "Atualizar lista" re-fetch detecta apps recém-instalados (smoke: instalar app durante a sessão e clicar refresh).
+- [ ] Configs antigas (sem dependência do picker) carregam normal — picker é só assistência de digitação, não muda schema.
+
 ## Plano 16 — sub-donuts
 
 - [ ] Criar grupo vazio: Settings → Adicionar aba → radio "Grupo (sub-donut)" → name+icon → Save. Grupo aparece em TabList com ▶ e "0 abas".
