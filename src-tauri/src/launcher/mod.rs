@@ -36,6 +36,12 @@ pub struct LaunchOutcome {
 /// via opener (ShellExecute) em vez de `Command::new`. Tudo que termina em
 /// `.lnk` (case-insensitive) é shell-link e CreateProcess não resolve.
 /// Cross-platform pra cobrir nos testes (compila em qualquer SO).
+///
+/// Em Linux/macOS o `#[cfg(target_os = "windows")]` bloco do `spawn_app`
+/// não compila, então a função fica órfã do call-site real — `dead_code`
+/// dispara só nesses targets. Suprimimos cirurgicamente sem mascarar o
+/// dead-code real do build Windows.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 pub fn windows_app_should_route_via_opener(name: &str) -> bool {
     name.to_lowercase().ends_with(".lnk")
 }
