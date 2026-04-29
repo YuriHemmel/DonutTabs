@@ -28,7 +28,10 @@ export function findTabByPath(
     if (!next || next.kind !== "group") {
       return { tabs: [], valid: false };
     }
-    current = next.children;
+    // Backend elide `children` quando vazio (`Vec::is_empty` skip),
+    // então um group vazio chega com `children === undefined` mesmo
+    // o tipo ts-rs dizendo `Tab[]`. `?? []` mantém a iteração segura.
+    current = next.children ?? [];
   }
   return { tabs: current, valid: true };
 }

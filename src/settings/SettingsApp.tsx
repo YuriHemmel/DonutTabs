@@ -34,10 +34,11 @@ interface IntentTarget {
  * (lista de ids dos pais) e o tab encontrado, ou `null` se não bater.
  */
 function findTabPathInProfile(
-  tabs: Tab[],
+  tabs: Tab[] | undefined,
   targetId: string,
   acc: string[] = [],
 ): { tab: Tab; path: string[] } | null {
+  if (!tabs) return null;
   for (const tab of tabs) {
     if (tab.id === targetId) return { tab, path: acc };
     const inner = findTabPathInProfile(tab.children, targetId, [...acc, tab.id]);
