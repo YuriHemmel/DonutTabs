@@ -104,10 +104,7 @@ mod tests {
         let user = tempdir().unwrap();
         touch_app(sys.path(), "Firefox");
         touch_app(user.path(), "PrivateThing");
-        let apps = collect_apps_from_dirs(&[
-            sys.path().to_path_buf(),
-            user.path().to_path_buf(),
-        ]);
+        let apps = collect_apps_from_dirs(&[sys.path().to_path_buf(), user.path().to_path_buf()]);
         assert_eq!(apps.len(), 2);
     }
 

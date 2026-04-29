@@ -9,9 +9,9 @@
 //! `InstalledApp.name` é o que o user passaria pro launcher (`Item::App.name`).
 //! O picker é só assistência de digitação — schema do `Item::App` segue intocado.
 
-use crate::errors::AppResult;
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 use crate::errors::AppError;
+use crate::errors::AppResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 

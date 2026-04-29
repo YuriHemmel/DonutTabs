@@ -38,7 +38,10 @@ fn resolve_xdg_application_dirs() -> Vec<PathBuf> {
 }
 
 fn xdg_data_home_apps() -> Option<PathBuf> {
-    if let Some(xdh) = std::env::var("XDG_DATA_HOME").ok().filter(|s| !s.is_empty()) {
+    if let Some(xdh) = std::env::var("XDG_DATA_HOME")
+        .ok()
+        .filter(|s| !s.is_empty())
+    {
         return Some(PathBuf::from(xdh).join("applications"));
     }
     let home = std::env::var("HOME").ok()?;
@@ -293,10 +296,7 @@ mod tests {
             "[Desktop Entry]\nName=Firefox\nExec=firefox-sys\nType=Application\n",
         )
         .unwrap();
-        let raw = collect_apps_from_dirs(&[
-            user.path().to_path_buf(),
-            sys.path().to_path_buf(),
-        ]);
+        let raw = collect_apps_from_dirs(&[user.path().to_path_buf(), sys.path().to_path_buf()]);
         let sorted = dedupe_and_sort(raw);
         // dedupe: primeiro encontrado (user) prevalece
         assert_eq!(sorted.len(), 1);

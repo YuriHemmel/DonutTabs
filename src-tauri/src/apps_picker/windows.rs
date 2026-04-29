@@ -18,9 +18,9 @@
 
 use super::{dedupe_and_sort, InstalledApp};
 use crate::errors::AppResult;
+use std::path::Path;
 #[cfg(target_os = "windows")]
 use std::path::PathBuf;
-use std::path::Path;
 
 pub fn list_windows_apps_combined() -> AppResult<Vec<InstalledApp>> {
     let mut combined = Vec::new();
@@ -141,7 +141,9 @@ mod tests {
 
     #[test]
     fn app_paths_entry_uses_stem_as_name() {
-        let app = app_paths_entry_to_installed("firefox.exe", "C:\\Program Files\\Firefox\\firefox.exe").unwrap();
+        let app =
+            app_paths_entry_to_installed("firefox.exe", "C:\\Program Files\\Firefox\\firefox.exe")
+                .unwrap();
         assert_eq!(app.name, "firefox");
         assert_eq!(app.path, "C:\\Program Files\\Firefox\\firefox.exe");
     }
@@ -156,7 +158,8 @@ mod tests {
 
     #[test]
     fn app_paths_entry_handles_subkey_without_exe_extension() {
-        let app = app_paths_entry_to_installed("WinRAR", "C:\\Program Files\\WinRAR\\WinRAR.exe").unwrap();
+        let app = app_paths_entry_to_installed("WinRAR", "C:\\Program Files\\WinRAR\\WinRAR.exe")
+            .unwrap();
         assert_eq!(app.name, "WinRAR");
     }
 
@@ -167,21 +170,23 @@ mod tests {
 
     #[test]
     fn lnk_uses_stem_as_name() {
-        let p = PathBuf::from("C:\\Start Menu\\Firefox.lnk");
+        // Path com separador `/` (forward) funciona em qualquer SO; o `\\`
+        // do Windows é literal-char em Unix e quebra `.file_stem()`.
+        let p = PathBuf::from("/start/menu/Firefox.lnk");
         let app = lnk_path_to_installed(&p).unwrap();
         assert_eq!(app.name, "Firefox");
-        assert_eq!(app.path, "C:\\Start Menu\\Firefox.lnk");
+        assert!(app.path.ends_with("Firefox.lnk"));
     }
 
     #[test]
     fn lnk_rejects_non_lnk_extension() {
-        let p = PathBuf::from("C:\\Start Menu\\readme.txt");
+        let p = PathBuf::from("/start/menu/readme.txt");
         assert!(lnk_path_to_installed(&p).is_none());
     }
 
     #[test]
     fn lnk_rejects_no_extension() {
-        let p = PathBuf::from("C:\\Start Menu\\firefox");
+        let p = PathBuf::from("/start/menu/firefox");
         assert!(lnk_path_to_installed(&p).is_none());
     }
 
