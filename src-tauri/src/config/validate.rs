@@ -222,15 +222,6 @@ fn validate_tab_recursive(
 
     let is_leaf = !tab.items.is_empty();
     let is_group = !tab.children.is_empty();
-    if !is_leaf && !is_group {
-        return Err(AppError::config(
-            "tab_empty",
-            &[
-                ("tabId", tab.id.to_string()),
-                ("profileId", profile.id.to_string()),
-            ],
-        ));
-    }
     if is_leaf && is_group {
         return Err(AppError::config(
             "tab_mixed_leaf_and_group",
@@ -240,6 +231,10 @@ fn validate_tab_recursive(
             ],
         ));
     }
+    // Tab "vazia" (sem items e sem children) é permitida intencionalmente:
+    // permite criar grupo no Settings e preencher depois via donut "+ in
+    // group". Donut renderiza tab leaf sem items como no-op visual e group
+    // sem children mostra apenas "+" no sub-donut.
 
     if is_leaf {
         for item in &tab.items {
@@ -1105,10 +1100,15 @@ mod tests {
     }
 
     #[test]
-    fn empty_tab_is_rejected() {
+    fn empty_tab_is_allowed_as_transient_group_draft() {
+        // Plano 16: permitido criar grupo vazio no Settings; user preenche
+        // via donut "+ in group". Donut renderiza no-op se a leaf for assim
+        // (raro — Settings não cria leaf vazio).
         let mut cfg = base_config();
-        cfg.profiles[0].tabs.push(tab_with(Some("X"), None, vec![]));
-        assert_config_code(validate(&cfg).unwrap_err(), "tab_empty");
+        cfg.profiles[0]
+            .tabs
+            .push(tab_with(Some("Group draft"), None, vec![]));
+        assert!(validate(&cfg).is_ok());
     }
 
     #[test]
