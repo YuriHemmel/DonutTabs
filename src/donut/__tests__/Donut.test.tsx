@@ -10,8 +10,9 @@ function makeTab(id: string, name: string, order = 0): Tab {
     icon: null,
     order,
     openMode: "reuseOrNewWindow",
-    items: [{ kind: "url", value: "https://example.com" }],
-  } as unknown as Tab;
+    items: [{ kind: "url", value: "https://example.com", openWith: null }],
+    children: [],
+  };
 }
 
 const baseProps = {

@@ -20,6 +20,8 @@ import { matchesCombo } from "./matchesCombo";
 import { tabInitial } from "./tabUtils";
 import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
+import { useDonutNavigation } from "./useDonutNavigation";
+import { Breadcrumb } from "./Breadcrumb";
 
 function firstTabUrl(tab: Tab): string | null {
   for (const item of tab.items) {
@@ -27,6 +29,17 @@ function firstTabUrl(tab: Tab): string | null {
   }
   return null;
 }
+
+/** Conta total de descendentes (children + grandchildren ...). */
+export function countDescendants(tab: Tab): number {
+  let n = 0;
+  for (const c of tab.children) {
+    n += 1 + countDescendants(c);
+  }
+  return n;
+}
+
+const isGroup = (tab: Tab): boolean => tab.children.length > 0;
 
 interface TabSliceProps {
   tab: Tab;
@@ -40,15 +53,39 @@ interface TabSliceProps {
 
 const TabSlice: React.FC<TabSliceProps> = ({ tab, ...rest }) => {
   const fallback = tabInitial(tab.name);
-  const useFav = !tab.icon;
+  const useFav = !tab.icon && !isGroup(tab);
   const fav = useFavicon(useFav ? firstTabUrl(tab) : null);
   const iconString = tab.icon ?? fav.src ?? null;
+  // Plano 16 — group ganha badge ▶ no canto inferior do slice. Posição
+  // próxima à borda externa pra não competir com o ícone/label central.
+  const groupBadge = isGroup(tab);
+  const mid = (rest.startAngle + rest.endAngle) / 2;
+  const badgeR = (rest.innerR + rest.outerR) / 2 + (rest.outerR - rest.innerR) * 0.30;
+  const bx = rest.cx + badgeR * Math.cos(mid);
+  const by = rest.cy + badgeR * Math.sin(mid);
   return (
-    <Slice
-      {...rest}
-      label={tab.name ?? undefined}
-      iconNode={<IconRenderer icon={iconString} fallback={fallback} />}
-    />
+    <>
+      <Slice
+        {...rest}
+        label={tab.name ?? undefined}
+        iconNode={<IconRenderer icon={iconString} fallback={fallback} />}
+      />
+      {groupBadge && (
+        <text
+          data-testid="group-badge"
+          x={bx}
+          y={by}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={10}
+          fill="var(--donut-text, #eaeaea)"
+          opacity={0.65}
+          pointerEvents="none"
+        >
+          ▶
+        </text>
+      )}
+    </>
   );
 };
 
@@ -69,7 +106,9 @@ export interface DonutProps {
   onSelect: (tabId: string) => void;
   onOpenSettings?: (intent?: SettingsIntent) => void;
   onEditTab?: (tabId: string) => void;
-  onDeleteTab?: (tabId: string) => void;
+  /** Plano 16 — `parentPath` é o caminho de grupos pra chegar até a aba.
+   *  Vazio = root. Cascading delete é responsabilidade do backend. */
+  onDeleteTab?: (tabId: string, parentPath: string[]) => void;
   /** Lista de perfis (necessária para o switcher). Se ausente, switcher é
    *  desativado. */
   profiles?: Profile[];
@@ -144,9 +183,18 @@ export const Donut: React.FC<DonutProps> = ({
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, [mode]);
 
-  const ordered = useMemo(() => [...tabs].sort((a, b) => a.order - b.order), [tabs]);
+  const navigation = useDonutNavigation(tabs);
+  const ordered = useMemo(
+    () => [...navigation.currentTabs].sort((a, b) => a.order - b.order),
+    [navigation.currentTabs],
+  );
   const pages = useMemo(() => paginate(ordered, itemsPerPage), [ordered, itemsPerPage]);
   const [page, setPage] = useState(0);
+
+  // Mudou de nível: reseta paginação para começar na primeira página.
+  useEffect(() => {
+    setPage(0);
+  }, [navigation.path.length]);
 
   useEffect(() => {
     if (page >= pages.length) setPage(Math.max(0, pages.length - 1));
@@ -191,6 +239,25 @@ export const Donut: React.FC<DonutProps> = ({
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, [hoverHold.state.phase, hoverHold]);
+
+  // Plano 16 — ESC dentro de sub-donut volta um nível em vez de fechar o
+  // donut. Suprimido se overlay/menu já lidou com Esc, ou se hover-hold está
+  // em fase de ação (handler acima cuida).
+  useEffect(() => {
+    if (mode !== "tabs" || navigation.path.length === 0) return;
+    const phase = hoverHold.state.phase;
+    if (phase === "actionable" || phase === "confirming") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (contextMenu || searchOpen) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        navigation.back();
+      }
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [mode, navigation, contextMenu, searchOpen, hoverHold.state.phase]);
 
   const changePage = (next: number) => {
     setPage((p) => {
@@ -287,7 +354,11 @@ export const Donut: React.FC<DonutProps> = ({
               ) {
                 return;
               }
-              onSelect(tab.id);
+              if (isGroup(tab)) {
+                navigation.enter(tab.id);
+              } else {
+                onSelect(tab.id);
+              }
             }}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -306,6 +377,12 @@ export const Donut: React.FC<DonutProps> = ({
       {current.hasPlus &&
         (() => {
           const { start, end } = sliceAngleRange(plusIndex, sliceCount);
+          // Em sub-donut, intent leva o caminho até o group atual; root mantém
+          // o intent simples "new-tab".
+          const intent: SettingsIntent =
+            navigation.path.length === 0
+              ? "new-tab"
+              : (`new-tab-in-group:${navigation.path.join(",")}` as SettingsIntent);
           return (
             <Slice
               key={PLUS_KEY}
@@ -317,7 +394,7 @@ export const Donut: React.FC<DonutProps> = ({
               endAngle={end}
               icon="+"
               highlighted={highlighted === plusIndex}
-              onClick={() => onOpenSettings?.("new-tab")}
+              onClick={() => onOpenSettings?.(intent)}
             />
           );
         })()}
@@ -337,11 +414,28 @@ export const Donut: React.FC<DonutProps> = ({
                 hoverHold.cancel();
                 onEditTab?.(activeTab.id);
               }}
-              onRequestDelete={hoverHold.requestDelete}
+              onRequestDelete={() => {
+                // Plano 16 — group: jump direto pra confirm com count via
+                // window.confirm; salta a fase ✓✕ inline (que é genérica e
+                // não comunica cascading).
+                if (isGroup(activeTab)) {
+                  hoverHold.cancel();
+                  const count = countDescendants(activeTab);
+                  const ok = window.confirm(
+                    t("donut.confirmCascadeDelete", {
+                      label: activeTab.name ?? activeTab.icon ?? activeTab.id,
+                      count,
+                    }),
+                  );
+                  if (ok) onDeleteTab?.(activeTab.id, navigation.path);
+                  return;
+                }
+                hoverHold.requestDelete();
+              }}
               onConfirmDelete={() => {
                 const id = activeTab.id;
                 hoverHold.confirmDelete();
-                onDeleteTab?.(id);
+                onDeleteTab?.(id, navigation.path);
               }}
               onCancelConfirm={hoverHold.cancel}
             />
@@ -353,7 +447,13 @@ export const Donut: React.FC<DonutProps> = ({
         r={innerR * 0.85}
         onGearClick={onOpenSettings}
         onProfileSwitcherClick={
-          switcherEnabled ? () => setMode("profiles") : undefined
+          // Em sub-donut, a metade direita do centro vira "voltar"; switcher
+          // de perfis fica disponível só no root.
+          navigation.path.length > 0
+            ? () => navigation.back()
+            : switcherEnabled
+              ? () => setMode("profiles")
+              : undefined
         }
       />
       <PaginationDots
@@ -389,7 +489,7 @@ export const Donut: React.FC<DonutProps> = ({
                   label: contextMenu.tabLabel,
                 }),
               );
-              if (ok) onDeleteTab?.(contextMenu.tabId);
+              if (ok) onDeleteTab?.(contextMenu.tabId, navigation.path);
             },
           },
         ]}
@@ -405,7 +505,30 @@ export const Donut: React.FC<DonutProps> = ({
         }}
       />
     )}
+    <Breadcrumb
+      segments={navigation.path.map((id) => labelForPathSegment(tabs, navigation.path, id))}
+      onJumpTo={(idx) => navigation.jumpTo(idx)}
+    />
     </>
     </ThemeContext.Provider>
   );
 };
+
+/**
+ * Resolve o label de exibição de cada segmento do path. Caminha em `tabs`
+ * seguindo a ordem do path completo até bater no `targetId`.
+ */
+function labelForPathSegment(
+  rootTabs: Tab[],
+  fullPath: string[],
+  targetId: string,
+): string {
+  let current = rootTabs;
+  for (const id of fullPath) {
+    const found = current.find((t) => t.id === id);
+    if (!found) return targetId;
+    if (id === targetId) return found.name ?? found.icon ?? targetId;
+    current = found.children;
+  }
+  return targetId;
+}

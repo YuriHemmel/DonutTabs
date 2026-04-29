@@ -9,6 +9,7 @@ const tab = (id: string): Tab => ({
   order: 0,
   openMode: "reuseOrNewWindow",
   items: [],
+  children: [],
 });
 
 describe("paginate", () => {
