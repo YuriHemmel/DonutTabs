@@ -14,6 +14,7 @@ function tab(id: string, name: string, icon: string | null = null): Tab {
     order: 0,
     openMode: "reuseOrNewWindow",
     items: [],
+    kind: "leaf",
     children: [],
   } as Tab;
 }

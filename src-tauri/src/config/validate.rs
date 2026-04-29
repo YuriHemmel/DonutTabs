@@ -220,29 +220,38 @@ fn validate_tab_recursive(
         ));
     }
 
-    let is_leaf = !tab.items.is_empty();
-    let is_group = !tab.children.is_empty();
-    if is_leaf && is_group {
-        return Err(AppError::config(
-            "tab_mixed_leaf_and_group",
-            &[
-                ("tabId", tab.id.to_string()),
-                ("profileId", profile.id.to_string()),
-            ],
-        ));
-    }
-    // Tab "vazia" (sem items e sem children) é permitida intencionalmente:
-    // permite criar grupo no Settings e preencher depois via donut "+ in
-    // group". Donut renderiza tab leaf sem items como no-op visual e group
-    // sem children mostra apenas "+" no sub-donut.
-
-    if is_leaf {
-        for item in &tab.items {
-            validate_item(profile, tab, item)?;
+    // Plano 16 — kind explícito. `Leaf` proíbe `children` não-vazio;
+    // `Group` proíbe `items` não-vazio. Vazio é permitido em ambos os
+    // casos (transient draft): leaf sem items renderiza no-op no donut;
+    // group sem children mostra apenas "+ slice" no sub-donut.
+    match tab.kind {
+        crate::config::schema::TabKind::Leaf => {
+            if !tab.children.is_empty() {
+                return Err(AppError::config(
+                    "tab_leaf_has_children",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                    ],
+                ));
+            }
+            for item in &tab.items {
+                validate_item(profile, tab, item)?;
+            }
         }
-    } else {
-        for child in &tab.children {
-            validate_tab_recursive(profile, child, depth + 1, seen)?;
+        crate::config::schema::TabKind::Group => {
+            if !tab.items.is_empty() {
+                return Err(AppError::config(
+                    "tab_group_has_items",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                    ],
+                ));
+            }
+            for child in &tab.children {
+                validate_tab_recursive(profile, child, depth + 1, seen)?;
+            }
         }
     }
 
@@ -347,6 +356,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items,
+            kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
         }
     }
@@ -1084,6 +1094,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![],
+            kind: crate::config::schema::TabKind::Group,
             children,
         }
     }
@@ -1100,24 +1111,45 @@ mod tests {
     }
 
     #[test]
-    fn empty_tab_is_allowed_as_transient_group_draft() {
-        // Plano 16: permitido criar grupo vazio no Settings; user preenche
-        // via donut "+ in group". Donut renderiza no-op se a leaf for assim
-        // (raro — Settings não cria leaf vazio).
+    fn empty_leaf_is_allowed_as_draft() {
+        // Plano 16: leaf vazio é permitido (no-op visual no donut).
         let mut cfg = base_config();
         cfg.profiles[0]
             .tabs
-            .push(tab_with(Some("Group draft"), None, vec![]));
+            .push(tab_with(Some("Leaf draft"), None, vec![]));
         assert!(validate(&cfg).is_ok());
     }
 
     #[test]
-    fn tab_with_items_and_children_is_rejected() {
+    fn empty_group_is_allowed_as_draft() {
+        // Plano 16: group vazio é permitido (renderiza só "+" no sub-donut).
+        // kind explícito mantém a classificação após save+reload.
         let mut cfg = base_config();
-        let mut leaf_with_children = url_leaf("L");
-        leaf_with_children.children = vec![url_leaf("c1")];
-        cfg.profiles[0].tabs.push(leaf_with_children);
-        assert_config_code(validate(&cfg).unwrap_err(), "tab_mixed_leaf_and_group");
+        cfg.profiles[0]
+            .tabs
+            .push(group_with(Some("Group draft"), None, vec![]));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn leaf_with_children_is_rejected() {
+        let mut cfg = base_config();
+        let mut bad = url_leaf("L");
+        bad.children = vec![url_leaf("c1")];
+        cfg.profiles[0].tabs.push(bad);
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_leaf_has_children");
+    }
+
+    #[test]
+    fn group_with_items_is_rejected() {
+        let mut cfg = base_config();
+        let mut bad = group_with(Some("G"), None, vec![url_leaf("c1")]);
+        bad.items = vec![Item::Url {
+            value: "https://x.test".into(),
+            open_with: None,
+        }];
+        cfg.profiles[0].tabs.push(bad);
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_group_has_items");
     }
 
     #[test]

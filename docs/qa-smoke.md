@@ -24,17 +24,20 @@ Rodar este checklist antes de considerar o Plano 1 concluído. Repetir em cada S
 
 ## Plano 16 — sub-donuts
 
-- [ ] Criar grupo: Settings → Adicionar aba → radio "Grupo (sub-donut)" → name+icon → Save. Grupo aparece em TabList com ▶ e "0 abas".
+- [ ] Criar grupo vazio: Settings → Adicionar aba → radio "Grupo (sub-donut)" → name+icon → Save. Grupo aparece em TabList com ▶ e "0 abas".
+- [ ] **Round-trip do grupo vazio**: reabrir o grupo recém-criado → TabEditor mostra "Conteúdo do grupo" (não o ItemListEditor) → Save sem mudanças mantém kind=group.
 - [ ] Editar grupo: clicar no row do grupo → TabEditor mostra "Conteúdo do grupo" vazio + botão "+ Adicionar aba".
 - [ ] Adicionar aba dentro do grupo: clica "+ Adicionar aba" → TabEditor entra em mode new com path correto → Save → reabrir o grupo, child aparece na lista.
 - [ ] Donut drill-in: atalho global → click em group slice → sub-donut aparece com children + breadcrumb no topo ("Início / NomeDoGrupo").
+- [ ] **Drillar em group vazio**: atalho global → click em grupo sem children → sub-donut com apenas o "+ slice" aparece (drillagem permitida porque `kind === "group"`).
 - [ ] Donut breadcrumb: click em "Início" volta ao root sem reload; click em segmento intermediário trunca o path.
 - [ ] ESC em sub-donut volta um nível; ESC no root fecha o donut.
 - [ ] CenterCircle metade direita em sub-donut: vira ↩ "voltar" (não abre profile switcher).
 - [ ] "+ slice" em sub-donut abre Settings em mode new com parentPath correto (verificar via Save → child aparece dentro do grupo).
 - [ ] Hover-hold delete em group: confirm modal com contagem ("Excluir grupo X? N sub-itens serão removidos") → confirmar → grupo + descendentes somem; cancelar → tudo intacto.
+- [ ] **Context-menu delete em group**: right-click em group slice → "Excluir" → confirm modal com **mesma** mensagem cascade ("Excluir grupo X? N sub-itens…"), não a genérica.
 - [ ] Profundidade 3 é o limite: criar root group → child group → tentar criar sub-sub-group → "+ Adicionar subgrupo" some no editor com hint "Profundidade máxima atingida".
-- [ ] Backward-compat: copiar config Plano-15 (sem `children`) → app abre normal, todas tabs viram leaves.
+- [ ] Backward-compat: copiar config Plano-15 (sem `kind` nem `children`) → app abre normal, todas tabs viram leaves automaticamente.
 - [ ] Reorder dentro de grupo via DnD em Settings: arrastar child A pra cima de child B reordena só esse nível.
 
 ## Plano 15 — temas customizáveis

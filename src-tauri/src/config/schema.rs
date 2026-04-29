@@ -184,14 +184,36 @@ pub struct Tab {
     pub order: u32,
     pub open_mode: OpenMode,
     pub items: Vec<Item>,
-    /// Plano 16 — sub-donuts. Tab é leaf quando `children.is_empty()`
-    /// (precisa ter `items` não-vazio); é group quando `!children.is_empty()`
-    /// (precisa ter `items` vazio). Mutually-exclusive imposto via
-    /// `validate_tab_recursive`. `#[serde(default, skip_serializing_if =
-    /// "Vec::is_empty")]` mantém configs Plano-15 carregando sem migração e
-    /// não polui JSON de tabs sem subgrupos.
+    /// Plano 16 — sub-donuts. Quando `kind == Group`, esta aba abre um
+    /// sub-donut com `children`; quando `kind == Leaf`, abre os `items`.
+    /// `#[serde(default)]` faz configs Plano-15 carregarem como `Leaf` sem
+    /// migração; `skip_serializing_if = is_leaf_kind` mantém o JSON enxuto
+    /// pra leaves (caso comum). Persistir o kind explicitamente resolve o
+    /// caso ambíguo de tab vazia (items=[] && children=[]) — sem isso,
+    /// não há como distinguir um group vazio de um leaf vazio depois do
+    /// round-trip.
+    #[serde(default, skip_serializing_if = "is_leaf_kind")]
+    pub kind: TabKind,
+    /// Plano 16 — sub-donuts. Quando `kind == Group`, lista os filhos
+    /// (vazio é permitido como draft). Quando `kind == Leaf`, deve ser
+    /// vazio (validate rejeita). `#[serde(default, skip_serializing_if =
+    /// "Vec::is_empty")]` mantém configs Plano-15 carregando sem migração
+    /// e não polui JSON de leaves.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Tab>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub enum TabKind {
+    #[default]
+    Leaf,
+    Group,
+}
+
+fn is_leaf_kind(k: &TabKind) -> bool {
+    matches!(k, TabKind::Leaf)
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
@@ -327,6 +349,7 @@ mod tests {
                     value: "https://example.com".into(),
                     open_with: None,
                 }],
+                kind: TabKind::Leaf,
                 children: vec![],
             }],
             allow_scripts: false,
@@ -428,6 +451,7 @@ mod tests {
                     open_with: None,
                 },
             ],
+            kind: TabKind::Leaf,
             children: vec![],
         };
         let json = serde_json::to_string(&tab).unwrap();
@@ -631,9 +655,9 @@ mod tests {
     }
 
     #[test]
-    fn tab_default_omits_children_in_json() {
-        // Plano 16: children=[] deve ser elidido no JSON pra não poluir
-        // configs de tabs sem subgrupos.
+    fn tab_default_omits_children_and_kind_in_json() {
+        // Plano 16: children=[] e kind=Leaf são elididos no JSON pra não
+        // poluir configs Plano-15.
         let tab = Tab {
             id: Uuid::nil(),
             name: Some("leaf".into()),
@@ -644,18 +668,25 @@ mod tests {
                 value: "https://x".into(),
                 open_with: None,
             }],
+            kind: TabKind::Leaf,
             children: vec![],
         };
         let json = serde_json::to_string(&tab).unwrap();
         assert!(
             !json.contains("children"),
-            "field should be skipped when empty: {json}"
+            "children should be skipped when empty: {json}"
+        );
+        // Item::Url também serializa um `"kind":"url"` interno; checar
+        // especificamente a variante leaf no nível do Tab.
+        assert!(
+            !json.contains("\"kind\":\"leaf\""),
+            "kind=Leaf should be skipped: {json}"
         );
     }
 
     #[test]
-    fn tab_without_children_field_deserializes_with_empty_vec() {
-        // Plano 15 e anteriores não têm `children` no JSON.
+    fn tab_without_kind_or_children_deserializes_as_leaf() {
+        // Plano 15 e anteriores não têm `kind` nem `children` no JSON.
         let json = r#"{
             "id": "11111111-1111-1111-1111-111111111111",
             "name": "x",
@@ -666,6 +697,7 @@ mod tests {
         }"#;
         let t: Tab = serde_json::from_str(json).unwrap();
         assert!(t.children.is_empty());
+        assert_eq!(t.kind, TabKind::Leaf);
     }
 
     #[test]
@@ -680,6 +712,7 @@ mod tests {
                 value: "https://child".into(),
                 open_with: None,
             }],
+            kind: TabKind::Leaf,
             children: vec![],
         };
         let group = Tab {
@@ -689,13 +722,37 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![],
+            kind: TabKind::Group,
             children: vec![child],
         };
         let json = serde_json::to_string(&group).unwrap();
         assert!(json.contains("\"children\""));
+        assert!(json.contains("\"kind\":\"group\""));
         assert!(json.contains("\"name\":\"child\""));
         let back: Tab = serde_json::from_str(&json).unwrap();
         assert_eq!(group, back);
+    }
+
+    #[test]
+    fn empty_group_round_trips_with_kind() {
+        // Plano 16: o cenário-chave que motivou `kind` explícito —
+        // group sem children sobrevive ao round-trip mantendo a
+        // classificação.
+        let group = Tab {
+            id: Uuid::nil(),
+            name: Some("empty".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            kind: TabKind::Group,
+            children: vec![],
+        };
+        let json = serde_json::to_string(&group).unwrap();
+        assert!(json.contains("\"kind\":\"group\""));
+        let back: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(group, back);
+        assert_eq!(back.kind, TabKind::Group);
     }
 
     #[test]
@@ -711,6 +768,7 @@ mod tests {
                 value: "https://l".into(),
                 open_with: None,
             }],
+            kind: TabKind::Leaf,
             children: vec![],
         };
         let mid = Tab {
@@ -720,6 +778,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![],
+            kind: TabKind::Group,
             children: vec![leaf],
         };
         let root = Tab {
@@ -729,6 +788,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![],
+            kind: TabKind::Group,
             children: vec![mid],
         };
         let json = serde_json::to_string(&root).unwrap();

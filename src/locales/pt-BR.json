@@ -6,6 +6,10 @@
       "tabMissingNameAndIcon": "Aba {{id}} precisa de nome ou ícone",
       "invalidUrl": "URL inválida na aba {{tabId}}: {{reason}}",
       "duplicateTabId": "ID de aba duplicado: {{id}}",
+      "tabLeafHasChildren": "Aba {{tabId}} marcada como leaf não pode ter sub-itens.",
+      "tabGroupHasItems": "Aba {{tabId}} marcada como grupo não pode ter URLs/arquivos diretos.",
+      "tabTooDeep": "Profundidade da aba {{tabId}} ({{depth}}) excede o limite ({{maxDepth}}).",
+      "tabMixedLeafAndGroup": "Aba {{tabId}} não pode ter items e sub-itens simultaneamente.",
       "pathEmpty": "{{kind}}: caminho não pode ser vazio na aba {{tabId}}.",
       "openWithEmpty": "Programa para abrir não pode ser vazio na aba {{tabId}} (item {{kind}}).",
       "appNameEmpty": "Nome do app não pode ser vazio na aba {{tabId}}.",
@@ -223,7 +227,8 @@
       "groupChildrenEmpty": "Nenhum item ainda. Adicione abas ou subgrupos.",
       "addChildTab": "+ Adicionar aba",
       "addChildGroup": "+ Adicionar subgrupo",
-      "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui."
+      "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui.",
+      "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas."
     },
     "tree": {
       "groupBadge": "Grupo",

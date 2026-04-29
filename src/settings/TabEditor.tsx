@@ -8,6 +8,7 @@ import { IconPicker } from "./IconPicker";
 import type { Tab } from "../core/types/Tab";
 import type { Item } from "../core/types/Item";
 import type { OpenMode } from "../core/types/OpenMode";
+import type { TabKind as SchemaTabKind } from "../core/types/TabKind";
 
 const LUCIDE_PREFIX = "lucide:";
 const isLucideToken = (s: string) => s.startsWith(LUCIDE_PREFIX);
@@ -16,7 +17,7 @@ const isLucideToken = (s: string) => s.startsWith(LUCIDE_PREFIX);
 export const MAX_TAB_DEPTH = 3;
 
 type Mode = "new" | "edit";
-type TabKind = "leaf" | "group";
+type TabKind = SchemaTabKind;
 
 export interface TabEditorProps {
   mode: Mode;
@@ -110,7 +111,10 @@ function fromTab(tab: Tab | null, initialKind: TabKind = "leaf"): FormState {
       kind: initialKind,
     };
   }
-  const kind: TabKind = (tab.children?.length ?? 0) > 0 ? "group" : "leaf";
+  // Plano 16: kind explícito vence; só caímos no fallback (children-non-empty)
+  // pra configs Plano-15 antigas que não tinham `kind` no JSON.
+  const kind: TabKind =
+    tab.kind ?? ((tab.children?.length ?? 0) > 0 ? "group" : "leaf");
   return {
     id: tab.id,
     name: tab.name ?? "",
@@ -200,9 +204,11 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       order: initial?.order ?? 0,
       openMode: state.openMode,
       items: payloadItems,
-      // Plano 16: leaf save = preserve any existing children (deveria ser
-      // empty pra leaf válido); group save = preserve children existentes
-      // ou inicia vazio (user adiciona depois via "+ Adicionar aba").
+      // Plano 16: kind explícito persistido — distingue group vazio
+      // de leaf vazio depois do round-trip.
+      kind: state.kind,
+      // leaf nunca persiste children; group preserva os existentes ou
+      // inicia vazio (user adiciona depois via "+ Adicionar aba").
       children: state.kind === "group" ? initial?.children ?? [] : [],
     };
 
@@ -347,7 +353,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             onChange={(items) => setState({ ...state, items })}
           />
         </div>
-      ) : (
+      ) : mode === "edit" ? (
         <GroupChildrenEditor
           children={initial?.children ?? []}
           currentDepth={currentDepth}
@@ -360,6 +366,26 @@ export const TabEditor: React.FC<TabEditorProps> = ({
               : undefined
           }
         />
+      ) : (
+        // Plano 16 — group novo ainda não foi salvo, então não dá pra
+        // adicionar children (a child precisa de parentPath válido).
+        // User salva o grupo vazio aqui; reabre via TabList ou via
+        // donut "+ in group" pra preencher.
+        <div
+          data-testid="group-new-hint"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            padding: 12,
+            border: "1px dashed var(--input-border)",
+            borderRadius: 4,
+          }}
+        >
+          <small style={{ color: "var(--muted)" }}>
+            {t("settings.editor.groupNewHint")}
+          </small>
+        </div>
       )}
 
       {validation && (

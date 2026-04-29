@@ -9,6 +9,7 @@ const leaf = (id: string, name = id): Tab => ({
   order: 0,
   openMode: "reuseOrNewWindow",
   items: [{ kind: "url", value: "https://x", openWith: null }],
+  kind: "leaf",
   children: [],
 });
 
@@ -19,6 +20,7 @@ const group = (id: string, children: Tab[], name = id): Tab => ({
   order: 0,
   openMode: "reuseOrNewWindow",
   items: [],
+  kind: "group",
   children,
 });
 

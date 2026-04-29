@@ -6,6 +6,10 @@
       "tabMissingNameAndIcon": "Tab {{id}} needs a name or an icon",
       "invalidUrl": "Invalid URL in tab {{tabId}}: {{reason}}",
       "duplicateTabId": "Duplicate tab id: {{id}}",
+      "tabLeafHasChildren": "Tab {{tabId}} is a leaf and cannot have sub-items.",
+      "tabGroupHasItems": "Tab {{tabId}} is a group and cannot have direct URLs/files.",
+      "tabTooDeep": "Tab {{tabId}} depth ({{depth}}) exceeds the limit ({{maxDepth}}).",
+      "tabMixedLeafAndGroup": "Tab {{tabId}} cannot mix items and sub-items.",
       "pathEmpty": "{{kind}} path cannot be empty in tab {{tabId}}.",
       "openWithEmpty": "Open-with program cannot be empty in tab {{tabId}} ({{kind}} item).",
       "appNameEmpty": "App name cannot be empty in tab {{tabId}}.",
@@ -223,7 +227,8 @@
       "groupChildrenEmpty": "No items yet. Add tabs or subgroups.",
       "addChildTab": "+ Add tab",
       "addChildGroup": "+ Add subgroup",
-      "maxDepthHint": "Maximum depth reached — cannot add more subgroups here."
+      "maxDepthHint": "Maximum depth reached — cannot add more subgroups here.",
+      "groupNewHint": "Save the group first. Then reopen it from the list or click the donut's \"+\" to add tabs."
     },
     "tree": {
       "groupBadge": "Group",

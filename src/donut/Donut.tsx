@@ -39,7 +39,7 @@ export function countDescendants(tab: Tab): number {
   return n;
 }
 
-const isGroup = (tab: Tab): boolean => tab.children.length > 0;
+const isGroup = (tab: Tab): boolean => tab.kind === "group";
 
 interface TabSliceProps {
   tab: Tab;
@@ -484,11 +484,21 @@ export const Donut: React.FC<DonutProps> = ({
             label: t("donut.contextMenu.delete"),
             variant: "danger",
             onSelect: () => {
-              const ok = window.confirm(
-                t("donut.contextMenu.confirmDelete", {
-                  label: contextMenu.tabLabel,
-                }),
-              );
+              // Plano 16 — delete em group via context menu mostra
+              // cascade-confirm com count, igual ao hover-hold; assim
+              // os dois caminhos avisam sobre a remoção dos descendentes.
+              const tab = current.tabs.find((tt) => tt.id === contextMenu.tabId);
+              const tabIsGroup = tab ? isGroup(tab) : false;
+              const promptKey = tabIsGroup
+                ? "donut.confirmCascadeDelete"
+                : "donut.contextMenu.confirmDelete";
+              const promptVars = tabIsGroup
+                ? {
+                    label: contextMenu.tabLabel,
+                    count: tab ? countDescendants(tab) : 0,
+                  }
+                : { label: contextMenu.tabLabel };
+              const ok = window.confirm(t(promptKey, promptVars));
               if (ok) onDeleteTab?.(contextMenu.tabId, navigation.path);
             },
           },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Tab } from "../core/types/Tab";
 import { findTabByPath } from "./findTab";
 
@@ -32,7 +32,10 @@ export interface UseDonutNavigation {
 export function useDonutNavigation(rootTabs: Tab[]): UseDonutNavigation {
   const [path, setPath] = useState<string[]>([]);
 
-  const resolved = findTabByPath(rootTabs, path);
+  // Memoizado: re-resolver o path em toda render seria O(depth × siblings)
+  // por re-render do donut. Path é raso (≤ MAX_TAB_DEPTH) mas evita o waste
+  // sob `config-changed` storms.
+  const resolved = useMemo(() => findTabByPath(rootTabs, path), [rootTabs, path]);
 
   // rootTabs mudou e o path ficou inválido (ex: group deletado em outra janela
   // enquanto estávamos drillados). Reset silencioso.
@@ -45,7 +48,9 @@ export function useDonutNavigation(rootTabs: Tab[]): UseDonutNavigation {
   const enter = useCallback(
     (groupId: string) => {
       const found = resolved.tabs.find((t) => t.id === groupId);
-      if (!found || found.children.length === 0) return;
+      // Plano 16: drillar requer kind=group (permite group vazio — necessário
+      // pra "+" no sub-donut funcionar antes do primeiro child).
+      if (!found || found.kind !== "group") return;
       setPath((p) => [...p, groupId]);
     },
     [resolved.tabs],

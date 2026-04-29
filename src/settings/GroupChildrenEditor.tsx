@@ -67,14 +67,14 @@ export const GroupChildrenEditor: React.FC<GroupChildrenEditorProps> = ({
                   gap: 8,
                 }}
               >
-                {(child.children?.length ?? 0) > 0 && (
+                {child.kind === "group" && (
                   <span style={{ opacity: 0.6, fontSize: 11 }}>▶</span>
                 )}
                 <span>{child.icon ?? ""}</span>
                 <span style={{ flex: 1 }}>
                   {child.name ?? child.id.slice(0, 6)}
                 </span>
-                {(child.children?.length ?? 0) > 0 && (
+                {child.kind === "group" && (
                   <small style={{ color: "var(--muted)" }}>
                     ({child.children?.length ?? 0})
                   </small>

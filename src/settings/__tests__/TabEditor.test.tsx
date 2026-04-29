@@ -34,6 +34,7 @@ const existing: Tab = {
   order: 0,
   openMode: "reuseOrNewWindow",
   items: [{ kind: "url", value: "https://example.com", openWith: null }],
+  kind: "leaf",
   children: [],
 };
 
@@ -305,6 +306,43 @@ describe("TabEditor", () => {
     expect(payload.items).toEqual([
       { kind: "script", command: "cargo build", trusted: false },
     ]);
+  });
+
+  it("saves an empty group with kind=group preserved (regression: empty group → leaf round-trip bug)", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "new" });
+    await user.type(screen.getByLabelText(/nome/i), "Trabalho");
+    // Select kind=group radio.
+    await user.click(screen.getByTestId("tab-kind-group"));
+    // No buttons to add children in mode=new — hint shown instead.
+    expect(screen.getByTestId("group-new-hint")).toBeTruthy();
+    expect(screen.queryByTestId("add-child-leaf")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.kind).toBe("group");
+    expect(payload.items).toEqual([]);
+    expect(payload.children).toEqual([]);
+  });
+
+  it("preserves kind=group when re-editing an empty group (regression)", async () => {
+    const emptyGroup: Tab = {
+      id: "22222222-2222-2222-2222-222222222222",
+      name: "Vazio",
+      icon: null,
+      order: 0,
+      openMode: "reuseOrNewWindow",
+      items: [],
+      kind: "group",
+      children: [],
+    };
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "edit", initial: emptyGroup });
+    // GroupChildrenEditor must be visible — not the leaf ItemListEditor.
+    expect(screen.getByTestId("group-children-editor")).toBeTruthy();
+    expect(screen.queryByText(/url 1/i)).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.kind).toBe("group");
   });
 
   it("preserves trusted=true when editing a script item", async () => {

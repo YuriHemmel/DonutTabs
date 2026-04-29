@@ -995,7 +995,7 @@ pub(crate) fn apply_update_profile(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::schema::{Item, OpenMode, Tab};
+    use crate::config::schema::{Item, OpenMode, Tab, TabKind};
     use uuid::Uuid;
 
     fn sample_tab(name: &str) -> Tab {
@@ -1009,6 +1009,7 @@ mod tests {
                 value: "https://example.com".into(),
                 open_with: None,
             }],
+            kind: TabKind::Leaf,
             children: vec![],
         }
     }
@@ -1023,6 +1024,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![],
+            kind: TabKind::Group,
             children,
         }
     }
@@ -1676,6 +1678,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items,
+            kind: TabKind::Leaf,
             children: vec![],
         }
     }
