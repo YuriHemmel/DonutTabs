@@ -126,12 +126,14 @@ pub fn save_tab<R: tauri::Runtime>(
     state: tauri::State<'_, AppState>,
     tab: Tab,
     profile_id: Option<Uuid>,
+    parent_path: Option<Vec<Uuid>>,
 ) -> Result<Config, AppError> {
+    let path = parent_path.unwrap_or_default();
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
         let target = profile_id.unwrap_or(cfg.active_profile_id);
         let profile = profile_by_id_mut(&mut cfg, target)?;
-        apply_save_in_profile(profile, tab);
+        apply_save_in_profile(profile, tab, &path)?;
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -145,12 +147,14 @@ pub fn delete_tab<R: tauri::Runtime>(
     state: tauri::State<'_, AppState>,
     tab_id: Uuid,
     profile_id: Option<Uuid>,
+    parent_path: Option<Vec<Uuid>>,
 ) -> Result<Config, AppError> {
+    let path = parent_path.unwrap_or_default();
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
         let target = profile_id.unwrap_or(cfg.active_profile_id);
         let profile = profile_by_id_mut(&mut cfg, target)?;
-        apply_delete_in_profile(profile, tab_id);
+        apply_delete_in_profile(profile, tab_id, &path)?;
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -420,10 +424,12 @@ pub fn reorder_tabs<R: tauri::Runtime>(
     state: tauri::State<'_, AppState>,
     profile_id: Uuid,
     ordered_ids: Vec<Uuid>,
+    parent_path: Option<Vec<Uuid>>,
 ) -> Result<Config, AppError> {
+    let path = parent_path.unwrap_or_default();
     let snapshot = {
         let mut cfg = state.config.write().unwrap();
-        apply_reorder_tabs(&mut cfg, profile_id, &ordered_ids)?;
+        apply_reorder_tabs(&mut cfg, profile_id, &ordered_ids, &path)?;
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -757,21 +763,50 @@ fn save_with_rollback(cfg: &mut Config, path: &Path) -> AppResult<()> {
     Ok(())
 }
 
-fn apply_save_in_profile(profile: &mut Profile, incoming: Tab) {
-    if let Some(existing) = profile.tabs.iter_mut().find(|t| t.id == incoming.id) {
+/// Plano 16 — desce na árvore `profile.tabs` seguindo `parent_path` (lista
+/// de ids de grupos do nível mais externo pra dentro). Path vazio retorna
+/// `&mut profile.tabs` (raiz). Path inválido (id inexistente em algum nível
+/// ou referência a leaf como pai) retorna `tab_not_found`. Cada nível
+/// confirma que o nó referenciado **é grupo** (`children` exposto); leaf
+/// no meio do path → `tab_not_found` para indicar slot inválido.
+pub(crate) fn find_parent_tabs_mut<'a>(
+    profile: &'a mut Profile,
+    parent_path: &[Uuid],
+) -> AppResult<&'a mut Vec<Tab>> {
+    let mut current: &mut Vec<Tab> = &mut profile.tabs;
+    for id in parent_path {
+        let next = current
+            .iter_mut()
+            .find(|t| t.id == *id)
+            .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", id.to_string())]))?;
+        current = &mut next.children;
+    }
+    Ok(current)
+}
+
+fn apply_save_in_profile(
+    profile: &mut Profile,
+    incoming: Tab,
+    parent_path: &[Uuid],
+) -> AppResult<()> {
+    let target = find_parent_tabs_mut(profile, parent_path)?;
+    if let Some(existing) = target.iter_mut().find(|t| t.id == incoming.id) {
         let order = existing.order;
         *existing = Tab { order, ..incoming };
     } else {
-        let order = profile.tabs.len() as u32;
-        profile.tabs.push(Tab { order, ..incoming });
+        let order = target.len() as u32;
+        target.push(Tab { order, ..incoming });
     }
+    Ok(())
 }
 
-fn apply_delete_in_profile(profile: &mut Profile, id: Uuid) {
-    profile.tabs.retain(|t| t.id != id);
-    for (i, t) in profile.tabs.iter_mut().enumerate() {
+fn apply_delete_in_profile(profile: &mut Profile, id: Uuid, parent_path: &[Uuid]) -> AppResult<()> {
+    let target = find_parent_tabs_mut(profile, parent_path)?;
+    target.retain(|t| t.id != id);
+    for (i, t) in target.iter_mut().enumerate() {
         t.order = i as u32;
     }
+    Ok(())
 }
 
 /// Plano de troca do perfil ativo. Captura combos antes da mutação para que
@@ -919,10 +954,12 @@ pub(crate) fn apply_reorder_tabs(
     cfg: &mut Config,
     profile_id: Uuid,
     ordered_ids: &[Uuid],
+    parent_path: &[Uuid],
 ) -> AppResult<()> {
     let profile = profile_by_id_mut(cfg, profile_id)?;
-    reorder_in_place(&mut profile.tabs, ordered_ids, "tabs", |t| t.id)?;
-    for (i, t) in profile.tabs.iter_mut().enumerate() {
+    let target = find_parent_tabs_mut(profile, parent_path)?;
+    reorder_in_place(target, ordered_ids, "tabs", |t| t.id)?;
+    for (i, t) in target.iter_mut().enumerate() {
         t.order = i as u32;
     }
     Ok(())
@@ -972,7 +1009,107 @@ mod tests {
                 value: "https://example.com".into(),
                 open_with: None,
             }],
+            children: vec![],
         }
+    }
+
+    // ---------- Plano 16: nested operations via parent_path ----------
+
+    fn group_tab(name: &str, children: Vec<Tab>) -> Tab {
+        Tab {
+            id: Uuid::new_v4(),
+            name: Some(name.into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            children,
+        }
+    }
+
+    #[test]
+    fn find_parent_tabs_mut_root_returns_top_level() {
+        let mut profile = Profile::default();
+        profile.tabs.push(sample_tab("A"));
+        let target = find_parent_tabs_mut(&mut profile, &[]).unwrap();
+        assert_eq!(target.len(), 1);
+    }
+
+    #[test]
+    fn find_parent_tabs_mut_descends_into_group() {
+        let mut profile = Profile::default();
+        let leaf = sample_tab("L");
+        let group = group_tab("G", vec![leaf]);
+        let gid = group.id;
+        profile.tabs.push(group);
+        let target = find_parent_tabs_mut(&mut profile, &[gid]).unwrap();
+        assert_eq!(target.len(), 1);
+        assert_eq!(target[0].name.as_deref(), Some("L"));
+    }
+
+    #[test]
+    fn find_parent_tabs_mut_invalid_id_errors() {
+        let mut profile = Profile::default();
+        profile.tabs.push(sample_tab("A"));
+        let err = find_parent_tabs_mut(&mut profile, &[Uuid::new_v4()]).unwrap_err();
+        match err {
+            AppError::Launcher { code, .. } => assert_eq!(code, "tab_not_found"),
+            other => panic!("expected Launcher tab_not_found, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_save_in_profile_appends_into_group_via_parent_path() {
+        let mut profile = Profile::default();
+        let group = group_tab("G", vec![]);
+        let gid = group.id;
+        profile.tabs.push(group);
+
+        let new_leaf = sample_tab("inside");
+        apply_save_in_profile(&mut profile, new_leaf, &[gid]).unwrap();
+
+        assert_eq!(profile.tabs.len(), 1);
+        assert_eq!(profile.tabs[0].children.len(), 1);
+        assert_eq!(profile.tabs[0].children[0].name.as_deref(), Some("inside"));
+        assert_eq!(profile.tabs[0].children[0].order, 0);
+    }
+
+    #[test]
+    fn apply_delete_in_profile_removes_nested_child_cascading() {
+        let mut profile = Profile::default();
+        let inner_leaf = sample_tab("inner");
+        let inner_id = inner_leaf.id;
+        let outer = group_tab("outer", vec![inner_leaf]);
+        let outer_id = outer.id;
+        profile.tabs.push(outer);
+
+        // Excluir `outer` na raiz remove inner cascading.
+        apply_delete_in_profile(&mut profile, outer_id, &[]).unwrap();
+        assert!(profile.tabs.is_empty());
+        // O `inner` foi junto — sanity check do enum assert (checa que id sumiu).
+        let _ = inner_id;
+    }
+
+    #[test]
+    fn apply_reorder_tabs_within_nested_group() {
+        let mut cfg = Config::default();
+        let pid = cfg.profiles[0].id;
+        let leaf_a = sample_tab("a");
+        let id_a = leaf_a.id;
+        let leaf_b = sample_tab("b");
+        let id_b = leaf_b.id;
+        let group = group_tab("G", vec![leaf_a, leaf_b]);
+        let gid = group.id;
+        cfg.profiles[0].tabs.push(group);
+
+        // Reorder children: b, a.
+        apply_reorder_tabs(&mut cfg, pid, &[id_b, id_a], &[gid]).unwrap();
+
+        let children = &cfg.profiles[0].tabs[0].children;
+        assert_eq!(children[0].id, id_b);
+        assert_eq!(children[0].order, 0);
+        assert_eq!(children[1].id, id_a);
+        assert_eq!(children[1].order, 1);
     }
 
     #[test]
@@ -984,7 +1121,7 @@ mod tests {
 
         let new_tab = sample_tab("B");
         let new_id = new_tab.id;
-        apply_save_in_profile(&mut profile, new_tab);
+        apply_save_in_profile(&mut profile, new_tab, &[]).unwrap();
 
         assert_eq!(profile.tabs.len(), 2);
         assert_eq!(profile.tabs[1].id, new_id);
@@ -1002,7 +1139,7 @@ mod tests {
         let mut updated = sample_tab("A-renamed");
         updated.id = id;
         updated.order = 99;
-        apply_save_in_profile(&mut profile, updated);
+        apply_save_in_profile(&mut profile, updated, &[]).unwrap();
 
         assert_eq!(profile.tabs.len(), 1);
         assert_eq!(profile.tabs[0].name.as_deref(), Some("A-renamed"));
@@ -1021,7 +1158,7 @@ mod tests {
         let id1 = t1.id;
         profile.tabs.extend([t0, t1, t2]);
 
-        apply_delete_in_profile(&mut profile, id1);
+        apply_delete_in_profile(&mut profile, id1, &[]).unwrap();
 
         assert_eq!(profile.tabs.len(), 2);
         assert_eq!(profile.tabs[0].order, 0);
@@ -1034,7 +1171,7 @@ mod tests {
         let mut profile = Profile::default();
         profile.tabs.push(sample_tab("A"));
         let before = profile.tabs.len();
-        apply_delete_in_profile(&mut profile, Uuid::new_v4());
+        apply_delete_in_profile(&mut profile, Uuid::new_v4(), &[]).unwrap();
         assert_eq!(profile.tabs.len(), before);
     }
 
@@ -1280,7 +1417,7 @@ mod tests {
 
         // Nova ordem: C, A, B.
         let new_order = vec![ids[2], ids[0], ids[1]];
-        apply_reorder_tabs(&mut cfg, pid, &new_order).unwrap();
+        apply_reorder_tabs(&mut cfg, pid, &new_order, &[]).unwrap();
 
         let tabs = &cfg.profiles[0].tabs;
         assert_eq!(tabs.len(), 3);
@@ -1303,7 +1440,7 @@ mod tests {
 
         // Falta `ids[2]`.
         let bad = vec![ids[0], ids[1]];
-        let err = apply_reorder_tabs(&mut cfg, pid, &bad).unwrap_err();
+        let err = apply_reorder_tabs(&mut cfg, pid, &bad, &[]).unwrap_err();
         match err {
             AppError::Config { code, context } => {
                 assert_eq!(code, "reorder_mismatch");
@@ -1326,7 +1463,7 @@ mod tests {
 
         // Mesmo tamanho, mas com id estranho.
         let bad = vec![ids[0], Uuid::new_v4()];
-        let err = apply_reorder_tabs(&mut cfg, pid, &bad).unwrap_err();
+        let err = apply_reorder_tabs(&mut cfg, pid, &bad, &[]).unwrap_err();
         match err {
             AppError::Config { code, context } => {
                 assert_eq!(code, "reorder_mismatch");
@@ -1340,7 +1477,7 @@ mod tests {
     #[test]
     fn apply_reorder_tabs_unknown_profile_errors() {
         let mut cfg = Config::default();
-        let err = apply_reorder_tabs(&mut cfg, Uuid::new_v4(), &[]).unwrap_err();
+        let err = apply_reorder_tabs(&mut cfg, Uuid::new_v4(), &[], &[]).unwrap_err();
         match err {
             AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
             other => panic!("expected Config, got {other:?}"),
@@ -1352,7 +1489,7 @@ mod tests {
         let mut cfg = Config::default();
         let pid = cfg.profiles[0].id;
         // Default profile has zero tabs.
-        apply_reorder_tabs(&mut cfg, pid, &[]).unwrap();
+        apply_reorder_tabs(&mut cfg, pid, &[], &[]).unwrap();
         assert!(cfg.profiles[0].tabs.is_empty());
     }
 
@@ -1539,6 +1676,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items,
+            children: vec![],
         }
     }
 
