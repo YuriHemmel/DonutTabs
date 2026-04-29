@@ -32,8 +32,12 @@ function firstTabUrl(tab: Tab): string | null {
 
 /** Conta total de descendentes (children + grandchildren ...). */
 export function countDescendants(tab: Tab): number {
+  // Backend serializa `children` com `skip_serializing_if = "Vec::is_empty"`,
+  // então leaves chegam aqui com `children === undefined` mesmo sendo `Tab[]`
+  // no tipo ts-rs. `?? []` protege a iteração.
+  const kids = tab.children ?? [];
   let n = 0;
-  for (const c of tab.children) {
+  for (const c of kids) {
     n += 1 + countDescendants(c);
   }
   return n;
@@ -538,7 +542,7 @@ function labelForPathSegment(
     const found = current.find((t) => t.id === id);
     if (!found) return targetId;
     if (id === targetId) return found.name ?? found.icon ?? targetId;
-    current = found.children;
+    current = found.children ?? [];
   }
   return targetId;
 }

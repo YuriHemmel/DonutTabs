@@ -218,6 +218,48 @@ describe("SettingsApp intent routing", () => {
     expect(screen.queryByRole("heading", { name: /nova aba/i })).toBeNull();
   });
 
+  it("clicking a tab when sibling leaves lack the `children` field doesn't crash", async () => {
+    // Backend serializa `Tab.children` com `skip_serializing_if = "Vec::is_empty"`,
+    // então leaves chegam ao frontend sem o campo. `findTabPathInProfile`
+    // recursivo precisa tolerar `tab.children === undefined`. Regressão real
+    // observada no app: clicar numa aba após o primeiro irmão quebrava o
+    // render porque `for (const t of undefined)` lançava `TypeError`.
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile({
+          tabs: [
+            {
+              id: "first",
+              name: "Primeiro",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://a.test" }],
+              // sem `children` — simula o JSON real do backend
+            } as never,
+            {
+              id: "second",
+              name: "Segundo",
+              icon: null,
+              order: 1,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://b.test" }],
+            } as never,
+          ],
+        }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "edit-tab:second",
+    );
+    await renderApp();
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/nome/i) as HTMLInputElement;
+      expect(nameInput.value).toBe("Segundo");
+    });
+  });
+
   it("ignores 'edit-tab:<id>' when the tab id does not exist", async () => {
     (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
     (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
