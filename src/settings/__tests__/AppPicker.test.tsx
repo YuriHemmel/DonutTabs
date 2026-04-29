@@ -8,9 +8,9 @@ import { AppPicker } from "../AppPicker";
 import type { InstalledApp } from "../../core/types/InstalledApp";
 
 const SAMPLE: InstalledApp[] = [
-  { name: "Brave", path: "/Applications/Brave.app" },
-  { name: "Firefox", path: "/Applications/Firefox.app" },
-  { name: "VSCode", path: "/usr/local/bin/code" },
+  { name: "Brave", value: "Brave", path: "/Applications/Brave.app" },
+  { name: "Firefox", value: "Firefox", path: "/Applications/Firefox.app" },
+  { name: "VSCode", value: "/usr/local/bin/code", path: "/usr/local/bin/code" },
 ];
 
 type Props = ComponentProps<typeof AppPicker>;
@@ -72,7 +72,7 @@ describe("AppPicker", () => {
     expect(screen.queryByTestId("app-picker-row-1")).toBeNull();
   });
 
-  it("Enter on highlighted row calls onSelect with app name + onClose", async () => {
+  it("Enter on highlighted row calls onSelect with app value + onClose", async () => {
     const onSelect = vi.fn();
     const onClose = vi.fn();
     await renderPicker({ onSelect, onClose });
@@ -116,7 +116,7 @@ describe("AppPicker", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("clicking a row dispatches onSelect with the row name + onClose", async () => {
+  it("clicking a row dispatches onSelect with the row value + onClose", async () => {
     const onSelect = vi.fn();
     const onClose = vi.fn();
     await renderPicker({ onSelect, onClose });
@@ -124,7 +124,8 @@ describe("AppPicker", () => {
       expect(screen.getByTestId("app-picker-row-2")).toBeTruthy(),
     );
     fireEvent.click(screen.getByTestId("app-picker-row-2"));
-    expect(onSelect).toHaveBeenCalledWith("VSCode");
+    // VSCode row.value = "/usr/local/bin/code" (não o display name)
+    expect(onSelect).toHaveBeenCalledWith("/usr/local/bin/code");
     expect(onClose).toHaveBeenCalled();
   });
 

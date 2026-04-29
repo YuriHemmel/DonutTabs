@@ -32,6 +32,14 @@ pub struct LaunchOutcome {
     pub total: usize,
 }
 
+/// Helper puro: decide se um `Item::App.name` no Windows deve ser roteado
+/// via opener (ShellExecute) em vez de `Command::new`. Tudo que termina em
+/// `.lnk` (case-insensitive) é shell-link e CreateProcess não resolve.
+/// Cross-platform pra cobrir nos testes (compila em qualquer SO).
+pub fn windows_app_should_route_via_opener(name: &str) -> bool {
+    name.to_lowercase().ends_with(".lnk")
+}
+
 pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
     let mut outcome = LaunchOutcome {
         total: tab.items.len(),
@@ -104,6 +112,10 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
         // funciona com `.app` bundle names sem caminho absoluto.
         // Win/Linux: confiamos no PATH ou no caminho absoluto que o user
         // digitou. Plugin-shell spawns o processo direto.
+        // Windows + `.lnk`: CreateProcess/Command::new não resolve shell-links;
+        // roteamos via plugin-opener (ShellExecute) que segue o link e
+        // executa o target. Isso casa com o que o picker do Plano 17 popula
+        // pra rows de Start Menu.
         #[cfg(target_os = "macos")]
         {
             self.app
@@ -114,7 +126,24 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
                 .map(|_| ())
                 .map_err(|e| e.to_string())
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "windows")]
+        {
+            if windows_app_should_route_via_opener(name) {
+                use tauri_plugin_opener::OpenerExt;
+                return self
+                    .app
+                    .opener()
+                    .open_path(name, None::<&str>)
+                    .map_err(|e| e.to_string());
+            }
+            self.app
+                .shell()
+                .command(name)
+                .spawn()
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
         {
             self.app
                 .shell()
@@ -487,6 +516,22 @@ mod tests {
             AppError::Launcher { code, .. } => assert_eq!(code, "all_items_failed"),
             other => panic!("expected Launcher error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn windows_routing_helper_detects_lnk_extension() {
+        assert!(windows_app_should_route_via_opener(
+            "C:\\Start Menu\\Firefox.lnk"
+        ));
+        assert!(windows_app_should_route_via_opener(
+            "C:\\Start Menu\\Firefox.LNK"
+        ));
+        assert!(windows_app_should_route_via_opener("Firefox.lnk"));
+        assert!(!windows_app_should_route_via_opener(
+            "C:\\Program Files\\Firefox\\firefox.exe"
+        ));
+        assert!(!windows_app_should_route_via_opener("firefox"));
+        assert!(!windows_app_should_route_via_opener(""));
     }
 
     #[test]

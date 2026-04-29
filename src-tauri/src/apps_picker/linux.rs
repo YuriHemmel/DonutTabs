@@ -64,10 +64,19 @@ pub(crate) fn collect_apps_from_dirs(dirs: &[PathBuf]) -> Vec<InstalledApp> {
             let Ok(content) = std::fs::read_to_string(&path) else {
                 continue;
             };
-            if let Some(app) = parse_desktop_entry(&content) {
+            if let Some(parsed) = parse_desktop_entry(&content) {
                 apps.push(InstalledApp {
-                    name: app.name,
-                    path: app.exec,
+                    name: parsed.name,
+                    // value = primeiro token de Exec (já com quotes/field codes
+                    // tratados). Launcher Plano 14 faz Command::new(value)
+                    // que resolve via PATH, então `firefox` funciona quando
+                    // /usr/bin/firefox está em PATH (caso padrão pra apps via
+                    // package manager).
+                    value: parsed.exec,
+                    // Path informacional: caminho absoluto do `.desktop` file
+                    // (subtitle no picker pra desambiguar duplicatas
+                    // user-vs-system).
+                    path: path.to_string_lossy().into_owned(),
                 });
             }
         }
@@ -146,7 +155,7 @@ pub(crate) fn parse_desktop_entry(content: &str) -> Option<DesktopEntry> {
     let name = name?;
     let exec_raw = exec?;
     let exec_clean = strip_field_codes(&exec_raw);
-    let executable = exec_clean.split_whitespace().next()?.to_string();
+    let executable = first_exec_token(&exec_clean)?;
     if name.trim().is_empty() || executable.is_empty() {
         return None;
     }
@@ -154,6 +163,46 @@ pub(crate) fn parse_desktop_entry(content: &str) -> Option<DesktopEntry> {
         name,
         exec: executable,
     })
+}
+
+/// Extrai o primeiro token executável de um `Exec=` line. Trata quoting:
+/// `"My App/launcher.sh" --flag` → `My App/launcher.sh`. XDG spec permite
+/// aspas duplas como delimitador quando o executável (ou args) contém
+/// espaços; sem isso `split_whitespace` retornaria `"My`.
+fn first_exec_token(s: &str) -> Option<String> {
+    let trimmed = s.trim_start();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let mut chars = trimmed.chars();
+    let first = chars.next()?;
+    if first == '"' {
+        let mut out = String::new();
+        let mut prev_backslash = false;
+        for c in chars {
+            if prev_backslash {
+                out.push(c);
+                prev_backslash = false;
+                continue;
+            }
+            if c == '\\' {
+                prev_backslash = true;
+                continue;
+            }
+            if c == '"' {
+                return if out.is_empty() { None } else { Some(out) };
+            }
+            out.push(c);
+        }
+        // aspas não fechadas — fallback pro conteúdo coletado, ou None
+        if out.is_empty() {
+            None
+        } else {
+            Some(out)
+        }
+    } else {
+        trimmed.split_whitespace().next().map(|s| s.to_string())
+    }
 }
 
 fn parse_bool(value: &str) -> bool {
@@ -272,6 +321,10 @@ mod tests {
         let apps = collect_apps_from_dirs(&[td.path().to_path_buf()]);
         assert_eq!(apps.len(), 1);
         assert_eq!(apps[0].name, "Firefox");
+        // value = primeiro token do Exec (sem field codes)
+        assert_eq!(apps[0].value, "firefox");
+        // path = caminho absoluto do .desktop (informacional)
+        assert!(apps[0].path.ends_with("ok.desktop"));
     }
 
     #[test]
@@ -300,7 +353,27 @@ mod tests {
         let sorted = dedupe_and_sort(raw);
         // dedupe: primeiro encontrado (user) prevalece
         assert_eq!(sorted.len(), 1);
-        assert_eq!(sorted[0].path, "firefox-user");
+        assert_eq!(sorted[0].value, "firefox-user");
+        // path informacional aponta pro .desktop file no dir do user
+        assert!(sorted[0].path.starts_with(user.path().to_str().unwrap()));
+    }
+
+    #[test]
+    fn parses_quoted_exec_with_spaces() {
+        // XDG spec: aspas duplas delimitam executável quando contém espaços.
+        // Sem trato de quotes, `split_whitespace().next()` devolveria `"My`.
+        let content =
+            "[Desktop Entry]\nName=A\nExec=\"/opt/My App/launcher.sh\" --flag %U\nType=Application\n";
+        let r = parse_desktop_entry(content).unwrap();
+        assert_eq!(r.exec, "/opt/My App/launcher.sh");
+    }
+
+    #[test]
+    fn parses_quoted_exec_with_escaped_quote() {
+        // Backslash-escape de aspas dentro do quoted string.
+        let content = "[Desktop Entry]\nName=A\nExec=\"weird\\\"name\" %U\nType=Application\n";
+        let r = parse_desktop_entry(content).unwrap();
+        assert_eq!(r.exec, "weird\"name");
     }
 
     #[test]

@@ -3,11 +3,20 @@
 //! Cada SO tem um ramo `#[cfg(target_os = "...")]` que enumera apps via
 //! convenção do SO:
 //! - macOS: `/Applications/*.app` + `~/Applications/*.app`
-//! - Linux: `.desktop` files em `$XDG_DATA_DIRS/applications/`
+//! - Linux: `.desktop` files em `$XDG_DATA_DIRS/applications/` (default
+//!   `/usr/local/share:/usr/share`) + `~/.local/share/applications/`
 //! - Windows: registry `App Paths` (HKLM+HKCU) + Start Menu `.lnk` stems
 //!
-//! `InstalledApp.name` é o que o user passaria pro launcher (`Item::App.name`).
-//! O picker é só assistência de digitação — schema do `Item::App` segue intocado.
+//! `InstalledApp.value` é o que o picker insere em `Item::App.name` — varia
+//! por SO pra casar com o launcher do Plano 14:
+//! - macOS: nome friendly (`"Firefox"`) — launcher faz `open -a name`.
+//! - Linux: primeiro token do `Exec=` — launcher faz `Command::new(name)` via PATH.
+//! - Windows App Paths: caminho absoluto do `.exe` — `Command::new(absolute)`.
+//! - Windows `.lnk`: caminho absoluto do `.lnk` — launcher detecta extensão e
+//!   roteia via opener (ShellExecute) já que `Command::new` não resolve `.lnk`.
+//!
+//! `InstalledApp.name` é display friendly (mostrado como title da row).
+//! `InstalledApp.path` é informacional (mostrado como subtitle).
 
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 use crate::errors::AppError;
@@ -26,14 +35,18 @@ pub mod windows;
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
 pub struct InstalledApp {
-    /// Nome amigável que o usuário copia/seleciona pra `Item::App.name`.
+    /// Display friendly mostrado como título da row no picker.
     /// macOS: stem do `.app` bundle (`"Firefox"`).
     /// Linux: `Name=` do `.desktop`.
     /// Windows: stem do exe (App Paths) ou do `.lnk` (Start Menu).
     pub name: String,
-    /// Caminho absoluto do binário/bundle/lnk. Informacional — não é usado
-    /// pelo launcher (que invoca `name`), mas ajuda picker a desambiguar
-    /// duplicatas e mostrar tooltip futuro.
+    /// String que o picker insere em `Item::App.name` quando o user seleciona
+    /// a row. Varia por SO pra casar com o launcher do Plano 14 — ver doc do
+    /// módulo. **AppPicker.onSelect dispatch this, not `name`.**
+    pub value: String,
+    /// Caminho informacional (subtitle/tooltip + desambiguação de duplicatas).
+    /// macOS: bundle path. Linux: `.desktop` file path. Windows: mesmo que
+    /// `value` (sempre path absoluto naquele ramo).
     pub path: String,
 }
 
@@ -74,38 +87,32 @@ pub(crate) fn dedupe_and_sort(mut apps: Vec<InstalledApp>) -> Vec<InstalledApp> 
 mod tests {
     use super::*;
 
+    fn app(name: &str, value: &str, path: &str) -> InstalledApp {
+        InstalledApp {
+            name: name.into(),
+            value: value.into(),
+            path: path.into(),
+        }
+    }
+
     #[test]
     fn installed_app_round_trips() {
-        let app = InstalledApp {
-            name: "Firefox".into(),
-            path: "/Applications/Firefox.app".into(),
-        };
-        let json = serde_json::to_string(&app).unwrap();
+        let a = app("Firefox", "Firefox", "/Applications/Firefox.app");
+        let json = serde_json::to_string(&a).unwrap();
         assert!(json.contains("\"name\":\"Firefox\""));
+        assert!(json.contains("\"value\":\"Firefox\""));
         assert!(json.contains("\"path\":\"/Applications/Firefox.app\""));
         let back: InstalledApp = serde_json::from_str(&json).unwrap();
-        assert_eq!(app, back);
+        assert_eq!(a, back);
     }
 
     #[test]
     fn dedupe_and_sort_is_case_insensitive() {
         let input = vec![
-            InstalledApp {
-                name: "VSCode".into(),
-                path: "/p1".into(),
-            },
-            InstalledApp {
-                name: "firefox".into(),
-                path: "/p2".into(),
-            },
-            InstalledApp {
-                name: "Firefox".into(),
-                path: "/p3".into(),
-            },
-            InstalledApp {
-                name: "Brave".into(),
-                path: "/p4".into(),
-            },
+            app("VSCode", "VSCode", "/p1"),
+            app("firefox", "firefox", "/p2"),
+            app("Firefox", "Firefox", "/p3"),
+            app("Brave", "Brave", "/p4"),
         ];
         let out = dedupe_and_sort(input);
         // dedupe mantém o primeiro Firefox; sort por lower-case
@@ -118,17 +125,12 @@ mod tests {
     #[test]
     fn dedupe_preserves_first_path_when_names_collide() {
         let input = vec![
-            InstalledApp {
-                name: "Firefox".into(),
-                path: "/canonical".into(),
-            },
-            InstalledApp {
-                name: "firefox".into(),
-                path: "/duplicate".into(),
-            },
+            app("Firefox", "v1", "/canonical"),
+            app("firefox", "v2", "/duplicate"),
         ];
         let out = dedupe_and_sort(input);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].path, "/canonical");
+        assert_eq!(out[0].value, "v1");
     }
 }

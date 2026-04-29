@@ -599,10 +599,14 @@ pub fn set_profile_theme_overrides<R: tauri::Runtime>(
 /// Plano 17 — devolve a lista de apps instalados detectados pelo SO. Sem
 /// mutação de config; sem emitir `CONFIG_CHANGED_EVENT`. Pure read-only,
 /// usado pelo `<AppPicker>` no Settings pra preencher `Item::App.name` sem
-/// erro de digitação.
+/// erro de digitação. Async + spawn_blocking porque a enumeração faz I/O
+/// pesado (read_dir recursivo em Start Menu, registry HKLM+HKCU); rodar
+/// inline travaria a thread do tauri runtime.
 #[tauri::command]
-pub fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
-    apps_picker::list_installed_apps()
+pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
+    tauri::async_runtime::spawn_blocking(apps_picker::list_installed_apps)
+        .await
+        .map_err(|e| AppError::io("apps_list_failed", &[("reason", e.to_string())]))?
 }
 
 pub(crate) fn apply_set_script_trusted(

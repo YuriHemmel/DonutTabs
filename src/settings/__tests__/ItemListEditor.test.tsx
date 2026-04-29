@@ -12,8 +12,8 @@ vi.mock("../../core/ipc", () => ({
   },
   ipc: {
     listInstalledApps: vi.fn().mockResolvedValue([
-      { name: "Firefox", path: "/Applications/Firefox.app" },
-      { name: "VSCode", path: "/usr/local/bin/code" },
+      { name: "Firefox", value: "Firefox", path: "/Applications/Firefox.app" },
+      { name: "VSCode", value: "/usr/local/bin/code", path: "/usr/local/bin/code" },
     ]),
   },
 }));

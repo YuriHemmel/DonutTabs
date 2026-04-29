@@ -2,15 +2,21 @@
 
 export type InstalledApp = { 
 /**
- * Nome amigável que o usuário copia/seleciona pra `Item::App.name`.
+ * Display friendly mostrado como título da row no picker.
  * macOS: stem do `.app` bundle (`"Firefox"`).
  * Linux: `Name=` do `.desktop`.
  * Windows: stem do exe (App Paths) ou do `.lnk` (Start Menu).
  */
 name: string, 
 /**
- * Caminho absoluto do binário/bundle/lnk. Informacional — não é usado
- * pelo launcher (que invoca `name`), mas ajuda picker a desambiguar
- * duplicatas e mostrar tooltip futuro.
+ * String que o picker insere em `Item::App.name` quando o user seleciona
+ * a row. Varia por SO pra casar com o launcher do Plano 14 — ver doc do
+ * módulo. **AppPicker.onSelect dispatch this, not `name`.**
+ */
+value: string, 
+/**
+ * Caminho informacional (subtitle/tooltip + desambiguação de duplicatas).
+ * macOS: bundle path. Linux: `.desktop` file path. Windows: mesmo que
+ * `value` (sempre path absoluto naquele ramo).
  */
 path: string, };

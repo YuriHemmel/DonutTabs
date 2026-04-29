@@ -58,8 +58,10 @@ export const AppPicker: React.FC<AppPickerProps> = ({
   }, [open, load]);
 
   useEffect(() => {
+    // Foca apenas na abertura — re-focar em cada transição de state roubaria
+    // o foco do user que clicou em uma row durante a transição loading→loaded.
     if (open) inputRef.current?.focus();
-  }, [open, state.status]);
+  }, [open]);
 
   const filtered = useMemo(() => {
     if (state.status !== "loaded") return [] as InstalledApp[];
@@ -97,7 +99,7 @@ export const AppPicker: React.FC<AppPickerProps> = ({
       e.preventDefault();
       const picked = filtered[selectedIndex];
       if (picked) {
-        onSelect(picked.name);
+        onSelect(picked.value);
         onClose();
       }
     }
@@ -170,6 +172,7 @@ export const AppPicker: React.FC<AppPickerProps> = ({
           ref={inputRef}
           data-testid="app-picker-search"
           type="text"
+          aria-label={t("settings.appPicker.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("settings.appPicker.searchPlaceholder")}
@@ -237,7 +240,7 @@ export const AppPicker: React.FC<AppPickerProps> = ({
                     data-testid={`app-picker-row-${i}`}
                     onMouseEnter={() => setSelectedIndex(i)}
                     onClick={() => {
-                      onSelect(app.name);
+                      onSelect(app.value);
                       onClose();
                     }}
                     style={{

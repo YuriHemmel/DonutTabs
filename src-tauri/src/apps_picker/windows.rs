@@ -97,8 +97,13 @@ fn collect_lnks_recursive(dir: &Path, out: &mut Vec<InstalledApp>) {
 }
 
 /// Helper puro: dado o nome da subkey de `App Paths` (`firefox.exe`) e o
-/// valor default (caminho absoluto), constrói `InstalledApp` com `name` =
-/// stem do exe (sem `.exe`). Subkey vazio ou path vazio retornam `None`.
+/// valor default (caminho absoluto), constrói `InstalledApp`:
+/// - `name` = stem do exe (display friendly, e.g. `"firefox"`)
+/// - `value` = path absoluto do exe (vai pra `Item::App.name`; launcher faz
+///   `Command::new(absolute_path)` que funciona sem precisar de PATH).
+/// - `path` = mesmo que `value` (informacional). Se a subkey não tem default
+///   value (registry incompleto), `value` cai no subkey-name como último
+///   recurso — pode falhar no launch se exe não estiver em PATH.
 pub(crate) fn app_paths_entry_to_installed(
     subkey_name: &str,
     path_value: &str,
@@ -110,16 +115,24 @@ pub(crate) fn app_paths_entry_to_installed(
     if stem.trim().is_empty() {
         return None;
     }
-    let path = if path_value.trim().is_empty() {
+    let resolved = if path_value.trim().is_empty() {
         subkey_name.to_string()
     } else {
         path_value.to_string()
     };
-    Some(InstalledApp { name: stem, path })
+    Some(InstalledApp {
+        name: stem,
+        value: resolved.clone(),
+        path: resolved,
+    })
 }
 
-/// Helper puro: dado o caminho de um `.lnk`, devolve `InstalledApp` com
-/// `name` = stem do arquivo. Path com extensão diferente retorna `None`.
+/// Helper puro: dado o caminho de um `.lnk`, devolve `InstalledApp`:
+/// - `name` = stem do arquivo (display friendly).
+/// - `value` = caminho absoluto do `.lnk`. Launcher detecta `.lnk` extensão
+///   e roteia via `tauri-plugin-opener` (ShellExecute) já que CreateProcess
+///   não resolve shell-links nativamente.
+/// - `path` = mesmo que `value`.
 pub(crate) fn lnk_path_to_installed(path: &Path) -> Option<InstalledApp> {
     if path.extension().and_then(|s| s.to_str()) != Some("lnk") {
         return None;
@@ -128,9 +141,11 @@ pub(crate) fn lnk_path_to_installed(path: &Path) -> Option<InstalledApp> {
     if stem.trim().is_empty() {
         return None;
     }
+    let abs = path.to_string_lossy().into_owned();
     Some(InstalledApp {
         name: stem,
-        path: path.to_string_lossy().into_owned(),
+        value: abs.clone(),
+        path: abs,
     })
 }
 
@@ -140,11 +155,13 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn app_paths_entry_uses_stem_as_name() {
+    fn app_paths_entry_uses_stem_as_name_and_path_as_value() {
         let app =
             app_paths_entry_to_installed("firefox.exe", "C:\\Program Files\\Firefox\\firefox.exe")
                 .unwrap();
         assert_eq!(app.name, "firefox");
+        // value (o que vai pra Item::App.name) = path absoluto do exe.
+        assert_eq!(app.value, "C:\\Program Files\\Firefox\\firefox.exe");
         assert_eq!(app.path, "C:\\Program Files\\Firefox\\firefox.exe");
     }
 
@@ -152,7 +169,8 @@ mod tests {
     fn app_paths_entry_falls_back_to_subkey_when_value_empty() {
         let app = app_paths_entry_to_installed("code.exe", "").unwrap();
         assert_eq!(app.name, "code");
-        // Sem default value, mantém o subkey como path informacional.
+        // Sem default value, value cai no subkey-name (último recurso).
+        assert_eq!(app.value, "code.exe");
         assert_eq!(app.path, "code.exe");
     }
 
@@ -161,6 +179,7 @@ mod tests {
         let app = app_paths_entry_to_installed("WinRAR", "C:\\Program Files\\WinRAR\\WinRAR.exe")
             .unwrap();
         assert_eq!(app.name, "WinRAR");
+        assert_eq!(app.value, "C:\\Program Files\\WinRAR\\WinRAR.exe");
     }
 
     #[test]
@@ -169,13 +188,16 @@ mod tests {
     }
 
     #[test]
-    fn lnk_uses_stem_as_name() {
+    fn lnk_uses_stem_as_name_and_full_path_as_value() {
         // Path com separador `/` (forward) funciona em qualquer SO; o `\\`
         // do Windows é literal-char em Unix e quebra `.file_stem()`.
         let p = PathBuf::from("/start/menu/Firefox.lnk");
         let app = lnk_path_to_installed(&p).unwrap();
         assert_eq!(app.name, "Firefox");
-        assert!(app.path.ends_with("Firefox.lnk"));
+        // value = caminho absoluto do .lnk (launcher detecta extensão e
+        // roteia via opener, já que Command::new não resolve shell-links).
+        assert!(app.value.ends_with("Firefox.lnk"));
+        assert_eq!(app.value, app.path);
     }
 
     #[test]
@@ -198,15 +220,17 @@ mod tests {
         let combined = vec![
             InstalledApp {
                 name: "Firefox".into(),
+                value: "C:\\Program Files\\Firefox\\firefox.exe".into(),
                 path: "C:\\Program Files\\Firefox\\firefox.exe".into(),
             },
             InstalledApp {
                 name: "Firefox".into(),
+                value: "C:\\Start Menu\\Firefox.lnk".into(),
                 path: "C:\\Start Menu\\Firefox.lnk".into(),
             },
         ];
         let sorted = dedupe_and_sort(combined);
         assert_eq!(sorted.len(), 1);
-        assert!(sorted[0].path.ends_with("firefox.exe"));
+        assert!(sorted[0].value.ends_with("firefox.exe"));
     }
 }

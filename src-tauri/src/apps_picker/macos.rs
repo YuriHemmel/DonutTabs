@@ -47,6 +47,9 @@ fn app_from_entry(path: &Path) -> Option<InstalledApp> {
         return None;
     }
     Some(InstalledApp {
+        // macOS: value = name (friendly bundle stem). Launcher faz `open -a name`
+        // e Launch Services resolve. Path absoluto é informacional.
+        value: name.clone(),
         name,
         path: path.to_string_lossy().into_owned(),
     })
