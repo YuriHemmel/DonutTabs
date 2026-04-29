@@ -23,6 +23,8 @@ pub fn migrate_to_v2(v1: ConfigV1) -> Config {
                 order: t.order,
                 open_mode: t.open_mode,
                 items: t.items,
+                // Plano 16: configs v1 não conheciam sub-donuts.
+                children: vec![],
             })
             .collect(),
         // Plano 14: kill-switch default-closed. Configs v1 não conheciam

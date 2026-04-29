@@ -236,6 +236,7 @@ mod tests {
                     open_with: None,
                 })
                 .collect(),
+            children: vec![],
         }
     }
 
@@ -247,6 +248,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items,
+            children: vec![],
         }
     }
 

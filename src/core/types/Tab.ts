@@ -2,4 +2,13 @@
 import type { Item } from "./Item";
 import type { OpenMode } from "./OpenMode";
 
-export type Tab = { id: string, name: string | null, icon: string | null, order: number, openMode: OpenMode, items: Array<Item>, };
+export type Tab = { id: string, name: string | null, icon: string | null, order: number, openMode: OpenMode, items: Array<Item>, 
+/**
+ * Plano 16 — sub-donuts. Tab é leaf quando `children.is_empty()`
+ * (precisa ter `items` não-vazio); é group quando `!children.is_empty()`
+ * (precisa ter `items` vazio). Mutually-exclusive imposto via
+ * `validate_tab_recursive`. `#[serde(default, skip_serializing_if =
+ * "Vec::is_empty")]` mantém configs Plano-15 carregando sem migração e
+ * não polui JSON de tabs sem subgrupos.
+ */
+children: Array<Tab>, };

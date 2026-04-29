@@ -184,6 +184,14 @@ pub struct Tab {
     pub order: u32,
     pub open_mode: OpenMode,
     pub items: Vec<Item>,
+    /// Plano 16 — sub-donuts. Tab é leaf quando `children.is_empty()`
+    /// (precisa ter `items` não-vazio); é group quando `!children.is_empty()`
+    /// (precisa ter `items` vazio). Mutually-exclusive imposto via
+    /// `validate_tab_recursive`. `#[serde(default, skip_serializing_if =
+    /// "Vec::is_empty")]` mantém configs Plano-15 carregando sem migração e
+    /// não polui JSON de tabs sem subgrupos.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<Tab>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
@@ -319,6 +327,7 @@ mod tests {
                     value: "https://example.com".into(),
                     open_with: None,
                 }],
+                children: vec![],
             }],
             allow_scripts: false,
             theme_overrides: None,
@@ -419,6 +428,7 @@ mod tests {
                     open_with: None,
                 },
             ],
+            children: vec![],
         };
         let json = serde_json::to_string(&tab).unwrap();
         let back: Tab = serde_json::from_str(&json).unwrap();
@@ -618,6 +628,112 @@ mod tests {
         assert_eq!(json, "{}");
         let back: ThemeOverrides = serde_json::from_str(&json).unwrap();
         assert_eq!(o, back);
+    }
+
+    #[test]
+    fn tab_default_omits_children_in_json() {
+        // Plano 16: children=[] deve ser elidido no JSON pra não poluir
+        // configs de tabs sem subgrupos.
+        let tab = Tab {
+            id: Uuid::nil(),
+            name: Some("leaf".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                value: "https://x".into(),
+                open_with: None,
+            }],
+            children: vec![],
+        };
+        let json = serde_json::to_string(&tab).unwrap();
+        assert!(
+            !json.contains("children"),
+            "field should be skipped when empty: {json}"
+        );
+    }
+
+    #[test]
+    fn tab_without_children_field_deserializes_with_empty_vec() {
+        // Plano 15 e anteriores não têm `children` no JSON.
+        let json = r#"{
+            "id": "11111111-1111-1111-1111-111111111111",
+            "name": "x",
+            "icon": null,
+            "order": 0,
+            "openMode": "reuseOrNewWindow",
+            "items": [{"kind":"url","value":"https://x"}]
+        }"#;
+        let t: Tab = serde_json::from_str(json).unwrap();
+        assert!(t.children.is_empty());
+    }
+
+    #[test]
+    fn tab_with_children_round_trips() {
+        let child = Tab {
+            id: Uuid::nil(),
+            name: Some("child".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                value: "https://child".into(),
+                open_with: None,
+            }],
+            children: vec![],
+        };
+        let group = Tab {
+            id: Uuid::nil(),
+            name: Some("group".into()),
+            icon: Some("📁".into()),
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            children: vec![child],
+        };
+        let json = serde_json::to_string(&group).unwrap();
+        assert!(json.contains("\"children\""));
+        assert!(json.contains("\"name\":\"child\""));
+        let back: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(group, back);
+    }
+
+    #[test]
+    fn tab_three_level_nesting_round_trips() {
+        // root (group) -> mid (group) -> leaf
+        let leaf = Tab {
+            id: Uuid::nil(),
+            name: Some("L".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                value: "https://l".into(),
+                open_with: None,
+            }],
+            children: vec![],
+        };
+        let mid = Tab {
+            id: Uuid::nil(),
+            name: Some("M".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            children: vec![leaf],
+        };
+        let root = Tab {
+            id: Uuid::nil(),
+            name: Some("R".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            children: vec![mid],
+        };
+        let json = serde_json::to_string(&root).unwrap();
+        let back: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(root, back);
     }
 
     #[test]
