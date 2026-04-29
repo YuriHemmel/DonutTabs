@@ -175,9 +175,9 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     void handleOpenSettings(`edit-tab:${tabId}` as import("../core/ipc").SettingsIntent);
   };
 
-  const handleDeleteTab = async (tabId: string) => {
+  const handleDeleteTab = async (tabId: string, parentPath: string[]) => {
     try {
-      await ipc.deleteTab(tabId);
+      await ipc.deleteTab(tabId, undefined, parentPath);
     } catch (err) {
       setErrorMsg(translateAppError(err, t));
     }

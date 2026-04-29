@@ -127,10 +127,10 @@ describe("useConfig", () => {
       items: [],
     } as never;
     await act(() => result.current.saveTab(tab));
-    expect(ipc.saveTab).toHaveBeenCalledWith(tab, undefined);
+    expect(ipc.saveTab).toHaveBeenCalledWith(tab, undefined, undefined);
 
     await act(() => result.current.saveTab(tab, PROFILE_ID));
-    expect(ipc.saveTab).toHaveBeenLastCalledWith(tab, PROFILE_ID);
+    expect(ipc.saveTab).toHaveBeenLastCalledWith(tab, PROFILE_ID, undefined);
   });
 
   it("deleteTab delegates to ipc", async () => {
@@ -141,7 +141,7 @@ describe("useConfig", () => {
     await waitFor(() => expect(result.current.config).not.toBeNull());
 
     await act(() => result.current.deleteTab("some-id"));
-    expect(ipc.deleteTab).toHaveBeenCalledWith("some-id", undefined);
+    expect(ipc.deleteTab).toHaveBeenCalledWith("some-id", undefined, undefined);
   });
 
   it("setShortcut delegates to ipc and applies the new snapshot", async () => {
@@ -239,7 +239,7 @@ describe("useConfig", () => {
 
     const ids = ["a", "b", "c"];
     await act(() => result.current.reorderTabs(PROFILE_ID, ids));
-    expect(ipc.reorderTabs).toHaveBeenCalledWith(PROFILE_ID, ids);
+    expect(ipc.reorderTabs).toHaveBeenCalledWith(PROFILE_ID, ids, undefined);
   });
 
   it("reorderProfiles delegates to ipc", async () => {

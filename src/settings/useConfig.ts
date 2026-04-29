@@ -10,8 +10,12 @@ import type { ThemeOverrides } from "../core/types/ThemeOverrides";
 export interface UseConfig {
   config: Config | null;
   loadError: unknown;
-  saveTab: (tab: Tab, profileId?: string) => Promise<Config>;
-  deleteTab: (tabId: string, profileId?: string) => Promise<Config>;
+  saveTab: (tab: Tab, profileId?: string, parentPath?: string[]) => Promise<Config>;
+  deleteTab: (
+    tabId: string,
+    profileId?: string,
+    parentPath?: string[],
+  ) => Promise<Config>;
   setShortcut: (combo: string, profileId?: string) => Promise<Config>;
   setTheme: (theme: Theme, profileId?: string) => Promise<Config>;
   setLanguage: (language: Language) => Promise<Config>;
@@ -24,7 +28,11 @@ export interface UseConfig {
     icon?: string,
   ) => Promise<Config>;
   setAutostart: (enabled: boolean) => Promise<Config>;
-  reorderTabs: (profileId: string, orderedIds: string[]) => Promise<Config>;
+  reorderTabs: (
+    profileId: string,
+    orderedIds: string[],
+    parentPath?: string[],
+  ) => Promise<Config>;
   reorderProfiles: (orderedIds: string[]) => Promise<Config>;
   setSearchShortcut: (combo: string) => Promise<Config>;
   setScriptTrusted: (
@@ -72,17 +80,23 @@ export function useConfig(): UseConfig {
     };
   }, []);
 
-  const saveTab = useCallback(async (tab: Tab, profileId?: string) => {
-    const next = await ipc.saveTab(tab, profileId);
-    setConfig(next);
-    return next;
-  }, []);
+  const saveTab = useCallback(
+    async (tab: Tab, profileId?: string, parentPath?: string[]) => {
+      const next = await ipc.saveTab(tab, profileId, parentPath);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
 
-  const deleteTab = useCallback(async (tabId: string, profileId?: string) => {
-    const next = await ipc.deleteTab(tabId, profileId);
-    setConfig(next);
-    return next;
-  }, []);
+  const deleteTab = useCallback(
+    async (tabId: string, profileId?: string, parentPath?: string[]) => {
+      const next = await ipc.deleteTab(tabId, profileId, parentPath);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
 
   const setShortcut = useCallback(async (combo: string, profileId?: string) => {
     const next = await ipc.setShortcut(combo, profileId);
@@ -139,8 +153,8 @@ export function useConfig(): UseConfig {
   }, []);
 
   const reorderTabs = useCallback(
-    async (profileId: string, orderedIds: string[]) => {
-      const next = await ipc.reorderTabs(profileId, orderedIds);
+    async (profileId: string, orderedIds: string[], parentPath?: string[]) => {
+      const next = await ipc.reorderTabs(profileId, orderedIds, parentPath);
       setConfig(next);
       return next;
     },
