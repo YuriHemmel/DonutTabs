@@ -34,6 +34,7 @@ const existing: Tab = {
   order: 0,
   openMode: "reuseOrNewWindow",
   items: [{ kind: "url", value: "https://example.com", openWith: null }],
+  children: [],
 };
 
 describe("TabEditor", () => {
