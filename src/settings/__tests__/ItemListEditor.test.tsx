@@ -10,9 +10,15 @@ vi.mock("../../core/ipc", () => ({
     pickFile: vi.fn(),
     pickFolder: vi.fn(),
   },
+  ipc: {
+    listInstalledApps: vi.fn().mockResolvedValue([
+      { name: "Firefox", path: "/Applications/Firefox.app" },
+      { name: "VSCode", path: "/usr/local/bin/code" },
+    ]),
+  },
 }));
 
-import { dialog } from "../../core/ipc";
+import { dialog, ipc } from "../../core/ipc";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -241,5 +247,29 @@ describe("ItemListEditor", () => {
     const cb = screen.getByTestId("item-script-trusted-0") as HTMLInputElement;
     expect(cb).toBeTruthy();
     expect(cb.checked).toBe(false);
+  });
+
+  it("app row shows the app picker button; selecting an app fills the value", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "app", value: "", openWith: "" },
+    ]);
+    const button = screen.getByTestId("item-app-picker-0");
+    fireEvent.click(button);
+    // Picker abre — espera os apps carregarem do mock.
+    const row = await screen.findByTestId("app-picker-row-0");
+    expect(row).toBeTruthy();
+    expect(ipc.listInstalledApps).toHaveBeenCalled();
+    fireEvent.click(row);
+    // Picker fecha + onChange foi disparado com o name selecionado.
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "app", value: "Firefox", openWith: "" },
+    ]);
+  });
+
+  it("app row never shows the open-with field nor the browse button", async () => {
+    await renderEditor([{ kind: "app", value: "firefox", openWith: "" }]);
+    expect(screen.queryByTestId("item-open-with-0")).toBeNull();
+    expect(screen.queryByTestId("item-browse-0")).toBeNull();
+    expect(screen.getByTestId("item-app-picker-0")).toBeTruthy();
   });
 });
