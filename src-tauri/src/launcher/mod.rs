@@ -146,7 +146,7 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::schema::{Item, OpenMode, Tab};
+    use crate::config::schema::{Item, OpenMode, Tab, TabKind};
     use std::sync::Mutex;
     use uuid::Uuid;
 
@@ -236,6 +236,8 @@ mod tests {
                     open_with: None,
                 })
                 .collect(),
+            kind: TabKind::Leaf,
+            children: vec![],
         }
     }
 
@@ -247,6 +249,8 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items,
+            kind: TabKind::Leaf,
+            children: vec![],
         }
     }
 

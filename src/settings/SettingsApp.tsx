@@ -17,8 +17,8 @@ import type { Tab } from "../core/types/Tab";
 
 type Selection =
   | { mode: "empty" }
-  | { mode: "new" }
-  | { mode: "edit"; tabId: string };
+  | { mode: "new"; parentPath?: string[]; suggestedKind?: "leaf" | "group" }
+  | { mode: "edit"; tabId: string; parentPath?: string[] };
 
 interface IntentTarget {
   section: Section;
@@ -30,10 +30,29 @@ interface IntentTarget {
 }
 
 /**
- * Resolve um intent (`new-tab`, `edit-tab:<id>`, `new-profile`) em uma
- * mudança de seção/seleção. Para `edit-tab:<id>`, busca a aba em **todos**
- * os perfis e ajusta também o `selectedProfileId` para o perfil dono. Se
- * não encontrar, retorna `null` (ignora).
+ * Procura uma aba pela árvore de tabs do perfil. Retorna o path
+ * (lista de ids dos pais) e o tab encontrado, ou `null` se não bater.
+ */
+function findTabPathInProfile(
+  tabs: Tab[],
+  targetId: string,
+  acc: string[] = [],
+): { tab: Tab; path: string[] } | null {
+  for (const tab of tabs) {
+    if (tab.id === targetId) return { tab, path: acc };
+    const inner = findTabPathInProfile(tab.children, targetId, [...acc, tab.id]);
+    if (inner) return inner;
+  }
+  return null;
+}
+
+/**
+ * Resolve um intent (`new-tab`, `edit-tab:<id>`, `new-profile`,
+ * `new-tab-in-group:<csv>`) em uma mudança de seção/seleção. Para
+ * `edit-tab:<id>`, busca a aba **recursivamente** em todos os perfis e
+ * ajusta `selectedProfileId` para o perfil dono + `parentPath` para o
+ * caminho de grupos até a aba. `new-tab-in-group:<csv>` carrega o path
+ * de UUIDs separados por vírgula no qual o "+ slice" foi clicado.
  */
 function resolveIntent(
   intent: string | null,
@@ -49,17 +68,26 @@ function resolveIntent(
       triggerCreateProfile: true,
     };
   }
+  if (intent && intent.startsWith("new-tab-in-group:")) {
+    const csv = intent.slice("new-tab-in-group:".length);
+    const parentPath = csv.split(",").filter((s) => s.length > 0);
+    return {
+      section: "tabs",
+      selection: { mode: "new", parentPath },
+    };
+  }
   if (intent && intent.startsWith("edit-tab:")) {
     const tabId = intent.slice("edit-tab:".length);
-    const owner = config?.profiles.find((p) =>
-      p.tabs.some((t) => t.id === tabId),
-    );
-    if (owner) {
-      return {
-        section: "tabs",
-        selection: { mode: "edit", tabId },
-        selectedProfileId: owner.id,
-      };
+    if (!config) return null;
+    for (const profile of config.profiles) {
+      const found = findTabPathInProfile(profile.tabs, tabId);
+      if (found) {
+        return {
+          section: "tabs",
+          selection: { mode: "edit", tabId, parentPath: found.path },
+          selectedProfileId: profile.id,
+        };
+      }
     }
   }
   return null;
@@ -189,18 +217,39 @@ export const SettingsApp: React.FC = () => {
     return <div style={{ padding: 24 }}>…</div>;
   }
 
+  // Busca recursiva na árvore — necessária pra editar abas dentro de
+  // sub-grupos.
   const selectedTab: Tab | null =
     selection.mode === "edit"
-      ? selectedProfile.tabs.find((tab) => tab.id === selection.tabId) ?? null
+      ? findTabPathInProfile(selectedProfile.tabs, selection.tabId)?.tab ?? null
       : null;
 
+  const currentParentPath: string[] | undefined =
+    selection.mode === "new" || selection.mode === "edit"
+      ? selection.parentPath
+      : undefined;
+
+  const handleSelectChild = (childId: string) => {
+    if (selection.mode !== "edit") return;
+    const extendedPath = [...(selection.parentPath ?? []), selection.tabId];
+    setSelection({ mode: "edit", tabId: childId, parentPath: extendedPath });
+  };
+
+  const handleAddChild = (kind: "leaf" | "group") => {
+    if (selection.mode !== "edit") return;
+    const extendedPath = [...(selection.parentPath ?? []), selection.tabId];
+    setSelection({ mode: "new", parentPath: extendedPath, suggestedKind: kind });
+  };
+
+  const currentDepth = (currentParentPath?.length ?? 0) + 1;
+
   const handleSave = async (tab: Tab) => {
-    await saveTab(tab, selectedProfile.id);
-    setSelection({ mode: "edit", tabId: tab.id });
+    await saveTab(tab, selectedProfile.id, currentParentPath);
+    setSelection({ mode: "edit", tabId: tab.id, parentPath: currentParentPath });
   };
 
   const handleDelete = async (tabId: string) => {
-    await deleteTab(tabId, selectedProfile.id);
+    await deleteTab(tabId, selectedProfile.id, currentParentPath);
     setSelection({ mode: "empty" });
   };
 
@@ -296,6 +345,8 @@ export const SettingsApp: React.FC = () => {
               onSave={handleSave}
               onCancel={() => setSelection({ mode: "empty" })}
               onDelete={handleDelete}
+              currentDepth={currentDepth}
+              initialKind={selection.suggestedKind ?? "leaf"}
             />
           ) : selection.mode === "edit" && selectedTab ? (
             <TabEditor
@@ -304,6 +355,9 @@ export const SettingsApp: React.FC = () => {
               onSave={handleSave}
               onCancel={() => setSelection({ mode: "empty" })}
               onDelete={handleDelete}
+              currentDepth={currentDepth}
+              onSelectChild={handleSelectChild}
+              onAddChild={handleAddChild}
             />
           ) : (
             <section

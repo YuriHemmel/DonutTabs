@@ -19,6 +19,8 @@ const tab = (id: string, name: string, order: number): Tab => ({
   order,
   openMode: "reuseOrNewWindow",
   items: [],
+  kind: "leaf",
+  children: [],
 });
 
 const mockRect = (el: HTMLElement, top: number, height: number) => {

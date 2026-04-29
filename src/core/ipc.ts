@@ -8,7 +8,11 @@ import type { FaviconResult } from "./types/FaviconResult";
 import type { ImportResult } from "./types/ImportResult";
 import type { ThemeOverrides } from "./types/ThemeOverrides";
 
-export type SettingsIntent = "new-tab" | `edit-tab:${string}` | "new-profile";
+export type SettingsIntent =
+  | "new-tab"
+  | `edit-tab:${string}`
+  | "new-profile"
+  | `new-tab-in-group:${string}`;
 
 export const ipc = {
   getConfig: () => invoke<Config>("get_config"),
@@ -23,10 +27,18 @@ export const ipc = {
       forceItemIndex: forceItemIndex ?? null,
     }),
   hideDonut: () => invoke<void>("hide_donut"),
-  saveTab: (tab: Tab, profileId?: string) =>
-    invoke<Config>("save_tab", { tab, profileId: profileId ?? null }),
-  deleteTab: (tabId: string, profileId?: string) =>
-    invoke<Config>("delete_tab", { tabId, profileId: profileId ?? null }),
+  saveTab: (tab: Tab, profileId?: string, parentPath?: string[]) =>
+    invoke<Config>("save_tab", {
+      tab,
+      profileId: profileId ?? null,
+      parentPath: parentPath ?? null,
+    }),
+  deleteTab: (tabId: string, profileId?: string, parentPath?: string[]) =>
+    invoke<Config>("delete_tab", {
+      tabId,
+      profileId: profileId ?? null,
+      parentPath: parentPath ?? null,
+    }),
   openSettings: (intent?: SettingsIntent) =>
     invoke<void>("open_settings", { intent: intent ?? null }),
   consumeSettingsIntent: () => invoke<string | null>("consume_settings_intent"),
@@ -51,8 +63,12 @@ export const ipc = {
     }),
   setAutostart: (enabled: boolean) =>
     invoke<Config>("set_autostart", { enabled }),
-  reorderTabs: (profileId: string, orderedIds: string[]) =>
-    invoke<Config>("reorder_tabs", { profileId, orderedIds }),
+  reorderTabs: (profileId: string, orderedIds: string[], parentPath?: string[]) =>
+    invoke<Config>("reorder_tabs", {
+      profileId,
+      orderedIds,
+      parentPath: parentPath ?? null,
+    }),
   reorderProfiles: (orderedIds: string[]) =>
     invoke<Config>("reorder_profiles", { orderedIds }),
   fetchFavicon: (url: string) => invoke<FaviconResult>("fetch_favicon", { url }),

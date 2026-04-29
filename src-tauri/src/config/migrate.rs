@@ -1,4 +1,4 @@
-use super::schema::{Appearance, Config, Profile, Tab};
+use super::schema::{Appearance, Config, Profile, Tab, TabKind};
 use super::v1::ConfigV1;
 use uuid::Uuid;
 
@@ -23,6 +23,9 @@ pub fn migrate_to_v2(v1: ConfigV1) -> Config {
                 order: t.order,
                 open_mode: t.open_mode,
                 items: t.items,
+                // Plano 16: configs v1 são sempre leaf (não conheciam sub-donuts).
+                kind: TabKind::Leaf,
+                children: vec![],
             })
             .collect(),
         // Plano 14: kill-switch default-closed. Configs v1 não conheciam

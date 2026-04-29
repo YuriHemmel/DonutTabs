@@ -159,107 +159,166 @@ fn validate_theme_overrides(profile: &Profile, overrides: &ThemeOverrides) -> Ap
     Ok(())
 }
 
+/// Plano 16 — profundidade máxima do sub-donut. 1 = só root (sem grupos),
+/// 3 = root + 2 sub-níveis (limite definido no plano). Trocar exige
+/// migração se houver configs no campo com profundidade maior.
+pub(crate) const MAX_TAB_DEPTH: usize = 3;
+
 fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
-    for tab in &profile.tabs {
-        let has_name = tab
-            .name
-            .as_ref()
-            .map(|s| !s.trim().is_empty())
-            .unwrap_or(false);
-        let has_icon = tab
-            .icon
-            .as_ref()
-            .map(|s| !s.trim().is_empty())
-            .unwrap_or(false);
-        if !has_name && !has_icon {
-            return Err(AppError::config(
-                "tab_missing_name_and_icon",
-                &[
-                    ("id", tab.id.to_string()),
-                    ("profileId", profile.id.to_string()),
-                ],
-            ));
-        }
-    }
-
-    for tab in &profile.tabs {
-        for item in &tab.items {
-            match item {
-                Item::Url { value, .. } => {
-                    url::Url::parse(value).map_err(|e| {
-                        AppError::config(
-                            "invalid_url",
-                            &[
-                                ("tabId", tab.id.to_string()),
-                                ("profileId", profile.id.to_string()),
-                                ("reason", e.to_string()),
-                            ],
-                        )
-                    })?;
-                }
-                Item::File { path, .. } | Item::Folder { path, .. } => {
-                    if path.trim().is_empty() {
-                        return Err(AppError::config(
-                            "path_empty",
-                            &[
-                                ("tabId", tab.id.to_string()),
-                                ("profileId", profile.id.to_string()),
-                                ("kind", item_kind_label(item).to_string()),
-                            ],
-                        ));
-                    }
-                }
-                Item::App { name } => {
-                    if name.trim().is_empty() {
-                        return Err(AppError::config(
-                            "app_name_empty",
-                            &[
-                                ("tabId", tab.id.to_string()),
-                                ("profileId", profile.id.to_string()),
-                            ],
-                        ));
-                    }
-                }
-                Item::Script { command, .. } => {
-                    if command.trim().is_empty() {
-                        return Err(AppError::config(
-                            "script_command_empty",
-                            &[
-                                ("tabId", tab.id.to_string()),
-                                ("profileId", profile.id.to_string()),
-                            ],
-                        ));
-                    }
-                }
-            }
-            if let Some(ow) = item_open_with(item) {
-                if ow.trim().is_empty() {
-                    return Err(AppError::config(
-                        "open_with_empty",
-                        &[
-                            ("tabId", tab.id.to_string()),
-                            ("profileId", profile.id.to_string()),
-                            ("kind", item_kind_label(item).to_string()),
-                        ],
-                    ));
-                }
-            }
-        }
-    }
-
     let mut seen = std::collections::HashSet::new();
     for tab in &profile.tabs {
-        if !seen.insert(tab.id) {
+        validate_tab_recursive(profile, tab, 1, &mut seen)?;
+    }
+    Ok(())
+}
+
+fn validate_tab_recursive(
+    profile: &Profile,
+    tab: &Tab,
+    depth: usize,
+    seen: &mut std::collections::HashSet<uuid::Uuid>,
+) -> AppResult<()> {
+    if !seen.insert(tab.id) {
+        return Err(AppError::config(
+            "duplicate_tab_id",
+            &[
+                ("id", tab.id.to_string()),
+                ("profileId", profile.id.to_string()),
+            ],
+        ));
+    }
+
+    if depth > MAX_TAB_DEPTH {
+        return Err(AppError::config(
+            "tab_too_deep",
+            &[
+                ("tabId", tab.id.to_string()),
+                ("profileId", profile.id.to_string()),
+                ("depth", depth.to_string()),
+                ("maxDepth", MAX_TAB_DEPTH.to_string()),
+            ],
+        ));
+    }
+
+    let has_name = tab
+        .name
+        .as_ref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    let has_icon = tab
+        .icon
+        .as_ref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    if !has_name && !has_icon {
+        return Err(AppError::config(
+            "tab_missing_name_and_icon",
+            &[
+                ("id", tab.id.to_string()),
+                ("profileId", profile.id.to_string()),
+            ],
+        ));
+    }
+
+    // Plano 16 — kind explícito. `Leaf` proíbe `children` não-vazio;
+    // `Group` proíbe `items` não-vazio. Vazio é permitido em ambos os
+    // casos (transient draft): leaf sem items renderiza no-op no donut;
+    // group sem children mostra apenas "+ slice" no sub-donut.
+    match tab.kind {
+        crate::config::schema::TabKind::Leaf => {
+            if !tab.children.is_empty() {
+                return Err(AppError::config(
+                    "tab_leaf_has_children",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                    ],
+                ));
+            }
+            for item in &tab.items {
+                validate_item(profile, tab, item)?;
+            }
+        }
+        crate::config::schema::TabKind::Group => {
+            if !tab.items.is_empty() {
+                return Err(AppError::config(
+                    "tab_group_has_items",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                    ],
+                ));
+            }
+            for child in &tab.children {
+                validate_tab_recursive(profile, child, depth + 1, seen)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_item(profile: &Profile, tab: &Tab, item: &Item) -> AppResult<()> {
+    match item {
+        Item::Url { value, .. } => {
+            url::Url::parse(value).map_err(|e| {
+                AppError::config(
+                    "invalid_url",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                        ("reason", e.to_string()),
+                    ],
+                )
+            })?;
+        }
+        Item::File { path, .. } | Item::Folder { path, .. } => {
+            if path.trim().is_empty() {
+                return Err(AppError::config(
+                    "path_empty",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                        ("kind", item_kind_label(item).to_string()),
+                    ],
+                ));
+            }
+        }
+        Item::App { name } => {
+            if name.trim().is_empty() {
+                return Err(AppError::config(
+                    "app_name_empty",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                    ],
+                ));
+            }
+        }
+        Item::Script { command, .. } => {
+            if command.trim().is_empty() {
+                return Err(AppError::config(
+                    "script_command_empty",
+                    &[
+                        ("tabId", tab.id.to_string()),
+                        ("profileId", profile.id.to_string()),
+                    ],
+                ));
+            }
+        }
+    }
+    if let Some(ow) = item_open_with(item) {
+        if ow.trim().is_empty() {
             return Err(AppError::config(
-                "duplicate_tab_id",
+                "open_with_empty",
                 &[
-                    ("id", tab.id.to_string()),
+                    ("tabId", tab.id.to_string()),
                     ("profileId", profile.id.to_string()),
+                    ("kind", item_kind_label(item).to_string()),
                 ],
             ));
         }
     }
-
     Ok(())
 }
 
@@ -297,6 +356,8 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items,
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
         }
     }
 
@@ -397,9 +458,15 @@ mod tests {
     fn duplicate_tab_id_within_profile_is_rejected() {
         let mut cfg = base_config();
         let id = Uuid::new_v4();
-        let mut t1 = tab_with(Some("A"), None, vec![]);
+        let url_item = || {
+            vec![Item::Url {
+                value: "https://x.test".into(),
+                open_with: None,
+            }]
+        };
+        let mut t1 = tab_with(Some("A"), None, url_item());
         t1.id = id;
-        let mut t2 = tab_with(Some("B"), None, vec![]);
+        let mut t2 = tab_with(Some("B"), None, url_item());
         t2.id = id;
         cfg.profiles[0].tabs.push(t1);
         cfg.profiles[0].tabs.push(t2);
@@ -511,7 +578,13 @@ mod tests {
         // não é erro — é só improvável na prática (UUID v4).
         let mut cfg = base_config();
         let shared_tab_id = Uuid::new_v4();
-        let mut t1 = tab_with(Some("A"), None, vec![]);
+        let url_item = || {
+            vec![Item::Url {
+                value: "https://x.test".into(),
+                open_with: None,
+            }]
+        };
+        let mut t1 = tab_with(Some("A"), None, url_item());
         t1.id = shared_tab_id;
         cfg.profiles[0].tabs.push(t1);
 
@@ -525,7 +598,7 @@ mod tests {
             allow_scripts: false,
             theme_overrides: None,
         };
-        let mut t2 = tab_with(Some("B"), None, vec![]);
+        let mut t2 = tab_with(Some("B"), None, url_item());
         t2.id = shared_tab_id;
         p2.tabs.push(t2);
         cfg.profiles.push(p2);
@@ -1009,6 +1082,153 @@ mod tests {
             alpha: None,
         });
         assert!(validate(&cfg).is_ok());
+    }
+
+    // ---------- Plano 16: sub-donuts ----------
+
+    fn group_with(name: Option<&str>, icon: Option<&str>, children: Vec<Tab>) -> Tab {
+        Tab {
+            id: Uuid::new_v4(),
+            name: name.map(String::from),
+            icon: icon.map(String::from),
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            kind: crate::config::schema::TabKind::Group,
+            children,
+        }
+    }
+
+    fn url_leaf(name: &str) -> Tab {
+        tab_with(
+            Some(name),
+            None,
+            vec![Item::Url {
+                value: "https://x.test".into(),
+                open_with: None,
+            }],
+        )
+    }
+
+    #[test]
+    fn empty_leaf_is_allowed_as_draft() {
+        // Plano 16: leaf vazio é permitido (no-op visual no donut).
+        let mut cfg = base_config();
+        cfg.profiles[0]
+            .tabs
+            .push(tab_with(Some("Leaf draft"), None, vec![]));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn empty_group_is_allowed_as_draft() {
+        // Plano 16: group vazio é permitido (renderiza só "+" no sub-donut).
+        // kind explícito mantém a classificação após save+reload.
+        let mut cfg = base_config();
+        cfg.profiles[0]
+            .tabs
+            .push(group_with(Some("Group draft"), None, vec![]));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn leaf_with_children_is_rejected() {
+        let mut cfg = base_config();
+        let mut bad = url_leaf("L");
+        bad.children = vec![url_leaf("c1")];
+        cfg.profiles[0].tabs.push(bad);
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_leaf_has_children");
+    }
+
+    #[test]
+    fn group_with_items_is_rejected() {
+        let mut cfg = base_config();
+        let mut bad = group_with(Some("G"), None, vec![url_leaf("c1")]);
+        bad.items = vec![Item::Url {
+            value: "https://x.test".into(),
+            open_with: None,
+        }];
+        cfg.profiles[0].tabs.push(bad);
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_group_has_items");
+    }
+
+    #[test]
+    fn group_with_one_leaf_child_validates() {
+        let mut cfg = base_config();
+        cfg.profiles[0]
+            .tabs
+            .push(group_with(Some("G"), None, vec![url_leaf("a")]));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn three_levels_validate() {
+        // root group -> mid group -> leaf
+        let mut cfg = base_config();
+        let leaf = url_leaf("L");
+        let mid = group_with(Some("M"), None, vec![leaf]);
+        let root = group_with(Some("R"), None, vec![mid]);
+        cfg.profiles[0].tabs.push(root);
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn four_levels_reject() {
+        // root (1) -> g2 (2) -> g3 (3) -> leaf (4) — leaf at depth 4 > MAX 3.
+        let mut cfg = base_config();
+        let leaf = url_leaf("L");
+        let g3 = group_with(Some("g3"), None, vec![leaf]);
+        let g2 = group_with(Some("g2"), None, vec![g3]);
+        let root = group_with(Some("root"), None, vec![g2]);
+        cfg.profiles[0].tabs.push(root);
+        match validate(&cfg).unwrap_err() {
+            AppError::Config { code, context } => {
+                assert_eq!(code, "tab_too_deep");
+                assert_eq!(context.get("depth").map(String::as_str), Some("4"));
+                assert_eq!(context.get("maxDepth").map(String::as_str), Some("3"));
+            }
+            other => panic!("expected Config tab_too_deep, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn duplicate_id_across_levels_is_rejected() {
+        let mut cfg = base_config();
+        let shared = Uuid::new_v4();
+        let mut child = url_leaf("c");
+        child.id = shared;
+        let mut group = group_with(Some("g"), None, vec![child]);
+        group.id = Uuid::new_v4();
+        let mut sibling = url_leaf("s");
+        sibling.id = shared;
+        cfg.profiles[0].tabs.push(group);
+        cfg.profiles[0].tabs.push(sibling);
+        assert_config_code(validate(&cfg).unwrap_err(), "duplicate_tab_id");
+    }
+
+    #[test]
+    fn invalid_url_inside_nested_leaf_is_rejected() {
+        let mut cfg = base_config();
+        let bad_leaf = tab_with(
+            Some("bad"),
+            None,
+            vec![Item::Url {
+                value: "not a url".into(),
+                open_with: None,
+            }],
+        );
+        let group = group_with(Some("g"), None, vec![bad_leaf]);
+        cfg.profiles[0].tabs.push(group);
+        assert_config_code(validate(&cfg).unwrap_err(), "invalid_url");
+    }
+
+    #[test]
+    fn group_without_name_or_icon_is_rejected() {
+        let mut cfg = base_config();
+        cfg.profiles[0]
+            .tabs
+            .push(group_with(None, None, vec![url_leaf("a")]));
+        assert_config_code(validate(&cfg).unwrap_err(), "tab_missing_name_and_icon");
     }
 
     #[test]

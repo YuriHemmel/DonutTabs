@@ -139,6 +139,17 @@ export const TabList: React.FC<TabListProps> = ({
                   >
                     {label}
                   </span>
+                  {tab.kind === "group" && (
+                    <span
+                      data-testid="tab-row-group-badge"
+                      title={t("settings.tree.groupBadge")}
+                      style={{ color: "var(--muted)", fontSize: 11 }}
+                    >
+                      ▶ {t("settings.tree.childCount", {
+                        count: tab.children?.length ?? 0,
+                      })}
+                    </span>
+                  )}
                 </button>
               </li>
             );
