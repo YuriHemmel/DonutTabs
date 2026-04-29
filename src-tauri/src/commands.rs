@@ -1,3 +1,4 @@
+use crate::apps_picker::{self, InstalledApp};
 use crate::config::io::{load_from_path, save_atomic};
 use crate::config::schema::{Config, Item, Language, Profile, Tab, Theme, ThemeOverrides};
 use crate::errors::{AppError, AppResult};
@@ -593,6 +594,15 @@ pub fn set_profile_theme_overrides<R: tauri::Runtime>(
     };
     let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
     Ok(snapshot)
+}
+
+/// Plano 17 — devolve a lista de apps instalados detectados pelo SO. Sem
+/// mutação de config; sem emitir `CONFIG_CHANGED_EVENT`. Pure read-only,
+/// usado pelo `<AppPicker>` no Settings pra preencher `Item::App.name` sem
+/// erro de digitação.
+#[tauri::command]
+pub fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
+    apps_picker::list_installed_apps()
 }
 
 pub(crate) fn apply_set_script_trusted(
