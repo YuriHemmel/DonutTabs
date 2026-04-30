@@ -47,6 +47,7 @@ export interface UseConfig {
     profileId: string,
     overrides: ThemeOverrides | null,
   ) => Promise<Config>;
+  setAutoCheckUpdates: (enabled: boolean) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -212,6 +213,12 @@ export function useConfig(): UseConfig {
     [],
   );
 
+  const setAutoCheckUpdates = useCallback(async (enabled: boolean) => {
+    const next = await ipc.setAutoCheckUpdates(enabled);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -231,5 +238,6 @@ export function useConfig(): UseConfig {
     setScriptTrusted,
     setProfileAllowScripts,
     setProfileThemeOverrides,
+    setAutoCheckUpdates,
   };
 }

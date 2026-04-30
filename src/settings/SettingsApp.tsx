@@ -113,6 +113,7 @@ export const SettingsApp: React.FC = () => {
     setSearchShortcut,
     setProfileAllowScripts,
     setProfileThemeOverrides,
+    setAutoCheckUpdates,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -441,6 +442,10 @@ export const SettingsApp: React.FC = () => {
           themeOverrides={selectedProfile.themeOverrides}
           onThemeOverridesChange={(overrides) => {
             void setProfileThemeOverrides(selectedProfile.id, overrides);
+          }}
+          autoCheckUpdates={config.system.autoCheckUpdates}
+          onAutoCheckUpdatesChange={(enabled) => {
+            void setAutoCheckUpdates(enabled);
           }}
         />
       )}
