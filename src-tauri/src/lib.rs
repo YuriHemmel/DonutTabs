@@ -32,6 +32,14 @@ async fn run_startup_update_check<R: tauri::Runtime>(handle: tauri::AppHandle<R>
         *state.pending_update.write().unwrap() = Some(summary.clone());
     }
 
+    // Tray entry reflete `pending_update` independente do gate de notificação.
+    // Notificação OS-native é one-shot por versão (gate `should_notify`); tray
+    // entry persiste enquanto a versão remota seguir disponível, pra que user
+    // que fechou a notificação ainda tenha caminho visível pra atualizar.
+    if let Err(e) = tray::rebuild_with_pending_update(&handle, Some(&summary)) {
+        eprintln!("[startup-updater] tray rebuild failed: {e:?}");
+    }
+
     let last = {
         let state: tauri::State<'_, commands::AppState> = handle.state();
         let cfg = state.config.read().unwrap();
@@ -65,10 +73,6 @@ async fn run_startup_update_check<R: tauri::Runtime>(handle: tauri::AppHandle<R>
         if let Err(e) = crate::config::io::save_atomic(&path, &cfg) {
             eprintln!("[startup-updater] persist last_notified_update_version failed: {e:?}");
         }
-    }
-
-    if let Err(e) = tray::rebuild_with_pending_update(&handle, Some(&summary)) {
-        eprintln!("[startup-updater] tray rebuild failed: {e:?}");
     }
 }
 

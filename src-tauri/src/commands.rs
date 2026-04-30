@@ -629,6 +629,9 @@ pub async fn check_for_updates<R: tauri::Runtime>(
     let Some(summary) = summary else {
         let state: tauri::State<'_, AppState> = app.state();
         *state.pending_update.write().unwrap() = None;
+        // Reverte tray ao menu base — versão remota sumiu (rollback ou
+        // user já está na versão mais nova que existe).
+        let _ = crate::tray::rebuild_with_pending_update(&app, None);
         return Ok(None);
     };
 
@@ -636,6 +639,11 @@ pub async fn check_for_updates<R: tauri::Runtime>(
         let state: tauri::State<'_, AppState> = app.state();
         *state.pending_update.write().unwrap() = Some(summary.clone());
     }
+
+    // Tray reflete pending_update independente do gate `should_notify` —
+    // user que clicou "Verificar agora" no Settings tem caminho visível
+    // pelo tray também.
+    let _ = crate::tray::rebuild_with_pending_update(&app, Some(&summary));
 
     if !force {
         let state: tauri::State<'_, AppState> = app.state();

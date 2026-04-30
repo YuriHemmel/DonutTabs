@@ -18,7 +18,7 @@ pub use state::{should_notify, UpdateSummary};
 
 use crate::errors::{AppError, AppResult};
 use tauri::{AppHandle, Emitter, Runtime};
-use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_updater::{Error as PluginError, UpdaterExt};
 
 /// Constante usada pelo frontend pra subscribe via `listen` durante o
 /// fluxo de install. Payload é `UpdateProgress` (definido inline).
@@ -95,21 +95,94 @@ pub async fn install<R: Runtime>(handle: &AppHandle<R>) -> AppResult<()> {
     Ok(())
 }
 
-fn map_check_error(e: tauri_plugin_updater::Error) -> AppError {
+fn map_check_error(e: PluginError) -> AppError {
     let msg = e.to_string();
-    let lower = msg.to_lowercase();
-    let code = if lower.contains("signature") {
-        "updater_signature_invalid"
-    } else if lower.contains("network")
-        || lower.contains("dns")
-        || lower.contains("connect")
-        || lower.contains("offline")
-    {
-        "updater_network_unavailable"
-    } else if lower.contains("endpoint") {
-        "updater_no_endpoints"
-    } else {
-        "updater_check_failed"
-    };
+    let code = classify_check_error(&e);
     AppError::updater(code, &[("reason", msg)])
+}
+
+/// Pure classifier: matches `tauri_plugin_updater::Error` variants directly
+/// in vez de fazer substring na mensagem do plugin (frágil quando plugin
+/// atualiza wording). `#[non_exhaustive]` no enum força fallback explícito
+/// pra qualquer variante futura → `updater_check_failed`.
+pub(crate) fn classify_check_error(e: &PluginError) -> &'static str {
+    match e {
+        PluginError::Minisign(_) | PluginError::SignatureUtf8(_) | PluginError::Base64(_) => {
+            "updater_signature_invalid"
+        }
+        PluginError::EmptyEndpoints => "updater_no_endpoints",
+        PluginError::InsecureTransportProtocol => "updater_no_endpoints",
+        PluginError::Network(_)
+        | PluginError::Reqwest(_)
+        | PluginError::UrlParse(_)
+        | PluginError::Http(_)
+        | PluginError::InvalidHeaderName(_)
+        | PluginError::InvalidHeaderValue(_)
+        | PluginError::ReleaseNotFound
+        | PluginError::TargetNotFound(_)
+        | PluginError::TargetsNotFound(_) => "updater_network_unavailable",
+        _ => "updater_check_failed",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_endpoints_classified_as_no_endpoints() {
+        assert_eq!(
+            classify_check_error(&PluginError::EmptyEndpoints),
+            "updater_no_endpoints",
+        );
+    }
+
+    #[test]
+    fn insecure_transport_classified_as_no_endpoints() {
+        assert_eq!(
+            classify_check_error(&PluginError::InsecureTransportProtocol),
+            "updater_no_endpoints",
+        );
+    }
+
+    #[test]
+    fn signature_variants_classified_as_signature_invalid() {
+        assert_eq!(
+            classify_check_error(&PluginError::SignatureUtf8("bad".into())),
+            "updater_signature_invalid",
+        );
+    }
+
+    #[test]
+    fn network_variant_classified_as_network_unavailable() {
+        assert_eq!(
+            classify_check_error(&PluginError::Network("dns".into())),
+            "updater_network_unavailable",
+        );
+    }
+
+    #[test]
+    fn release_not_found_classified_as_network_unavailable() {
+        assert_eq!(
+            classify_check_error(&PluginError::ReleaseNotFound),
+            "updater_network_unavailable",
+        );
+    }
+
+    #[test]
+    fn target_not_found_classified_as_network_unavailable() {
+        assert_eq!(
+            classify_check_error(&PluginError::TargetNotFound("darwin-x86_64".into())),
+            "updater_network_unavailable",
+        );
+    }
+
+    #[test]
+    fn unknown_variant_falls_back_to_check_failed() {
+        // `UnsupportedArch` não é network nem signature — vira fallback.
+        assert_eq!(
+            classify_check_error(&PluginError::UnsupportedArch),
+            "updater_check_failed",
+        );
+    }
 }
