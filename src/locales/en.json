@@ -39,6 +39,7 @@
       "scriptCommandMismatch": "Script changed since you confirmed — open the tab again to review.",
       "itemKindMismatch": "Item kind mismatch ({{got}} ≠ {{expected}}).",
       "itemIndexOutOfRange": "Item index out of range: {{itemIndex}}.",
+      "scriptCancelFailed": "Could not cancel the run: {{reason}}",
       "unknown": "Failed to open tab: {{code}}"
     },
     "shortcut": {
@@ -104,7 +105,8 @@
     "sections": {
       "tabs": "Tabs",
       "appearance": "Appearance",
-      "shortcut": "Shortcut"
+      "shortcut": "Shortcut",
+      "history": "History"
     },
     "profile": {
       "label": "Profile:",
@@ -135,6 +137,8 @@
       "exportSuccess": "Configuration exported to {{path}}.",
       "allowScriptsLabel": "Allow scripts in this profile",
       "allowScriptsHint": "Shell scripts always require confirmation on first execution. Disable to block all scripts in this profile.",
+      "scriptHistoryLabel": "Capture script output",
+      "scriptHistoryHint": "When enabled, stdout and stderr from each script execution are visible in the History tab (in-memory; cleared on app close).",
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
       "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings.",
       "update": {
@@ -151,6 +155,34 @@
         "installing": "Installing… {{progress}}%",
         "downloading": "Downloading… {{progress}}%",
         "dismissedHint": "You've already been notified of this version. We won't show the alert again until the next update."
+      }
+    },
+    "history": {
+      "heading": "Recent runs",
+      "empty": "No scripts have run yet.",
+      "disabled": "Output capture is disabled in System preferences.",
+      "clearAll": "Clear all",
+      "clearConfirm": "Delete all {{count}} runs? Output cannot be recovered.",
+      "status": {
+        "running": "Running",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "interrupted": "Interrupted",
+        "cancelled": "Cancelled"
+      },
+      "detail": {
+        "metadata": "Metadata",
+        "profile": "Profile",
+        "tab": "Tab",
+        "exitCode": "Exit code",
+        "startedAt": "Started at",
+        "finishedAt": "Finished at",
+        "duration": "Duration",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "Output truncated (limit reached). To see everything, redirect the script output to a file.",
+        "cancel": "Cancel run",
+        "copy": "Copy"
       }
     },
     "icon": {

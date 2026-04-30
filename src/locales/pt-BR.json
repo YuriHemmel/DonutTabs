@@ -39,6 +39,7 @@
       "scriptCommandMismatch": "Script foi alterado desde que você confirmou — reabra a aba para revisar.",
       "itemKindMismatch": "Tipo de item incompatível ({{got}} ≠ {{expected}}).",
       "itemIndexOutOfRange": "Índice de item fora do intervalo: {{itemIndex}}.",
+      "scriptCancelFailed": "Não foi possível cancelar a execução: {{reason}}",
       "unknown": "Erro ao abrir aba: {{code}}"
     },
     "shortcut": {
@@ -104,7 +105,8 @@
     "sections": {
       "tabs": "Abas",
       "appearance": "Aparência",
-      "shortcut": "Atalho"
+      "shortcut": "Atalho",
+      "history": "Histórico"
     },
     "profile": {
       "label": "Perfil:",
@@ -135,6 +137,8 @@
       "exportSuccess": "Configuração exportada para {{path}}.",
       "allowScriptsLabel": "Permitir scripts neste perfil",
       "allowScriptsHint": "Scripts shell sempre pedem confirmação na primeira execução. Desabilite pra bloquear todos os scripts deste perfil.",
+      "scriptHistoryLabel": "Capturar output de scripts",
+      "scriptHistoryHint": "Quando ligado, stdout e stderr de cada execução de script ficam visíveis na aba Histórico (in-memory; some ao fechar o app).",
       "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
       "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações.",
       "update": {
@@ -151,6 +155,34 @@
         "installing": "Instalando… {{progress}}%",
         "downloading": "Baixando… {{progress}}%",
         "dismissedHint": "Você já foi avisado desta versão. O aviso não será exibido de novo até a próxima atualização."
+      }
+    },
+    "history": {
+      "heading": "Execuções recentes",
+      "empty": "Nenhum script executado ainda.",
+      "disabled": "Captura de output desativada nas Preferências do sistema.",
+      "clearAll": "Limpar tudo",
+      "clearConfirm": "Apagar todas as {{count}} execuções? Output não pode ser recuperado depois.",
+      "status": {
+        "running": "Em execução",
+        "succeeded": "Sucesso",
+        "failed": "Falhou",
+        "interrupted": "Interrompido",
+        "cancelled": "Cancelado"
+      },
+      "detail": {
+        "metadata": "Metadados",
+        "profile": "Perfil",
+        "tab": "Aba",
+        "exitCode": "Exit code",
+        "startedAt": "Iniciado em",
+        "finishedAt": "Finalizado em",
+        "duration": "Duração",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "Output truncado (limite atingido). Para ver tudo, redirecione o output do script para um arquivo.",
+        "cancel": "Cancelar execução",
+        "copy": "Copiar"
       }
     },
     "icon": {
