@@ -57,6 +57,14 @@
       "faviconParse": "Invalid favicon URL: {{reason}}",
       "unknown": "I/O error: {{code}}"
     },
+    "updater": {
+      "updaterCheckFailed": "Failed to check for updates: {{reason}}",
+      "updaterInstallFailed": "Failed to install update: {{reason}}",
+      "updaterSignatureInvalid": "Invalid update signature. Update cancelled.",
+      "updaterNetworkUnavailable": "No network connection to check for updates.",
+      "updaterNoEndpoints": "Update endpoint not configured.",
+      "unknown": "Update error: {{code}}"
+    },
     "fallback": "An unexpected error occurred ({{kind}})"
   },
   "donut": {
@@ -128,7 +136,22 @@
       "allowScriptsLabel": "Allow scripts in this profile",
       "allowScriptsHint": "Shell scripts always require confirmation on first execution. Disable to block all scripts in this profile.",
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
-      "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings."
+      "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings.",
+      "update": {
+        "heading": "Updates",
+        "currentVersion": "Current version: v{{version}}",
+        "autoCheckLabel": "Check for updates automatically at launch",
+        "autoCheckHint": "When enabled, the app checks once on launch and notifies you of new versions.",
+        "checkNow": "Check now",
+        "checking": "Checking…",
+        "upToDate": "You're on the latest version.",
+        "available": "Version {{version}} available",
+        "releaseNotes": "Release notes",
+        "installNow": "Install and restart",
+        "installing": "Installing… {{progress}}%",
+        "downloading": "Downloading… {{progress}}%",
+        "dismissedHint": "You've already been notified of this version. We won't show the alert again until the next update."
+      }
     },
     "icon": {
       "modalTitle": "Pick an icon",
