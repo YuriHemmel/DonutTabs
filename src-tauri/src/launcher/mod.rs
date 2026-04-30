@@ -1,5 +1,22 @@
 use crate::config::schema::{Item, Tab};
 use crate::errors::{AppError, AppResult};
+use uuid::Uuid;
+
+/// Plano 19 — abstração ortogonal ao `Opener` para execução de scripts
+/// com captura de stdout/stderr. Implementação real (em `commands.rs`)
+/// instancia uma run no `ScriptHistory`, spawna o child via
+/// `tauri-plugin-shell::Command::spawn()`, e consome o channel
+/// `CommandEvent` em uma task assíncrona. `launch_tab` delega Scripts
+/// para esta interface quando a captura está ligada.
+pub trait ScriptCaptureExecutor: Send + Sync {
+    fn execute_script(
+        &self,
+        profile_id: Uuid,
+        tab_id: Uuid,
+        item_index: usize,
+        command: &str,
+    ) -> Result<(), String>;
+}
 
 /// Abstraction over `tauri-plugin-opener` and `tauri-plugin-shell` so launcher
 /// logic stays unit-testable.
@@ -46,12 +63,23 @@ pub fn windows_app_should_route_via_opener(name: &str) -> bool {
     name.to_lowercase().ends_with(".lnk")
 }
 
-pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
+/// Itera os itens da aba e roteia cada um pelo Opener apropriado. Quando
+/// `script_capture` é `Some`, items `Item::Script` vão pelo executor de
+/// captura (Plano 19); quando `None`, caem no fire-and-forget legacy
+/// (`opener.spawn_script`). Demais kinds inalterados. Falhas individuais
+/// são acumuladas em `outcome.failures`; total-failure (todos itens
+/// falharam) curto-circuita pra `AppError::Launcher { code: "all_items_failed" }`.
+pub fn launch_tab(
+    tab: &Tab,
+    opener: &dyn Opener,
+    profile_id: Uuid,
+    script_capture: Option<&dyn ScriptCaptureExecutor>,
+) -> AppResult<LaunchOutcome> {
     let mut outcome = LaunchOutcome {
         total: tab.items.len(),
         ..Default::default()
     };
-    for item in &tab.items {
+    for (idx, item) in tab.items.iter().enumerate() {
         match item {
             Item::Url { value, open_with } => {
                 if let Err(e) = opener.open_url(value, open_with.as_deref()) {
@@ -69,7 +97,12 @@ pub fn launch_tab(tab: &Tab, opener: &dyn Opener) -> AppResult<LaunchOutcome> {
                 }
             }
             Item::Script { command, .. } => {
-                if let Err(e) = opener.spawn_script(command) {
+                let result = if let Some(exec) = script_capture {
+                    exec.execute_script(profile_id, tab.id, idx, command)
+                } else {
+                    opener.spawn_script(command)
+                };
+                if let Err(e) = result {
                     outcome.failures.push((command.clone(), e));
                 }
             }
@@ -302,7 +335,7 @@ mod tests {
     fn opens_all_urls_in_order() {
         let opener = MockOpener::new();
         let tab = tab_url(&["https://a", "https://b", "https://c"]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(outcome.total, 3);
         assert_eq!(
@@ -317,7 +350,7 @@ mod tests {
         let mut opener = MockOpener::new();
         opener.fail_urls = vec!["https://b".into()];
         let tab = tab_url(&["https://a", "https://b", "https://c"]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert_eq!(outcome.failures.len(), 1);
         assert_eq!(outcome.failures[0].0, "https://b");
         assert_eq!(opener.url_calls.lock().unwrap().len(), 3);
@@ -328,7 +361,7 @@ mod tests {
         let mut opener = MockOpener::new();
         opener.fail_urls = vec!["https://a".into(), "https://b".into()];
         let tab = tab_url(&["https://a", "https://b"]);
-        match launch_tab(&tab, &opener).unwrap_err() {
+        match launch_tab(&tab, &opener, Uuid::nil(), None).unwrap_err() {
             AppError::Launcher { code, context } => {
                 assert_eq!(code, "all_items_failed");
                 assert_eq!(context.get("total").map(String::as_str), Some("2"));
@@ -341,7 +374,7 @@ mod tests {
     fn empty_tab_is_ok() {
         let opener = MockOpener::new();
         let tab = tab_url(&[]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert_eq!(outcome.total, 0);
     }
 
@@ -362,7 +395,7 @@ mod tests {
                 open_with: None,
             },
         ]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(outcome.total, 3);
         assert_eq!(url_values(&opener.url_calls), vec!["https://a"]);
@@ -392,7 +425,7 @@ mod tests {
                 open_with: None,
             },
         ]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert_eq!(outcome.failures.len(), 1);
         assert_eq!(outcome.failures[0].0, "/missing");
         assert_eq!(outcome.failures[0].1, "simulated path failure");
@@ -412,7 +445,7 @@ mod tests {
                 open_with: None,
             },
         ]);
-        match launch_tab(&tab, &opener).unwrap_err() {
+        match launch_tab(&tab, &opener, Uuid::nil(), None).unwrap_err() {
             AppError::Launcher { code, .. } => assert_eq!(code, "all_items_failed"),
             other => panic!("expected Launcher error, got {other:?}"),
         }
@@ -435,7 +468,7 @@ mod tests {
                 open_with: Some("code".into()),
             },
         ]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         let url_calls = opener.url_calls.lock().unwrap().clone();
         assert_eq!(
@@ -458,7 +491,7 @@ mod tests {
         let tab = tab_with_items(vec![Item::App {
             name: "firefox".into(),
         }]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(
             *opener.app_calls.lock().unwrap(),
@@ -485,7 +518,7 @@ mod tests {
                 trusted: true,
             },
         ]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(
             *opener.script_calls.lock().unwrap(),
@@ -505,7 +538,7 @@ mod tests {
                 name: "nonexistent".into(),
             },
         ]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert_eq!(outcome.failures.len(), 1);
         assert_eq!(outcome.failures[0].0, "nonexistent");
     }
@@ -518,7 +551,7 @@ mod tests {
             command: "rm -rf /".into(),
             trusted: true,
         }]);
-        match launch_tab(&tab, &opener).unwrap_err() {
+        match launch_tab(&tab, &opener, Uuid::nil(), None).unwrap_err() {
             AppError::Launcher { code, .. } => assert_eq!(code, "all_items_failed"),
             other => panic!("expected Launcher error, got {other:?}"),
         }
@@ -564,12 +597,141 @@ mod tests {
                 trusted: true,
             },
         ]);
-        let outcome = launch_tab(&tab, &opener).unwrap();
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(outcome.total, 5);
         assert_eq!(opener.url_calls.lock().unwrap().len(), 1);
         assert_eq!(opener.path_calls.lock().unwrap().len(), 2);
         assert_eq!(opener.app_calls.lock().unwrap().len(), 1);
         assert_eq!(opener.script_calls.lock().unwrap().len(), 1);
+    }
+
+    // ---------- Plano 19: ScriptCaptureExecutor routing ----------
+
+    struct MockCaptureExecutor {
+        calls: Mutex<Vec<(Uuid, Uuid, usize, String)>>,
+        fail_commands: Vec<String>,
+    }
+
+    impl MockCaptureExecutor {
+        fn new() -> Self {
+            Self {
+                calls: Mutex::new(vec![]),
+                fail_commands: vec![],
+            }
+        }
+    }
+
+    impl ScriptCaptureExecutor for MockCaptureExecutor {
+        fn execute_script(
+            &self,
+            profile_id: Uuid,
+            tab_id: Uuid,
+            item_index: usize,
+            command: &str,
+        ) -> Result<(), String> {
+            self.calls
+                .lock()
+                .unwrap()
+                .push((profile_id, tab_id, item_index, command.to_string()));
+            if self.fail_commands.iter().any(|c| c == command) {
+                Err("simulated capture failure".into())
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    #[test]
+    fn script_capture_executor_handles_scripts_when_enabled() {
+        let opener = MockOpener::new();
+        let executor = MockCaptureExecutor::new();
+        let profile_id = Uuid::new_v4();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::Script {
+                command: "ls".into(),
+                trusted: true,
+            },
+            Item::Script {
+                command: "git status".into(),
+                trusted: true,
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener, profile_id, Some(&executor)).unwrap();
+        assert!(outcome.failures.is_empty());
+        // Scripts foram pra captura, NÃO pro opener.spawn_script.
+        assert!(opener.script_calls.lock().unwrap().is_empty());
+        let captured = executor.calls.lock().unwrap();
+        assert_eq!(captured.len(), 2);
+        assert_eq!(captured[0].0, profile_id);
+        assert_eq!(captured[0].1, tab.id);
+        assert_eq!(captured[0].2, 1); // item_index do primeiro Script
+        assert_eq!(captured[0].3, "ls");
+        assert_eq!(captured[1].2, 2);
+        assert_eq!(captured[1].3, "git status");
+    }
+
+    #[test]
+    fn script_capture_disabled_falls_back_to_opener_spawn_script() {
+        let opener = MockOpener::new();
+        let executor = MockCaptureExecutor::new();
+        let tab = tab_with_items(vec![Item::Script {
+            command: "ls".into(),
+            trusted: true,
+        }]);
+        // `None` desliga captura — script vai pro fire-and-forget legacy.
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(outcome.failures.is_empty());
+        assert_eq!(*opener.script_calls.lock().unwrap(), vec!["ls".to_string()]);
+        assert!(executor.calls.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn script_capture_failure_records_command_in_outcome() {
+        let opener = MockOpener::new();
+        let mut executor = MockCaptureExecutor::new();
+        executor.fail_commands = vec!["bad-cmd".into()];
+        let tab = tab_with_items(vec![
+            Item::Script {
+                command: "good".into(),
+                trusted: true,
+            },
+            Item::Script {
+                command: "bad-cmd".into(),
+                trusted: true,
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), Some(&executor)).unwrap();
+        assert_eq!(outcome.failures.len(), 1);
+        assert_eq!(outcome.failures[0].0, "bad-cmd");
+    }
+
+    #[test]
+    fn script_capture_does_not_intercept_non_script_items() {
+        let opener = MockOpener::new();
+        let executor = MockCaptureExecutor::new();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::App {
+                name: "firefox".into(),
+            },
+            Item::File {
+                path: "/tmp/x".into(),
+                open_with: None,
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), Some(&executor)).unwrap();
+        assert!(outcome.failures.is_empty());
+        assert!(executor.calls.lock().unwrap().is_empty());
+        assert_eq!(opener.url_calls.lock().unwrap().len(), 1);
+        assert_eq!(opener.app_calls.lock().unwrap().len(), 1);
+        assert_eq!(opener.path_calls.lock().unwrap().len(), 1);
     }
 }

@@ -3,13 +3,19 @@ use crate::config::io::{load_from_path, save_atomic};
 use crate::config::schema::{Config, Item, Language, Profile, Tab, Theme, ThemeOverrides};
 use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
-use crate::launcher::{launch_tab, TauriOpener};
+use crate::launcher::{launch_tab, ScriptCaptureExecutor, TauriOpener};
+use crate::script_history::{
+    ScriptHistory, ScriptRun, ScriptRunSummary, ScriptStatus, ScriptStream,
+};
 use crate::shortcut::{self, ActiveShortcut};
 use crate::updater::{self, UpdateSummary};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::{Emitter, Manager};
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -27,6 +33,9 @@ pub struct ImportResult {
 
 pub const CONFIG_CHANGED_EVENT: &str = "config-changed";
 pub const SETTINGS_INTENT_EVENT: &str = "settings-intent";
+pub const SCRIPT_RUN_STARTED_EVENT: &str = "script-run-started";
+pub const SCRIPT_RUN_OUTPUT_EVENT: &str = "script-run-output";
+pub const SCRIPT_RUN_FINISHED_EVENT: &str = "script-run-finished";
 
 pub struct AppState {
     pub config: RwLock<Config>,
@@ -38,6 +47,13 @@ pub struct AppState {
     /// Plano 18 — populated pelo task de startup quando há update
     /// pendente. Frontend lê via `get_pending_update`.
     pub pending_update: RwLock<Option<UpdateSummary>>,
+    /// Plano 19 — bounded queue in-memory de execuções de script (até
+    /// 50 entradas). Sem persistência em disco.
+    pub script_history: Arc<ScriptHistory>,
+    /// Plano 19 — handles dos child processes ativos por `run_id`. Cancel
+    /// remove + chama `kill()`. Quando o child termina natural, o task
+    /// consumer também remove a entrada.
+    pub script_children: Arc<Mutex<HashMap<Uuid, CommandChild>>>,
 }
 
 #[tauri::command]
@@ -59,6 +75,8 @@ pub fn open_tab<R: tauri::Runtime>(
         .iter()
         .find(|t| t.id == tab_id)
         .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", tab_id.to_string())]))?;
+    let profile_id = active.id;
+    let history_enabled = cfg.system.script_history_enabled;
 
     // Plano 14: `force_item_index` vem do `<ScriptConfirmModal>` (Run sem
     // checkbox = one-shot). Bypassa o trust check apenas do índice prompted;
@@ -70,8 +88,151 @@ pub fn open_tab<R: tauri::Runtime>(
     }
 
     let opener = TauriOpener::new(&app);
-    launch_tab(tab, &opener)?;
+    let executor = TauriCaptureExecutor {
+        app: app.clone(),
+        history: state.script_history.clone(),
+        children: state.script_children.clone(),
+    };
+    let capture: Option<&dyn ScriptCaptureExecutor> = if history_enabled {
+        Some(&executor)
+    } else {
+        None
+    };
+    launch_tab(tab, &opener, profile_id, capture)?;
     Ok(())
+}
+
+/// Plano 19 — implementação real do `ScriptCaptureExecutor` que liga
+/// `tauri-plugin-shell::Command::spawn()` ao `ScriptHistory` + emit dos
+/// eventos `SCRIPT_RUN_*`. Cada execução abre uma run nova, registra o
+/// `CommandChild` em `script_children` (pra cancel poder matar), e
+/// spawna um task assíncrono que consome o channel `CommandEvent` até
+/// `Terminated` ou `Error`.
+pub(crate) struct TauriCaptureExecutor<R: tauri::Runtime> {
+    app: tauri::AppHandle<R>,
+    history: Arc<ScriptHistory>,
+    children: Arc<Mutex<HashMap<Uuid, CommandChild>>>,
+}
+
+impl<R: tauri::Runtime> ScriptCaptureExecutor for TauriCaptureExecutor<R> {
+    fn execute_script(
+        &self,
+        profile_id: Uuid,
+        tab_id: Uuid,
+        item_index: usize,
+        command: &str,
+    ) -> Result<(), String> {
+        let run_id = self
+            .history
+            .start_run(profile_id, tab_id, item_index, command.to_string());
+        if let Some(summary) = self.history.get_run(run_id).map(|r| r.summary()) {
+            let _ = self.app.emit(SCRIPT_RUN_STARTED_EVENT, summary);
+        }
+
+        #[cfg(target_os = "windows")]
+        let (shell, flag) = ("cmd", "/C");
+        #[cfg(not(target_os = "windows"))]
+        let (shell, flag) = ("sh", "-c");
+
+        let spawn_result = self
+            .app
+            .shell()
+            .command(shell)
+            .args([flag, command])
+            .spawn();
+
+        let (mut rx, child) = match spawn_result {
+            Ok(pair) => pair,
+            Err(e) => {
+                let msg = e.to_string();
+                self.history
+                    .append_output(run_id, ScriptStream::Stderr, &msg);
+                self.history.finish_run(run_id, None, ScriptStatus::Failed);
+                if let Some(summary) = self.history.get_run(run_id).map(|r| r.summary()) {
+                    let _ = self.app.emit(SCRIPT_RUN_FINISHED_EVENT, summary);
+                }
+                return Err(msg);
+            }
+        };
+
+        self.children.lock().unwrap().insert(run_id, child);
+
+        let history = self.history.clone();
+        let children = self.children.clone();
+        let app = self.app.clone();
+        tauri::async_runtime::spawn(async move {
+            while let Some(event) = rx.recv().await {
+                match event {
+                    CommandEvent::Stdout(bytes) => {
+                        let mut chunk = String::from_utf8_lossy(&bytes).into_owned();
+                        chunk.push('\n');
+                        let appended = history.append_output(run_id, ScriptStream::Stdout, &chunk);
+                        if appended {
+                            let _ = app.emit(
+                                SCRIPT_RUN_OUTPUT_EVENT,
+                                ScriptOutputPayload {
+                                    run_id,
+                                    stream: ScriptStream::Stdout,
+                                    chunk,
+                                },
+                            );
+                        }
+                    }
+                    CommandEvent::Stderr(bytes) => {
+                        let mut chunk = String::from_utf8_lossy(&bytes).into_owned();
+                        chunk.push('\n');
+                        let appended = history.append_output(run_id, ScriptStream::Stderr, &chunk);
+                        if appended {
+                            let _ = app.emit(
+                                SCRIPT_RUN_OUTPUT_EVENT,
+                                ScriptOutputPayload {
+                                    run_id,
+                                    stream: ScriptStream::Stderr,
+                                    chunk,
+                                },
+                            );
+                        }
+                    }
+                    CommandEvent::Terminated(payload) => {
+                        let status = match payload.code {
+                            Some(0) => ScriptStatus::Succeeded,
+                            // Cancelled pode ter chegado primeiro pela API
+                            // de cancel; não sobrescrevemos status terminal
+                            // já setado (finish_run detecta e ignora).
+                            Some(_) => ScriptStatus::Failed,
+                            None => ScriptStatus::Interrupted,
+                        };
+                        history.finish_run(run_id, payload.code, status);
+                        children.lock().unwrap().remove(&run_id);
+                        if let Some(summary) = history.get_run(run_id).map(|r| r.summary()) {
+                            let _ = app.emit(SCRIPT_RUN_FINISHED_EVENT, summary);
+                        }
+                        break;
+                    }
+                    CommandEvent::Error(msg) => {
+                        history.append_output(run_id, ScriptStream::Stderr, &msg);
+                        history.finish_run(run_id, None, ScriptStatus::Failed);
+                        children.lock().unwrap().remove(&run_id);
+                        if let Some(summary) = history.get_run(run_id).map(|r| r.summary()) {
+                            let _ = app.emit(SCRIPT_RUN_FINISHED_EVENT, summary);
+                        }
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+        });
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScriptOutputPayload {
+    run_id: Uuid,
+    stream: ScriptStream,
+    chunk: String,
 }
 
 /// Verifica se há algum item Script no tab que precise de confirmação ou
@@ -701,6 +862,89 @@ pub(crate) fn apply_set_auto_check_updates(cfg: &mut Config, enabled: bool) {
     cfg.system.auto_check_updates = enabled;
 }
 
+/// Plano 19 — toggle global da captura de output de scripts. Persiste +
+/// emite `CONFIG_CHANGED_EVENT`. Não toca o histórico já capturado.
+#[tauri::command]
+pub fn set_script_history_enabled<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_script_history_enabled(&mut cfg, enabled);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+pub(crate) fn apply_set_script_history_enabled(cfg: &mut Config, enabled: bool) {
+    cfg.system.script_history_enabled = enabled;
+}
+
+/// Plano 19 — lista todas as runs do buffer (mais nova primeiro). Usado
+/// pelo `<HistorySection>` na list view.
+#[tauri::command]
+pub fn list_script_runs(state: tauri::State<'_, AppState>) -> Vec<ScriptRunSummary> {
+    state.script_history.list_runs()
+}
+
+/// Plano 19 — entrega a run completa (com stdout/stderr) para o detail
+/// view. Retorna `None` se a run foi evictada do buffer.
+#[tauri::command]
+pub fn get_script_run(state: tauri::State<'_, AppState>, id: Uuid) -> Option<ScriptRun> {
+    state.script_history.get_run(id)
+}
+
+/// Plano 19 — esvazia o buffer + emite event de finished com payload
+/// vazio para que frontends mostrem lista vazia. Sem efeito em runs em
+/// curso (children continuam vivos; output novo não é registrado pq run
+/// foi removida do buffer e `append_output` retorna `false`).
+#[tauri::command]
+pub fn clear_script_runs<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), AppError> {
+    state.script_history.clear();
+    let _ = app.emit(
+        SCRIPT_RUN_FINISHED_EVENT,
+        serde_json::json!({ "cleared": true }),
+    );
+    Ok(())
+}
+
+/// Plano 19 — mata o child correspondente e marca a run como
+/// `Cancelled`. Retorna `true` se uma run em curso foi cancelada,
+/// `false` se id não existe ou já estava em estado terminal.
+#[tauri::command]
+pub async fn cancel_script_run<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    id: Uuid,
+) -> Result<bool, AppError> {
+    if !state.script_history.is_running(id) {
+        return Ok(false);
+    }
+    let child = state.script_children.lock().unwrap().remove(&id);
+    if let Some(child) = child {
+        if let Err(e) = child.kill() {
+            return Err(AppError::launcher(
+                "script_cancel_failed",
+                &[("reason", e.to_string()), ("runId", id.to_string())],
+            ));
+        }
+    }
+    state
+        .script_history
+        .finish_run(id, None, ScriptStatus::Cancelled);
+    if let Some(summary) = state.script_history.get_run(id).map(|r| r.summary()) {
+        let _ = app.emit(SCRIPT_RUN_FINISHED_EVENT, summary);
+    }
+    Ok(true)
+}
+
 /// Plano 18 — chamado pelo task de startup logo após disparar a OS
 /// notification para evitar re-notificação da mesma versão. Não é
 /// exposto como command: o flag é estado interno do updater. Helper
@@ -849,6 +1093,8 @@ pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
         pending_settings_intent: Mutex::new(None),
         active_shortcut: ActiveShortcut::default(),
         pending_update: RwLock::new(None),
+        script_history: Arc::new(ScriptHistory::new()),
+        script_children: Arc::new(Mutex::new(HashMap::new())),
     })
 }
 
@@ -2071,5 +2317,17 @@ mod tests {
             cfg.system.last_notified_update_version.as_deref(),
             Some("0.2.1")
         );
+    }
+
+    // ---------- Plano 19: script history toggle ----------
+
+    #[test]
+    fn apply_set_script_history_enabled_toggles_flag() {
+        let mut cfg = Config::default();
+        assert!(cfg.system.script_history_enabled);
+        apply_set_script_history_enabled(&mut cfg, false);
+        assert!(!cfg.system.script_history_enabled);
+        apply_set_script_history_enabled(&mut cfg, true);
+        assert!(cfg.system.script_history_enabled);
     }
 }
