@@ -172,6 +172,26 @@ pub enum WheelDirection {
 #[serde(rename_all = "camelCase")]
 pub struct SystemConfig {
     pub autostart: bool,
+    /// Plano 18 — quando `true`, a app dispara um check de atualização no
+    /// startup e exibe notificação OS-native (uma única vez por versão
+    /// remota nova) caso encontre versão maior. Default `true`. Configs
+    /// Plano-17 e anteriores deserializam com `true` graças ao
+    /// `#[serde(default = "default_auto_check_updates")]`.
+    #[serde(default = "default_auto_check_updates")]
+    pub auto_check_updates: bool,
+    /// Plano 18 — última versão pra qual o usuário já recebeu a
+    /// notificação OS-native no startup. Gate `should_notify` evita
+    /// re-notificar a mesma versão. Field é estado interno persistido pelo
+    /// updater; user pode editar manualmente sem efeito colateral
+    /// (resetar = re-notifica). `None` em configs Plano-17 e anteriores;
+    /// `skip_serializing_if = "Option::is_none"` mantém o JSON enxuto
+    /// enquanto nenhum check rodou.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_notified_update_version: Option<String>,
+}
+
+fn default_auto_check_updates() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -301,7 +321,11 @@ impl Default for Config {
                 items_per_page: 6,
                 wheel_direction: WheelDirection::Standard,
             },
-            system: SystemConfig { autostart: false },
+            system: SystemConfig {
+                autostart: false,
+                auto_check_updates: true,
+                last_notified_update_version: None,
+            },
         }
     }
 }
@@ -803,5 +827,48 @@ mod tests {
         let o: ThemeOverrides = serde_json::from_str(r#"{"colors":{}}"#).unwrap();
         assert!(o.colors.is_some());
         assert_eq!(o.colors.unwrap(), ThemeColors::default());
+    }
+
+    #[test]
+    fn system_config_defaults_auto_check_updates_to_true_when_absent() {
+        // Plano-17 e anteriores: payload `{"autostart": false}` continua válido.
+        let s: SystemConfig = serde_json::from_str(r#"{"autostart":false}"#).unwrap();
+        assert!(s.auto_check_updates);
+        assert_eq!(s.last_notified_update_version, None);
+    }
+
+    #[test]
+    fn system_config_round_trip_with_update_fields() {
+        let s = SystemConfig {
+            autostart: false,
+            auto_check_updates: false,
+            last_notified_update_version: Some("0.2.0".into()),
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(json.contains("\"autoCheckUpdates\":false"));
+        assert!(json.contains("\"lastNotifiedUpdateVersion\":\"0.2.0\""));
+        let back: SystemConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(s, back);
+    }
+
+    #[test]
+    fn system_config_omits_last_notified_update_version_when_none() {
+        let s = SystemConfig {
+            autostart: false,
+            auto_check_updates: true,
+            last_notified_update_version: None,
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(
+            !json.contains("lastNotifiedUpdateVersion"),
+            "field should be skipped when None: {json}"
+        );
+    }
+
+    #[test]
+    fn default_config_enables_auto_check_updates() {
+        let cfg = Config::default();
+        assert!(cfg.system.auto_check_updates);
+        assert_eq!(cfg.system.last_notified_update_version, None);
     }
 }

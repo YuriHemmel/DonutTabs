@@ -74,7 +74,11 @@ mod tests {
                 items_per_page: 6,
                 wheel_direction: WheelDirection::Standard,
             },
-            system: SystemConfig { autostart: false },
+            system: SystemConfig {
+                autostart: false,
+                auto_check_updates: true,
+                last_notified_update_version: None,
+            },
             tabs: vec![TabV1 {
                 id: Uuid::new_v4(),
                 name: Some("aba1".into()),
