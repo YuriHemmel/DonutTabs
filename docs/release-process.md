@@ -73,19 +73,34 @@ Manter sincronizado:
 - `src-tauri/Cargo.toml` → `version = "0.2.0"`
 - `package.json` → `"version": "0.2.0"`
 
-### 2. Atualizar CHANGELOG.md
-
-Adicionar uma seção `## v0.2.0 — YYYY-MM-DD` com bullets das mudanças relevantes pro usuário (não detalhes internos).
-
-### 3. Commitar e tagar
+### 2. Commitar a versão
 
 ```bash
-git add src-tauri/tauri.conf.json src-tauri/Cargo.toml package.json CHANGELOG.md
+git add src-tauri/tauri.conf.json src-tauri/Cargo.toml package.json
 git commit -m "chore(release): v0.2.0"
-git tag v0.2.0
 git push origin main
+```
+
+### 3. Criar tag anotada com release notes
+
+A action puxa o conteúdo da tag annotation e injeta como `releaseBody` do GitHub Release **e** como `notes` do `latest.json`. Isso significa que essas notas vão aparecer:
+
+- na página do GitHub Release;
+- no `<details>` "Notas da versão" do `<UpdateCard>` no Settings dos apps instalados.
+
+```bash
+git tag -a v0.2.0 -m "$(cat <<'EOF'
+DonutTabs v0.2.0
+
+- feat(...): descrição curta voltada pro user
+- fix(...): bug corrigido (ex.: tray entry sumindo no segundo startup)
+- ...
+EOF
+)"
 git push origin v0.2.0
 ```
+
+> **Importante:** use `git tag -a` (annotated). Tags lightweight (`git tag v0.2.0` sem `-a`) não têm corpo, e o workflow cai no fallback `"Release v0.2.0"` — release sai sem notes pro user.
 
 A tag dispara `release.yml`. A action faz tudo:
 
