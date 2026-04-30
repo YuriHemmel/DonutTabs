@@ -1,6 +1,6 @@
 [package]
 name = "tauri-app"
-version = "0.1.0"
+version = "0.1.1"
 description = "DonutTabs — radial tab launcher triggered by a global shortcut"
 authors = ["Yuri Hemmel <yuri.modolin@helppi.com.br>"]
 edition = "2021"
