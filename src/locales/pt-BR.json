@@ -57,6 +57,14 @@
       "faviconParse": "Endereço inválido para favicon: {{reason}}",
       "unknown": "Erro de I/O: {{code}}"
     },
+    "updater": {
+      "updaterCheckFailed": "Falha ao verificar atualizações: {{reason}}",
+      "updaterInstallFailed": "Falha ao instalar atualização: {{reason}}",
+      "updaterSignatureInvalid": "Assinatura da atualização inválida. Atualização cancelada.",
+      "updaterNetworkUnavailable": "Sem conexão para verificar atualizações.",
+      "updaterNoEndpoints": "Endpoint de atualização não configurado.",
+      "unknown": "Erro de atualização: {{code}}"
+    },
     "fallback": "Ocorreu um erro inesperado ({{kind}})"
   },
   "donut": {
@@ -128,7 +136,22 @@
       "allowScriptsLabel": "Permitir scripts neste perfil",
       "allowScriptsHint": "Scripts shell sempre pedem confirmação na primeira execução. Desabilite pra bloquear todos os scripts deste perfil.",
       "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
-      "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações."
+      "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações.",
+      "update": {
+        "heading": "Atualizações",
+        "currentVersion": "Versão atual: v{{version}}",
+        "autoCheckLabel": "Verificar atualizações automaticamente no início",
+        "autoCheckHint": "Quando ligado, o app verifica uma vez ao abrir e avisa se houver versão nova.",
+        "checkNow": "Verificar agora",
+        "checking": "Verificando…",
+        "upToDate": "Você está na versão mais recente.",
+        "available": "Versão {{version}} disponível",
+        "releaseNotes": "Notas da versão",
+        "installNow": "Instalar e reiniciar",
+        "installing": "Instalando… {{progress}}%",
+        "downloading": "Baixando… {{progress}}%",
+        "dismissedHint": "Você já foi avisado desta versão. O aviso não será exibido de novo até a próxima atualização."
+      }
     },
     "icon": {
       "modalTitle": "Escolher ícone",

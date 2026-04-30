@@ -8,6 +8,7 @@ import type { FaviconResult } from "./types/FaviconResult";
 import type { ImportResult } from "./types/ImportResult";
 import type { InstalledApp } from "./types/InstalledApp";
 import type { ThemeOverrides } from "./types/ThemeOverrides";
+import type { UpdateSummary } from "./types/UpdateSummary";
 
 export type SettingsIntent =
   | "new-tab"
@@ -110,6 +111,19 @@ export const ipc = {
   /** Plano 17 — devolve a lista de apps instalados no SO (cross-OS via
    *  `apps_picker/`). Read-only; não toca config. */
   listInstalledApps: () => invoke<InstalledApp[]>("list_installed_apps"),
+  /** Plano 18 — verifica disponibilidade de update. `force=true` ignora o
+   *  gate `should_notify` (usado pelo botão "Verificar agora"). `force=false`
+   *  retorna `null` se a versão remota já foi notificada antes. */
+  checkForUpdates: (force: boolean) =>
+    invoke<UpdateSummary | null>("check_for_updates", { force }),
+  /** Plano 18 — entrega o `UpdateSummary` populado pelo task de startup,
+   *  sem disparar nova chamada de rede. */
+  getPendingUpdate: () => invoke<UpdateSummary | null>("get_pending_update"),
+  /** Plano 18 — baixa + instala + reinicia. Promise pode nunca resolver
+   *  (relaunch). Frontend deve subscrever `UPDATE_PROGRESS_EVENT` antes. */
+  installUpdate: () => invoke<void>("install_update"),
+  setAutoCheckUpdates: (enabled: boolean) =>
+    invoke<Config>("set_auto_check_updates", { enabled }),
 };
 
 export interface DialogFilter {
@@ -150,3 +164,9 @@ export const dialog = {
 
 export const CONFIG_CHANGED_EVENT = "config-changed";
 export const SETTINGS_INTENT_EVENT = "settings-intent";
+export const UPDATE_PROGRESS_EVENT = "update-progress";
+
+export interface UpdateProgress {
+  downloaded: number;
+  total: number | null;
+}

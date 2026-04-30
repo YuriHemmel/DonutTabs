@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 
 export interface AppError {
-  kind: "config" | "shortcut" | "launcher" | "window" | "io";
+  kind: "config" | "shortcut" | "launcher" | "window" | "io" | "updater";
   message: {
     code: string;
     context: Record<string, string>;

@@ -28,3 +28,8 @@ tmp/*
 # Design docs (local only)
 docs/Plano.md
 docs/plans/
+
+# Tauri signing keys (NUNCA commitar privada)
+*.key
+!*.key.pub
+.tauri/

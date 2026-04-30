@@ -4,6 +4,7 @@ import type { Theme } from "../core/types/Theme";
 import type { Language } from "../core/types/Language";
 import type { ThemeOverrides } from "../core/types/ThemeOverrides";
 import { ThemeCustomizer } from "./ThemeCustomizer";
+import { UpdateCard } from "./UpdateCard";
 
 export interface AppearanceSectionProps {
   theme: Theme;
@@ -24,6 +25,9 @@ export interface AppearanceSectionProps {
   /** Plano 15: overrides cosméticos do perfil em edição. */
   themeOverrides?: ThemeOverrides | null;
   onThemeOverridesChange?: (overrides: ThemeOverrides | null) => void;
+  /** Plano 18: toggle global do check de update no startup. */
+  autoCheckUpdates?: boolean;
+  onAutoCheckUpdatesChange?: (enabled: boolean) => void;
 }
 
 const THEMES: Theme[] = ["dark", "light", "auto"];
@@ -47,6 +51,8 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   onAllowScriptsChange,
   themeOverrides,
   onThemeOverridesChange,
+  autoCheckUpdates,
+  onAutoCheckUpdatesChange,
 }) => {
   const { t } = useTranslation();
 
@@ -166,6 +172,13 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
               {t("settings.system.allowScriptsHint")}
             </small>
           </div>
+        )}
+
+        {autoCheckUpdates !== undefined && onAutoCheckUpdatesChange && (
+          <UpdateCard
+            autoCheckUpdates={autoCheckUpdates}
+            onAutoCheckUpdatesChange={onAutoCheckUpdatesChange}
+          />
         )}
 
         {(onExportConfig || onImportConfig) && (

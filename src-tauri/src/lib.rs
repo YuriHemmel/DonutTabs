@@ -8,8 +8,73 @@ mod launcher;
 mod settings_window;
 mod shortcut;
 mod tray;
+mod updater;
 
 use tauri::Manager;
+use tauri_plugin_notification::NotificationExt;
+
+async fn run_startup_update_check<R: tauri::Runtime>(handle: tauri::AppHandle<R>) {
+    let summary = match updater::check(&handle).await {
+        Ok(Some(s)) => s,
+        Ok(None) => {
+            let state: tauri::State<'_, commands::AppState> = handle.state();
+            *state.pending_update.write().unwrap() = None;
+            return;
+        }
+        Err(e) => {
+            eprintln!("[startup-updater] check failed: {e:?}");
+            return;
+        }
+    };
+
+    {
+        let state: tauri::State<'_, commands::AppState> = handle.state();
+        *state.pending_update.write().unwrap() = Some(summary.clone());
+    }
+
+    // Tray entry reflete `pending_update` independente do gate de notificação.
+    // Notificação OS-native é one-shot por versão (gate `should_notify`); tray
+    // entry persiste enquanto a versão remota seguir disponível, pra que user
+    // que fechou a notificação ainda tenha caminho visível pra atualizar.
+    if let Err(e) = tray::rebuild_with_pending_update(&handle, Some(&summary)) {
+        eprintln!("[startup-updater] tray rebuild failed: {e:?}");
+    }
+
+    let last = {
+        let state: tauri::State<'_, commands::AppState> = handle.state();
+        let cfg = state.config.read().unwrap();
+        cfg.system.last_notified_update_version.clone()
+    };
+
+    if !updater::should_notify(&summary.version, last.as_deref()) {
+        return;
+    }
+
+    let title = "DonutTabs: atualização disponível";
+    let body = format!(
+        "Versão {} está pronta. Abra o DonutTabs para instalar.",
+        summary.version
+    );
+    if let Err(e) = handle
+        .notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+    {
+        eprintln!("[startup-updater] notification failed: {e:?}");
+    }
+
+    {
+        let state: tauri::State<'_, commands::AppState> = handle.state();
+        let mut cfg = state.config.write().unwrap();
+        commands::apply_mark_update_notified(&mut cfg, summary.version.clone());
+        let path = state.config_path.clone();
+        if let Err(e) = crate::config::io::save_atomic(&path, &cfg) {
+            eprintln!("[startup-updater] persist last_notified_update_version failed: {e:?}");
+        }
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,6 +83,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -94,6 +161,26 @@ pub fn run() {
                 }
             }
 
+            // Plano 18 — startup update check. Best-effort: erros (offline,
+            // signature inválida, sem endpoints configurados) viram warn no
+            // log e não interrompem o boot. Roda em task assíncrona para
+            // não bloquear a UI; OS notification dispara via plugin
+            // `notification` apenas uma vez por versão remota nova
+            // (gate `should_notify` contra `last_notified_update_version`).
+            {
+                let auto = {
+                    let state: tauri::State<'_, commands::AppState> = app.state();
+                    let cfg = state.config.read().unwrap();
+                    cfg.system.auto_check_updates
+                };
+                if auto {
+                    let handle = app.handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        run_startup_update_check(handle).await;
+                    });
+                }
+            }
+
             let _ = donut_window::show(app.handle());
             if let Some(w) = app.get_webview_window("donut") {
                 let _ = w.hide();
@@ -139,6 +226,10 @@ pub fn run() {
             commands::set_profile_allow_scripts,
             commands::set_profile_theme_overrides,
             commands::list_installed_apps,
+            commands::check_for_updates,
+            commands::install_update,
+            commands::set_auto_check_updates,
+            commands::get_pending_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

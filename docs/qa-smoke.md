@@ -22,6 +22,22 @@ Rodar este checklist antes de considerar o Plano 1 concluído. Repetir em cada S
 - [ ] **Tray → Abrir donut**: abre donut (no cursor atual).
 - [ ] **Tray → Sair**: app encerra limpamente. Atalho global deixa de responder.
 
+## Plano 18 — auto-updater
+
+> Pré-requisito do smoke: keypair gerado via `tauri signer generate` e pubkey copiada pra `tauri.conf.json` (placeholder `TODO_PUBKEY_PLACEHOLDER` falha na verificação de signature). Ver [docs/release-process.md](release-process.md).
+
+- [ ] Build local: `npm run tauri build` em cada SO completa sem erro com plugin updater + notification habilitados.
+- [ ] **Startup notification**: instalar v0.1.0; bumpar versão pra 0.1.1, build, hospedar manifest `latest.json` localmente (file:// ou endpoint dev) apontando pra v0.1.1; reabrir v0.1.0 → notification OS-native dispara uma única vez ("DonutTabs: atualização disponível"). Reabrir o app de novo → notification **não** dispara (gate `lastNotifiedUpdateVersion`).
+- [ ] **Reset do gate**: bumpar pra 0.1.2 (nova versão remota) → reabrir → notification dispara de novo.
+- [ ] **Tray menu dinâmico**: com update pendente, item "📥 Atualizar para v0.1.1" aparece antes de "Sair"; click abre Settings.
+- [ ] **Settings → Aparência → Sistema → Atualizações**: card mostra "Versão 0.1.1 disponível" com release notes (se houver) + botão "Instalar e reiniciar". Toggle "Verificar atualizações automaticamente" persiste através de reinício.
+- [ ] **Botão "Verificar agora"**: ignora gate de notification — clica em estado "upToDate", depois publicar nova versão remota e clicar de novo → mostra "Versão X disponível" sem precisar reiniciar.
+- [ ] **Install flow**: clicar "Instalar e reiniciar" → barra "Baixando… X%" → instalação automática → app reinicia com versão nova. Reabrir app pós-update → Settings mostra "Versão atual: vX.Y.Z" e "Você está na versão mais recente."
+- [ ] **Toggle off `autoCheckUpdates`**: reabrir app → startup task **não** dispara check (verificar via log: nenhuma chamada de `updater::check`); botão "Verificar agora" no Settings continua funcionando.
+- [ ] **Erros**: simular offline → "Verificar agora" → banner "Sem conexão para verificar atualizações." (`updater_network_unavailable`). Apontar endpoint pra signature errada → banner "Assinatura da atualização inválida." Endpoint 404 → banner "Falha ao verificar atualizações: …".
+- [ ] **Configs Plano-17 e anteriores** carregam com defaults: `autoCheckUpdates = true`, `lastNotifiedUpdateVersion` ausente do JSON; nenhuma migração explícita necessária.
+- [ ] **Workflow GitHub Actions** (com secrets `TAURI_SIGNING_PRIVATE_KEY` + password configurados): `git tag v0.X.Y && git push origin v0.X.Y` dispara `release.yml`; build matrix completa nos 3 SOs; Release público criado com bundles + `latest.json` validamente assinado.
+
 ## Plano 17 — picker visual de apps
 
 - [ ] Settings → Adicionar aba → kind = App → row mostra botão "📋 Procurar app".

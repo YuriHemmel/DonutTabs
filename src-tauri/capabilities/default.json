@@ -18,6 +18,8 @@
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
-    "shell:default"
+    "shell:default",
+    "updater:default",
+    "notification:default"
   ]
 }
