@@ -37,6 +37,12 @@ pub enum AppError {
         #[serde(default)]
         context: ErrorContext,
     },
+    #[error("updater error: {code}")]
+    Updater {
+        code: String,
+        #[serde(default)]
+        context: ErrorContext,
+    },
 }
 
 fn ctx(pairs: &[(&str, String)]) -> ErrorContext {
@@ -77,6 +83,13 @@ impl AppError {
 
     pub fn io(code: impl Into<String>, pairs: &[(&str, String)]) -> Self {
         AppError::Io {
+            code: code.into(),
+            context: ctx(pairs),
+        }
+    }
+
+    pub fn updater(code: impl Into<String>, pairs: &[(&str, String)]) -> Self {
+        AppError::Updater {
             code: code.into(),
             context: ctx(pairs),
         }

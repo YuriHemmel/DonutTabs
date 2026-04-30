@@ -5,6 +5,7 @@ use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, TauriOpener};
 use crate::shortcut::{self, ActiveShortcut};
+use crate::updater::{self, UpdateSummary};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, RwLock};
@@ -34,6 +35,9 @@ pub struct AppState {
     pub pending_settings_intent: Mutex<Option<String>>,
     /// Atalho global atualmente registrado.
     pub active_shortcut: ActiveShortcut,
+    /// Plano 18 — populated pelo task de startup quando há update
+    /// pendente. Frontend lê via `get_pending_update`.
+    pub pending_update: RwLock<Option<UpdateSummary>>,
 }
 
 #[tauri::command]
@@ -609,6 +613,94 @@ pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
         .map_err(|e| AppError::io("apps_list_failed", &[("reason", e.to_string())]))?
 }
 
+/// Plano 18 — verifica disponibilidade de atualização. `force = true`
+/// (Settings → "Verificar agora") ignora o gate `should_notify` e devolve
+/// qualquer update reportado pelo plugin; `force = false` (startup task)
+/// retorna `None` quando a versão remota já foi notificada antes,
+/// efetivamente "silenciando" o aviso para esta sessão. Em ambos os modos
+/// o `AppState.pending_update` é populado quando há update — Settings
+/// continua mostrando o banner mesmo sem `force`.
+#[tauri::command]
+pub async fn check_for_updates<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    force: bool,
+) -> Result<Option<UpdateSummary>, AppError> {
+    let summary = updater::check(&app).await?;
+    let Some(summary) = summary else {
+        let state: tauri::State<'_, AppState> = app.state();
+        *state.pending_update.write().unwrap() = None;
+        return Ok(None);
+    };
+
+    {
+        let state: tauri::State<'_, AppState> = app.state();
+        *state.pending_update.write().unwrap() = Some(summary.clone());
+    }
+
+    if !force {
+        let state: tauri::State<'_, AppState> = app.state();
+        let last = state
+            .config
+            .read()
+            .unwrap()
+            .system
+            .last_notified_update_version
+            .clone();
+        if !updater::should_notify(&summary.version, last.as_deref()) {
+            return Ok(None);
+        }
+    }
+
+    Ok(Some(summary))
+}
+
+/// Plano 18 — entrega o `UpdateSummary` populado pelo task de startup
+/// (ou pelo último `check_for_updates(true)`). Frontend usa pra hidratar
+/// `<UpdateCard>` sem disparar uma nova chamada de rede ao montar.
+#[tauri::command]
+pub fn get_pending_update(state: tauri::State<'_, AppState>) -> Option<UpdateSummary> {
+    state.pending_update.read().unwrap().clone()
+}
+
+/// Plano 18 — dispara download + install + relaunch. Emite
+/// `UPDATE_PROGRESS_EVENT` durante o download. No sucesso o app reinicia
+/// — caller pode nunca ver o `Ok(())`.
+#[tauri::command]
+pub async fn install_update<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), AppError> {
+    updater::install(&app).await
+}
+
+/// Plano 18 — toggle global do check de startup. Persiste + emite
+/// `CONFIG_CHANGED_EVENT`. Independente do toggle, "Verificar agora" no
+/// Settings continua disponível.
+#[tauri::command]
+pub fn set_auto_check_updates<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_auto_check_updates(&mut cfg, enabled);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+pub(crate) fn apply_set_auto_check_updates(cfg: &mut Config, enabled: bool) {
+    cfg.system.auto_check_updates = enabled;
+}
+
+/// Plano 18 — chamado pelo task de startup logo após disparar a OS
+/// notification para evitar re-notificação da mesma versão. Não é
+/// exposto como command: o flag é estado interno do updater. Helper
+/// puro pra que `lib::setup` possa invocar via state direto.
+pub(crate) fn apply_mark_update_notified(cfg: &mut Config, version: String) {
+    cfg.system.last_notified_update_version = Some(version);
+}
+
 pub(crate) fn apply_set_script_trusted(
     cfg: &mut Config,
     profile_id: Uuid,
@@ -748,6 +840,7 @@ pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
         config_path,
         pending_settings_intent: Mutex::new(None),
         active_shortcut: ActiveShortcut::default(),
+        pending_update: RwLock::new(None),
     })
 }
 
@@ -1942,5 +2035,33 @@ mod tests {
             AppError::Config { code, .. } => assert_eq!(code, "profile_not_found"),
             other => panic!("expected Config error, got {other:?}"),
         }
+    }
+
+    // ---------- Plano 18: updater helpers ----------
+
+    #[test]
+    fn apply_set_auto_check_updates_toggles_flag() {
+        let mut cfg = Config::default();
+        assert!(cfg.system.auto_check_updates);
+        apply_set_auto_check_updates(&mut cfg, false);
+        assert!(!cfg.system.auto_check_updates);
+        apply_set_auto_check_updates(&mut cfg, true);
+        assert!(cfg.system.auto_check_updates);
+    }
+
+    #[test]
+    fn apply_mark_update_notified_persists_version() {
+        let mut cfg = Config::default();
+        assert_eq!(cfg.system.last_notified_update_version, None);
+        apply_mark_update_notified(&mut cfg, "0.2.0".into());
+        assert_eq!(
+            cfg.system.last_notified_update_version.as_deref(),
+            Some("0.2.0")
+        );
+        apply_mark_update_notified(&mut cfg, "0.2.1".into());
+        assert_eq!(
+            cfg.system.last_notified_update_version.as_deref(),
+            Some("0.2.1")
+        );
     }
 }
