@@ -5,6 +5,7 @@ import { TabList } from "./TabList";
 import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
+import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
 import { ProfileEditor } from "./ProfileEditor";
@@ -114,6 +115,7 @@ export const SettingsApp: React.FC = () => {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
+    setScriptHistoryEnabled,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -447,6 +449,10 @@ export const SettingsApp: React.FC = () => {
           onAutoCheckUpdatesChange={(enabled) => {
             void setAutoCheckUpdates(enabled);
           }}
+          scriptHistoryEnabled={config.system.scriptHistoryEnabled}
+          onScriptHistoryEnabledChange={(enabled) => {
+            void setScriptHistoryEnabled(enabled);
+          }}
         />
       )}
 
@@ -461,6 +467,10 @@ export const SettingsApp: React.FC = () => {
             await setSearchShortcut(combo);
           }}
         />
+      )}
+
+      {section === "history" && (
+        <HistorySection enabled={config.system.scriptHistoryEnabled} />
       )}
     </div>
   );

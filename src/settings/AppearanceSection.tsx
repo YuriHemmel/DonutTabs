@@ -28,6 +28,9 @@ export interface AppearanceSectionProps {
   /** Plano 18: toggle global do check de update no startup. */
   autoCheckUpdates?: boolean;
   onAutoCheckUpdatesChange?: (enabled: boolean) => void;
+  /** Plano 19: toggle global da captura de output de scripts. */
+  scriptHistoryEnabled?: boolean;
+  onScriptHistoryEnabledChange?: (enabled: boolean) => void;
 }
 
 const THEMES: Theme[] = ["dark", "light", "auto"];
@@ -53,6 +56,8 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   onThemeOverridesChange,
   autoCheckUpdates,
   onAutoCheckUpdatesChange,
+  scriptHistoryEnabled,
+  onScriptHistoryEnabledChange,
 }) => {
   const { t } = useTranslation();
 
@@ -179,6 +184,42 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
             autoCheckUpdates={autoCheckUpdates}
             onAutoCheckUpdatesChange={onAutoCheckUpdatesChange}
           />
+        )}
+
+        {scriptHistoryEnabled !== undefined && onScriptHistoryEnabledChange && (
+          <div
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid var(--input-border)",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                padding: 4,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-testid="script-history-toggle"
+                checked={scriptHistoryEnabled}
+                onChange={(e) => onScriptHistoryEnabledChange(e.target.checked)}
+              />
+              {t("settings.system.scriptHistoryLabel")}
+            </label>
+            <small
+              style={{
+                color: "var(--muted)",
+                display: "block",
+                paddingLeft: 26,
+              }}
+            >
+              {t("settings.system.scriptHistoryHint")}
+            </small>
+          </div>
         )}
 
         {(onExportConfig || onImportConfig) && (
