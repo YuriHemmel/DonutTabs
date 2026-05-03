@@ -2,16 +2,28 @@ import { describe, it, expect } from "vitest";
 import { sliceAngleRange, pointToSliceIndex, arcPath } from "../geometry";
 
 describe("sliceAngleRange", () => {
-  it("divides full circle equally among N slices", () => {
+  it("centers slice 0 on the top (12 o'clock) for n=4", () => {
     const r = sliceAngleRange(0, 4);
-    expect(r.start).toBeCloseTo(-Math.PI / 2);
-    expect(r.end).toBeCloseTo(0);
+    // step = π/2; slice 0 = [-3π/4, -π/4] centrado em -π/2 (topo).
+    expect(r.start).toBeCloseTo(-Math.PI * 3 / 4);
+    expect(r.end).toBeCloseTo(-Math.PI / 4);
   });
 
   it("second slice starts where first ends", () => {
     const a = sliceAngleRange(0, 4);
     const b = sliceAngleRange(1, 4);
     expect(b.start).toBeCloseTo(a.end);
+  });
+
+  // Regressão da issue #7: com n=2, abas devem ficar no sentido `-`
+  // (split horizontal: metade superior + metade inferior), não `|`.
+  it("splits the donut horizontally when n=2", () => {
+    const top = sliceAngleRange(0, 2);
+    const bottom = sliceAngleRange(1, 2);
+    expect(top.start).toBeCloseTo(-Math.PI);
+    expect(top.end).toBeCloseTo(0);
+    expect(bottom.start).toBeCloseTo(0);
+    expect(bottom.end).toBeCloseTo(Math.PI);
   });
 });
 

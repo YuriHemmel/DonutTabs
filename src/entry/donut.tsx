@@ -50,8 +50,27 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
 
   useEffect(() => {
     const w = getCurrentWindow();
+    const html = document.documentElement;
+    // Mount inicial: dispara fade-in tão logo o webview começa a pintar.
+    // requestAnimationFrame garante que a transition rode (sem rAF, o browser
+    // pode coalescer a mudança de class com a primeira renderização e pular o
+    // fade).
+    requestAnimationFrame(() => html.classList.add("donut-visible"));
     const unlisten = w.onFocusChanged(({ payload: focused }) => {
-      if (!focused) void ipc.hideDonut();
+      if (focused) {
+        // Re-show da janela (Rust faz hide em vez de close): força fade-in
+        // de novo. Reset opacity sem transition, depois reaplica class no
+        // próximo frame pra disparar a animação.
+        html.classList.remove("donut-visible");
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => html.classList.add("donut-visible")),
+        );
+      } else {
+        // Limpa a class antes do hide pra que o próximo show comece em
+        // opacity 0 (sem isso, próxima abertura aparece sem fade).
+        html.classList.remove("donut-visible");
+        void ipc.hideDonut();
+      }
     });
     return () => {
       void unlisten.then((fn) => fn());

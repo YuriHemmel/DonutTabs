@@ -1,11 +1,14 @@
 export interface Point { x: number; y: number; }
 export interface AngleRange { start: number; end: number; }
 
-const START_OFFSET = -Math.PI / 2;
+// Slice 0 fica CENTRADO no topo (12h). Garante split horizontal natural pra
+// n=2 (slice 0 = metade superior, slice 1 = inferior) e mantém cardeais
+// alinhados ao centro de cada slice em qualquer n.
+const TOP_CENTER = -Math.PI / 2;
 
 export function sliceAngleRange(index: number, n: number): AngleRange {
   const step = (Math.PI * 2) / n;
-  const start = START_OFFSET + step * index;
+  const start = TOP_CENTER - step / 2 + step * index;
   return { start, end: start + step };
 }
 
@@ -20,9 +23,9 @@ export function pointToSliceIndex(
   const r = Math.hypot(p.x, p.y);
   if (opts.innerRadius !== undefined && r < opts.innerRadius) return null;
   if (opts.outerRadius !== undefined && r > opts.outerRadius) return null;
-  let angle = Math.atan2(p.y, p.x) - START_OFFSET;
-  angle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
   const step = (Math.PI * 2) / n;
+  let angle = Math.atan2(p.y, p.x) - TOP_CENTER + step / 2;
+  angle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
   return Math.floor(angle / step);
 }
 
