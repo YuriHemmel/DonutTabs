@@ -61,7 +61,14 @@ function resolveIntent(
   config: Config | null,
 ): IntentTarget | null {
   if (intent === "new-tab") {
-    return { section: "tabs", selection: { mode: "new" } };
+    // O "+" do donut sempre refere ao perfil ativo. Forçar o
+    // selectedProfileId aqui evita que o Settings reaproveite o perfil
+    // selecionado de uma sessão anterior (issue #23).
+    return {
+      section: "tabs",
+      selection: { mode: "new" },
+      selectedProfileId: config?.activeProfileId,
+    };
   }
   if (intent === "new-profile") {
     return {
@@ -76,6 +83,7 @@ function resolveIntent(
     return {
       section: "tabs",
       selection: { mode: "new", parentPath },
+      selectedProfileId: config?.activeProfileId,
     };
   }
   if (intent && intent.startsWith("edit-tab:")) {
@@ -145,11 +153,16 @@ export const SettingsApp: React.FC = () => {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     const handle = (intent: string | null) => {
-      // Intents que dependem do config (lookup de aba/perfil) ou que abrem
-      // prompt na UI (new-profile) ficam em buffer até o config carregar.
+      // Intents que dependem do config (lookup de aba/perfil, resolução do
+      // perfil ativo) ou que abrem prompt na UI (new-profile) ficam em
+      // buffer até o config carregar. `new-tab` e `new-tab-in-group:`
+      // precisam do config pra resolver `activeProfileId` (issue #23).
       const needsConfig =
         !!intent &&
-        (intent.startsWith("edit-tab:") || intent === "new-profile");
+        (intent.startsWith("edit-tab:") ||
+          intent === "new-profile" ||
+          intent === "new-tab" ||
+          intent.startsWith("new-tab-in-group:"));
       if (needsConfig && !configRef.current) {
         pendingIntentRef.current = intent;
         return;
