@@ -7,6 +7,20 @@
     <style>
       html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
       #root { width: 100vw; height: 100vh; }
+      /* Fade-in via transition de opacity no <html>: aplica numa única camada
+         de composição (mais perto do que o DWM faz no fade-out nativo do SO).
+         `will-change` + translateZ promovem pra layer de GPU pra evitar
+         repaint do conteúdo durante a interpolação. */
+      html {
+        opacity: 0;
+        transition: opacity 200ms ease-out;
+        will-change: opacity;
+        transform: translateZ(0);
+      }
+      html.donut-visible { opacity: 1; }
+      @media (prefers-reduced-motion: reduce) {
+        html { transition: none; opacity: 1; }
+      }
     </style>
   </head>
   <body>
