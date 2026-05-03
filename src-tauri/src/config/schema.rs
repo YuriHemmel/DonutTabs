@@ -327,7 +327,7 @@ impl Default for Config {
             interaction: Interaction {
                 spawn_position: SpawnPosition::Cursor,
                 selection_mode: SelectionMode::ClickOrRelease,
-                hover_hold_ms: 800,
+                hover_hold_ms: 1200,
                 search_shortcut: default_search_shortcut(),
             },
             pagination: Pagination {
