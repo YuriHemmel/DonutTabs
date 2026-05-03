@@ -5,6 +5,7 @@ mod donut_window;
 mod errors;
 mod favicon;
 mod launcher;
+mod script_history;
 mod settings_window;
 mod shortcut;
 mod tray;
@@ -230,6 +231,11 @@ pub fn run() {
             commands::install_update,
             commands::set_auto_check_updates,
             commands::get_pending_update,
+            commands::list_script_runs,
+            commands::get_script_run,
+            commands::clear_script_runs,
+            commands::cancel_script_run,
+            commands::set_script_history_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

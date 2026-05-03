@@ -18,4 +18,14 @@ autoCheckUpdates: boolean,
  * `skip_serializing_if = "Option::is_none"` mantém o JSON enxuto
  * enquanto nenhum check rodou.
  */
-lastNotifiedUpdateVersion: string | null, };
+lastNotifiedUpdateVersion: string | null, 
+/**
+ * Plano 19 — quando `true`, a execução de items `kind: "script"`
+ * captura stdout/stderr em `AppState.script_history` (in-memory
+ * bounded queue) e exibe na aba "Histórico" do Settings. Quando
+ * `false`, scripts voltam ao path Plano-14 (fire-and-forget, sem
+ * captura). Default `true`. Configs Plano-18 e anteriores
+ * deserializam com `true` graças ao
+ * `#[serde(default = "default_script_history_enabled")]`.
+ */
+scriptHistoryEnabled: boolean, };

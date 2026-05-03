@@ -22,6 +22,24 @@ Rodar este checklist antes de considerar o Plano 1 concluído. Repetir em cada S
 - [ ] **Tray → Abrir donut**: abre donut (no cursor atual).
 - [ ] **Tray → Sair**: app encerra limpamente. Atalho global deixa de responder.
 
+## Plano 19 — output capture pra scripts
+
+> Pré-requisito: criar uma aba com `Item::Script { command, trusted: true }` e `Profile.allowScripts: true`. Comandos de teste: `echo hello`, `echo err 1>&2`, `sleep 30`, `seq 15000` (gera 15K linhas).
+
+- [ ] **Captura básica**: aba com `echo "hello"; echo "err" 1>&2` → executar via donut → abrir Settings → Histórico. Run aparece com `status === "succeeded"`, `exitCode === 0`, stdout contendo "hello\n", stderr contendo "err\n".
+- [ ] **Live streaming**: aba com `for i in 1 2 3; do echo $i; sleep 1; done` → executar → enquanto roda, abrir detail no Histórico → ver linhas aparecendo incrementalmente (não só no fim).
+- [ ] **Cancel mid-run**: aba com `sleep 30` → executar → abrir detail → ver `status === "running"` e botão "Cancelar execução" visível → clicar Cancel → status vira "Cancelado", child morto (verificar via `ps`/Task Manager).
+- [ ] **Cap de 10K linhas**: aba com `seq 15000` → executar → run termina com `truncated: true`, banner "Output truncado" visível, stdout tem ~10K linhas (não 15K).
+- [ ] **Cap de 1MB**: aba com `dd if=/dev/zero bs=1M count=2 2>/dev/null | base64` (2MB de output em uma única "linha" base64) → run termina com `truncated: true`, stdout < 1MB.
+- [ ] **Bounded queue de 50 runs**: executar 51 scripts seguidos (`seq 1 51 | xargs -I{} echo {}` em loop manual) → lista no Histórico mostra exatamente 50 entradas; a 1ª executada (mais antiga) sumiu.
+- [ ] **Toggle off `scriptHistoryEnabled`**: Settings → Aparência → Sistema → desmarcar "Capturar output de scripts" → executar uma aba script → Histórico continua mostrando entradas anteriores mas a nova execução **não** aparece (volta ao fire-and-forget Plano-14).
+- [ ] **Limpar tudo**: clicar "Limpar tudo" → confirma → lista esvaza; runs em curso continuam vivas mas saída futura é descartada (run não está mais no buffer).
+- [ ] **Configs Plano-18 e anteriores** carregam com `scriptHistoryEnabled: true` (default).
+- [ ] **Output buffer não persiste em disco**: grep por `scriptHistory` em `config.json` deve ser zero. Reabrir o app → Histórico volta vazio.
+- [ ] **Per-stream isolation**: aba com `echo out; echo err 1>&2; echo out2` → stdout tem "out\nout2\n", stderr tem "err\n".
+- [ ] **Copy button**: clicar "Copiar" no detail → clipboard contém comando + stdout + stderr formatados.
+- [ ] **Cross-OS**: smoke nos 3 SOs (Windows usa `cmd /C`, Unix usa `sh -c`).
+
 ## Plano 18 — auto-updater
 
 > Pré-requisito do smoke: keypair gerado via `tauri signer generate` e pubkey copiada pra `tauri.conf.json` (placeholder `TODO_PUBKEY_PLACEHOLDER` falha na verificação de signature). Ver [docs/release-process.md](release-process.md).

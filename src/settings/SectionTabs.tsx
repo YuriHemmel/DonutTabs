@@ -1,9 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-export type Section = "tabs" | "appearance" | "shortcut";
+export type Section = "tabs" | "appearance" | "shortcut" | "history";
 
-const SECTIONS: Section[] = ["tabs", "appearance", "shortcut"];
+const SECTIONS: Section[] = ["tabs", "appearance", "shortcut", "history"];
 
 export interface SectionTabsProps {
   active: Section;

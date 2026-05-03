@@ -188,9 +188,22 @@ pub struct SystemConfig {
     /// enquanto nenhum check rodou.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_notified_update_version: Option<String>,
+    /// Plano 19 — quando `true`, a execução de items `kind: "script"`
+    /// captura stdout/stderr em `AppState.script_history` (in-memory
+    /// bounded queue) e exibe na aba "Histórico" do Settings. Quando
+    /// `false`, scripts voltam ao path Plano-14 (fire-and-forget, sem
+    /// captura). Default `true`. Configs Plano-18 e anteriores
+    /// deserializam com `true` graças ao
+    /// `#[serde(default = "default_script_history_enabled")]`.
+    #[serde(default = "default_script_history_enabled")]
+    pub script_history_enabled: bool,
 }
 
 fn default_auto_check_updates() -> bool {
+    true
+}
+
+fn default_script_history_enabled() -> bool {
     true
 }
 
@@ -325,6 +338,7 @@ impl Default for Config {
                 autostart: false,
                 auto_check_updates: true,
                 last_notified_update_version: None,
+                script_history_enabled: true,
             },
         }
     }
@@ -843,6 +857,7 @@ mod tests {
             autostart: false,
             auto_check_updates: false,
             last_notified_update_version: Some("0.2.0".into()),
+            script_history_enabled: true,
         };
         let json = serde_json::to_string(&s).unwrap();
         assert!(json.contains("\"autoCheckUpdates\":false"));
@@ -857,6 +872,7 @@ mod tests {
             autostart: false,
             auto_check_updates: true,
             last_notified_update_version: None,
+            script_history_enabled: true,
         };
         let json = serde_json::to_string(&s).unwrap();
         assert!(
@@ -870,5 +886,32 @@ mod tests {
         let cfg = Config::default();
         assert!(cfg.system.auto_check_updates);
         assert_eq!(cfg.system.last_notified_update_version, None);
+    }
+
+    #[test]
+    fn system_config_defaults_script_history_enabled_to_true_when_absent() {
+        // Plano-18 e anteriores: payload sem o campo precisa virar `true`.
+        let s: SystemConfig = serde_json::from_str(r#"{"autostart":false}"#).unwrap();
+        assert!(s.script_history_enabled);
+    }
+
+    #[test]
+    fn system_config_round_trip_with_script_history_disabled() {
+        let s = SystemConfig {
+            autostart: false,
+            auto_check_updates: true,
+            last_notified_update_version: None,
+            script_history_enabled: false,
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(json.contains("\"scriptHistoryEnabled\":false"));
+        let back: SystemConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(s, back);
+    }
+
+    #[test]
+    fn default_config_enables_script_history() {
+        let cfg = Config::default();
+        assert!(cfg.system.script_history_enabled);
     }
 }

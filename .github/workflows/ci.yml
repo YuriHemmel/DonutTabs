@@ -20,8 +20,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'src/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'vite.config.*'
+              - 'vitest.config.*'
+              - 'index.html'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'src-tauri/**'
+              - 'src/core/types/**'
+              - '.github/workflows/ci.yml'
+
   frontend:
     name: Frontend (tsc + vitest)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +70,8 @@ jobs:
 
   lint:
     name: Rust lint (fmt + clippy)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +108,8 @@ jobs:
 
   test-linux:
     name: Rust test (Linux) + ts-rs drift
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -115,6 +148,8 @@ jobs:
 
   test-macos:
     name: Rust test (macOS)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -132,6 +167,8 @@ jobs:
 
   test-windows:
     name: Rust test (Windows)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

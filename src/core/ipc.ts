@@ -9,6 +9,9 @@ import type { ImportResult } from "./types/ImportResult";
 import type { InstalledApp } from "./types/InstalledApp";
 import type { ThemeOverrides } from "./types/ThemeOverrides";
 import type { UpdateSummary } from "./types/UpdateSummary";
+import type { ScriptRun } from "./types/ScriptRun";
+import type { ScriptRunSummary } from "./types/ScriptRunSummary";
+import type { ScriptStream } from "./types/ScriptStream";
 
 export type SettingsIntent =
   | "new-tab"
@@ -124,6 +127,23 @@ export const ipc = {
   installUpdate: () => invoke<void>("install_update"),
   setAutoCheckUpdates: (enabled: boolean) =>
     invoke<Config>("set_auto_check_updates", { enabled }),
+  /** Plano 19 — lista runs do buffer in-memory (mais nova primeiro). */
+  listScriptRuns: () => invoke<ScriptRunSummary[]>("list_script_runs"),
+  /** Plano 19 — entrega run completa com stdout/stderr ou `null` se foi
+   *  evictada. */
+  getScriptRun: (id: string) =>
+    invoke<ScriptRun | null>("get_script_run", { id }),
+  /** Plano 19 — esvazia o buffer. Runs em curso seguem rodando mas saída
+   *  futura é descartada (run não está mais no buffer). */
+  clearScriptRuns: () => invoke<void>("clear_script_runs"),
+  /** Plano 19 — mata o child process correspondente e marca run como
+   *  Cancelled. Retorna `false` se id não existe ou já estava terminal. */
+  cancelScriptRun: (id: string) =>
+    invoke<boolean>("cancel_script_run", { id }),
+  /** Plano 19 — toggle global da captura. Quando `false`, scripts voltam
+   *  ao fire-and-forget Plano-14. */
+  setScriptHistoryEnabled: (enabled: boolean) =>
+    invoke<Config>("set_script_history_enabled", { enabled }),
 };
 
 export interface DialogFilter {
@@ -169,4 +189,14 @@ export const UPDATE_PROGRESS_EVENT = "update-progress";
 export interface UpdateProgress {
   downloaded: number;
   total: number | null;
+}
+
+export const SCRIPT_RUN_STARTED_EVENT = "script-run-started";
+export const SCRIPT_RUN_OUTPUT_EVENT = "script-run-output";
+export const SCRIPT_RUN_FINISHED_EVENT = "script-run-finished";
+
+export interface ScriptOutputPayload {
+  runId: string;
+  stream: ScriptStream;
+  chunk: string;
 }
