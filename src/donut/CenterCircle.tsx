@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTheme } from "./themeContext";
 
 export interface CenterCircleProps {
@@ -9,6 +9,18 @@ export interface CenterCircleProps {
   onProfileSwitcherClick?: () => void;
 }
 
+type Half = "left" | "right" | null;
+
+function leftHalfPath(cx: number, cy: number, r: number): string {
+  // Semicírculo esquerdo: do topo, arc CCW (sweep=0) até base.
+  return `M ${cx} ${cy - r} A ${r} ${r} 0 0 0 ${cx} ${cy + r} Z`;
+}
+
+function rightHalfPath(cx: number, cy: number, r: number): string {
+  // Semicírculo direito: do topo, arc CW (sweep=1) até base.
+  return `M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx} ${cy + r} Z`;
+}
+
 export const CenterCircle: React.FC<CenterCircleProps> = ({
   cx,
   cy,
@@ -17,13 +29,23 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({
   onProfileSwitcherClick,
 }) => {
   const tokens = useTheme();
+  const [hovered, setHovered] = useState<Half>(null);
+  const leftHover = hovered === "left" && !!onGearClick;
+  const rightHover = hovered === "right" && !!onProfileSwitcherClick;
   return (
   <g>
-    <circle
-      cx={cx}
-      cy={cy}
-      r={r}
-      fill={tokens.colors.centerFill}
+    <path
+      data-testid="center-half-left"
+      d={leftHalfPath(cx, cy, r)}
+      fill={leftHover ? tokens.colors.sliceHighlight : tokens.colors.centerFill}
+      fillOpacity={tokens.alpha.overlay}
+      stroke={tokens.colors.sliceStroke}
+      strokeWidth={1}
+    />
+    <path
+      data-testid="center-half-right"
+      d={rightHalfPath(cx, cy, r)}
+      fill={rightHover ? tokens.colors.sliceHighlight : tokens.colors.centerFill}
       fillOpacity={tokens.alpha.overlay}
       stroke={tokens.colors.sliceStroke}
       strokeWidth={1}
@@ -67,6 +89,8 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({
         height={r * 2}
         fill="transparent"
         style={{ cursor: "pointer" }}
+        onMouseEnter={() => setHovered("left")}
+        onMouseLeave={() => setHovered((h) => (h === "left" ? null : h))}
         onClick={(e) => {
           e.stopPropagation();
           onGearClick();
@@ -82,6 +106,8 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({
         height={r * 2}
         fill="transparent"
         style={{ cursor: "pointer" }}
+        onMouseEnter={() => setHovered("right")}
+        onMouseLeave={() => setHovered((h) => (h === "right" ? null : h))}
         onClick={(e) => {
           e.stopPropagation();
           onProfileSwitcherClick();
