@@ -18,7 +18,7 @@ pub mod state;
 use state::{truncate_with_flag, unix_millis_now};
 pub use state::{ScriptRun, ScriptRunSummary, ScriptStatus, ScriptStream};
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use uuid::Uuid;
 
@@ -28,8 +28,14 @@ const MAX_BYTES_PER_STREAM: usize = 1024 * 1024;
 
 /// Bounded queue de runs. `Mutex` (não `RwLock`) porque writes dominam
 /// (cada chunk de output trava); contention de read fica baixa.
+///
+/// `line_counters` é sidecar de `(stdout_lines, stderr_lines)` por
+/// run_id — `truncate_with_flag` consulta/atualiza pra evitar O(n)
+/// re-scan do buffer a cada chunk. Counters são evictados em conjunto
+/// com a run no `start_run` (overflow) e no `clear`.
 pub struct ScriptHistory {
     runs: Mutex<VecDeque<ScriptRun>>,
+    line_counters: Mutex<HashMap<Uuid, (usize, usize)>>,
     max_runs: usize,
 }
 
@@ -43,6 +49,7 @@ impl ScriptHistory {
     pub fn new() -> Self {
         Self {
             runs: Mutex::new(VecDeque::with_capacity(MAX_RUNS)),
+            line_counters: Mutex::new(HashMap::with_capacity(MAX_RUNS)),
             max_runs: MAX_RUNS,
         }
     }
@@ -52,6 +59,7 @@ impl ScriptHistory {
     fn with_max(max: usize) -> Self {
         Self {
             runs: Mutex::new(VecDeque::with_capacity(max)),
+            line_counters: Mutex::new(HashMap::with_capacity(max)),
             max_runs: max,
         }
     }
@@ -81,9 +89,13 @@ impl ScriptHistory {
             status: ScriptStatus::Running,
         };
         let mut q = self.runs.lock().unwrap();
+        let mut counters = self.line_counters.lock().unwrap();
         if q.len() >= self.max_runs {
-            q.pop_front();
+            if let Some(evicted) = q.pop_front() {
+                counters.remove(&evicted.id);
+            }
         }
+        counters.insert(id, (0, 0));
         q.push_back(run);
         id
     }
@@ -99,11 +111,19 @@ impl ScriptHistory {
         if run.status != ScriptStatus::Running {
             return false;
         }
-        let target = match stream {
-            ScriptStream::Stdout => &mut run.stdout,
-            ScriptStream::Stderr => &mut run.stderr,
+        let mut counters = self.line_counters.lock().unwrap();
+        let entry = counters.entry(id).or_insert((0, 0));
+        let (target, line_count) = match stream {
+            ScriptStream::Stdout => (&mut run.stdout, &mut entry.0),
+            ScriptStream::Stderr => (&mut run.stderr, &mut entry.1),
         };
-        let hit = truncate_with_flag(target, chunk, MAX_LINES_PER_STREAM, MAX_BYTES_PER_STREAM);
+        let hit = truncate_with_flag(
+            target,
+            line_count,
+            chunk,
+            MAX_LINES_PER_STREAM,
+            MAX_BYTES_PER_STREAM,
+        );
         if hit {
             run.truncated = true;
         }
@@ -143,6 +163,7 @@ impl ScriptHistory {
     pub fn clear(&self) {
         let mut q = self.runs.lock().unwrap();
         q.clear();
+        self.line_counters.lock().unwrap().clear();
     }
 
     /// `true` se a run existe E está em estado `Running` (caller usa pra
@@ -296,5 +317,49 @@ mod tests {
         h.finish_run(id, Some(0), ScriptStatus::Succeeded);
         assert!(!h.is_running(id));
         assert!(!h.is_running(Uuid::new_v4()));
+    }
+
+    #[test]
+    fn line_counters_evicted_with_run_when_queue_overflows() {
+        let h = ScriptHistory::with_max(2);
+        let (p, t) = fixture_ids();
+        let oldest = h.start_run(p, t, 0, "a".into());
+        h.append_output(oldest, ScriptStream::Stdout, "x\n");
+        let _ = h.start_run(p, t, 0, "b".into());
+        // Terceira run faz overflow, evicta `oldest` + counter dele.
+        let _ = h.start_run(p, t, 0, "c".into());
+        let counters = h.line_counters.lock().unwrap();
+        assert!(!counters.contains_key(&oldest));
+        assert_eq!(counters.len(), 2);
+    }
+
+    #[test]
+    fn line_counters_cleared_alongside_runs() {
+        let h = ScriptHistory::new();
+        let (p, t) = fixture_ids();
+        let id = h.start_run(p, t, 0, "a".into());
+        h.append_output(id, ScriptStream::Stdout, "x\n");
+        h.clear();
+        assert!(h.line_counters.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn append_output_uses_sidecar_counter_for_line_cap() {
+        // Validação de comportamento: sequência de appends até o cap respeita
+        // contagem incremental sem precisar re-escanear o buffer (cobertura
+        // funcional do fix de O(n) → O(chunk)).
+        let h = ScriptHistory::with_max(5);
+        let (p, t) = fixture_ids();
+        let id = h.start_run(p, t, 0, "x".into());
+        // 9_999 linhas: ainda sob cap (10_000)
+        let big = "y\n".repeat(9_999);
+        assert!(h.append_output(id, ScriptStream::Stdout, &big));
+        assert!(!h.get_run(id).unwrap().truncated);
+        // +1 linha bate cap exato (10_000) — sem flag ainda
+        assert!(h.append_output(id, ScriptStream::Stdout, "z\n"));
+        assert!(!h.get_run(id).unwrap().truncated);
+        // +1 linha extra trunca
+        assert!(h.append_output(id, ScriptStream::Stdout, "w\n"));
+        assert!(h.get_run(id).unwrap().truncated);
     }
 }

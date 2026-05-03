@@ -91,24 +91,27 @@ impl ScriptRun {
 /// Quando qualquer cap é atingido, append é truncado e a função retorna
 /// `true` — caller seta o `truncated` flag do `ScriptRun`.
 ///
+/// `current_lines` é mantido pelo caller (sidecar counter no
+/// `ScriptHistory`) para evitar O(n) re-scan do buffer a cada chunk.
+/// Função atualiza o counter in-place adicionando as linhas efetivamente
+/// anexadas (ignora linhas truncadas pelo cap).
+///
 /// Comportamento:
-/// - Cap por linhas: conta linhas atuais + linhas do chunk; descarta
-///   excedente preservando ordem.
-/// - Cap por bytes: trunca o chunk no byte boundary char-safe que cabe
-///   no espaço restante (não parte UTF-8 multi-byte ao meio).
-/// - Chunk vazio ou caps já atingidos: no-op, retorna estado atual.
+/// - Cap por linhas: descarta excedente preservando ordem.
+/// - Cap por bytes: trunca chunk em char boundary (não parte UTF-8
+///   multi-byte ao meio).
+/// - Chunk vazio: no-op; retorna `true` se algum cap já estava atingido.
 pub fn truncate_with_flag(
     existing: &mut String,
+    current_lines: &mut usize,
     chunk: &str,
     max_lines: usize,
     max_bytes: usize,
 ) -> bool {
     if chunk.is_empty() {
-        return existing.len() >= max_bytes
-            || existing.bytes().filter(|b| *b == b'\n').count() >= max_lines;
+        return existing.len() >= max_bytes || *current_lines >= max_lines;
     }
 
-    let current_lines = existing.bytes().filter(|b| *b == b'\n').count();
     let current_bytes = existing.len();
     let mut hit_cap = false;
 
@@ -117,7 +120,7 @@ pub fn truncate_with_flag(
     let mut appended_bytes = 0usize;
 
     for ch in chunk.chars() {
-        if current_lines + appended_lines >= max_lines {
+        if *current_lines + appended_lines >= max_lines {
             hit_cap = true;
             break;
         }
@@ -134,13 +137,14 @@ pub fn truncate_with_flag(
     }
 
     existing.push_str(&to_append);
+    *current_lines += appended_lines;
     hit_cap
 }
 
-/// Helper puro: timestamp ISO 8601 do agora em UTC. Implementação
-/// minimalista (sem deps externas) baseada em
-/// `SystemTime::now().duration_since(UNIX_EPOCH)`. Retorna em
-/// formato `YYYY-MM-DDTHH:MM:SS.mmmZ`.
+/// Helper puro: instante atual em Unix epoch milliseconds (UTC).
+/// Implementação minimalista via
+/// `SystemTime::now().duration_since(UNIX_EPOCH)`. Frontend converte
+/// para timezone local com `new Date(millis)`.
 pub fn unix_millis_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -155,53 +159,77 @@ mod tests {
     #[test]
     fn truncate_appends_when_under_caps() {
         let mut buf = String::from("hello\n");
-        let hit = truncate_with_flag(&mut buf, "world\n", 100, 1024);
+        let mut lines = 1;
+        let hit = truncate_with_flag(&mut buf, &mut lines, "world\n", 100, 1024);
         assert!(!hit);
         assert_eq!(buf, "hello\nworld\n");
+        assert_eq!(lines, 2);
     }
 
     #[test]
     fn truncate_caps_by_lines() {
         let mut buf = String::from("a\nb\n");
+        let mut lines = 2;
         // max_lines = 3 → só cabe 1 linha nova
-        let hit = truncate_with_flag(&mut buf, "c\nd\ne\n", 3, 1024);
+        let hit = truncate_with_flag(&mut buf, &mut lines, "c\nd\ne\n", 3, 1024);
         assert!(hit);
         assert_eq!(buf, "a\nb\nc\n");
+        assert_eq!(lines, 3);
     }
 
     #[test]
     fn truncate_caps_by_bytes() {
         let mut buf = String::from("123456");
+        let mut lines = 0;
         // max_bytes = 10 → cabem 4 chars
-        let hit = truncate_with_flag(&mut buf, "abcdefghij", 100, 10);
+        let hit = truncate_with_flag(&mut buf, &mut lines, "abcdefghij", 100, 10);
         assert!(hit);
         assert_eq!(buf, "123456abcd");
+        assert_eq!(lines, 0);
     }
 
     #[test]
     fn truncate_preserves_utf8_boundary() {
         // "ó" = 2 bytes UTF-8; max_bytes 1 byte de folga não cabe
         let mut buf = String::from("xy"); // 2 bytes used, 1 free until cap=3
-        let hit = truncate_with_flag(&mut buf, "ó", 100, 3);
+        let mut lines = 0;
+        let hit = truncate_with_flag(&mut buf, &mut lines, "ó", 100, 3);
         assert!(hit);
         // "ó" não cabe (precisaria 4 bytes total, cap é 3) → buf inalterado
         assert_eq!(buf, "xy");
+        assert_eq!(lines, 0);
     }
 
     #[test]
     fn truncate_noop_on_empty_chunk_under_cap() {
         let mut buf = String::from("hi");
-        let hit = truncate_with_flag(&mut buf, "", 10, 100);
+        let mut lines = 0;
+        let hit = truncate_with_flag(&mut buf, &mut lines, "", 10, 100);
         assert!(!hit);
         assert_eq!(buf, "hi");
+        assert_eq!(lines, 0);
     }
 
     #[test]
     fn truncate_noop_on_empty_chunk_at_cap() {
         let mut buf = String::from("0123456789"); // 10 bytes
-        let hit = truncate_with_flag(&mut buf, "", 100, 10);
+        let mut lines = 0;
+        let hit = truncate_with_flag(&mut buf, &mut lines, "", 100, 10);
         assert!(hit);
         assert_eq!(buf, "0123456789");
+    }
+
+    #[test]
+    fn truncate_increments_line_counter_only_for_appended_lines() {
+        // Cap por linhas trunca no meio do chunk — counter reflete linhas
+        // efetivamente anexadas, não as descartadas.
+        let mut buf = String::from("a\n");
+        let mut lines = 1;
+        let hit = truncate_with_flag(&mut buf, &mut lines, "b\nc\nd\n", 3, 1024);
+        assert!(hit);
+        assert_eq!(buf, "a\nb\nc\n");
+        // Anexou 2 linhas (b, c); d foi descartado.
+        assert_eq!(lines, 3);
     }
 
     #[test]

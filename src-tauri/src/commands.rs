@@ -918,6 +918,13 @@ pub fn clear_script_runs<R: tauri::Runtime>(
 /// Plano 19 — mata o child correspondente e marca a run como
 /// `Cancelled`. Retorna `true` se uma run em curso foi cancelada,
 /// `false` se id não existe ou já estava em estado terminal.
+///
+/// Race tolerada: entre o `is_running` check e o `kill()`, o child pode
+/// terminar natural (evento `Terminated` chega no consumer task e marca
+/// status terminal). Nesse caso `kill()` retorna erro (PID já morto),
+/// mas como a run já está em estado terminal, devolvemos `Ok(false)` —
+/// a frontend mostra o status real via re-fetch. Só propagamos
+/// `script_cancel_failed` se a run continua `Running` após a falha.
 #[tauri::command]
 pub async fn cancel_script_run<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -930,19 +937,25 @@ pub async fn cancel_script_run<R: tauri::Runtime>(
     let child = state.script_children.lock().unwrap().remove(&id);
     if let Some(child) = child {
         if let Err(e) = child.kill() {
+            // Race: child terminou natural enquanto íamos cancelar. Se a
+            // run já não está mais Running, é finish_run via Terminated —
+            // não é falha do cancel.
+            if !state.script_history.is_running(id) {
+                return Ok(false);
+            }
             return Err(AppError::launcher(
                 "script_cancel_failed",
                 &[("reason", e.to_string()), ("runId", id.to_string())],
             ));
         }
     }
-    state
+    let marked = state
         .script_history
         .finish_run(id, None, ScriptStatus::Cancelled);
     if let Some(summary) = state.script_history.get_run(id).map(|r| r.summary()) {
         let _ = app.emit(SCRIPT_RUN_FINISHED_EVENT, summary);
     }
-    Ok(true)
+    Ok(marked)
 }
 
 /// Plano 18 — chamado pelo task de startup logo após disparar a OS

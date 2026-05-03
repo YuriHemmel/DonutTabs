@@ -47,19 +47,26 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ enabled }) => {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<ScriptRun | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // Listeners ficam montados pra vida do componente — `selectedId` lido via ref
+  // dentro dos handlers para evitar re-mount de listen() em cada seleção
+  // (janela de unlisten/listen perde events de OUTPUT mid-stream).
+  const selectedIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   const refreshList = React.useCallback(async () => {
     try {
       const list = await ipc.listScriptRuns();
       setRuns(list);
-      if (selectedId && !list.find((r) => r.id === selectedId)) {
+      if (selectedIdRef.current && !list.find((r) => r.id === selectedIdRef.current)) {
         setSelectedId(null);
         setDetail(null);
       }
     } catch (err) {
       setError(translateAppError(err, t));
     }
-  }, [selectedId, t]);
+  }, [t]);
 
   React.useEffect(() => {
     void refreshList();
@@ -81,14 +88,14 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ enabled }) => {
           prev.map((r) => (r.id === summary.id ? summary : r)),
         );
         // Se a run finalizada está aberta no detail, refresca o detail.
-        if (selectedId === summary.id) {
+        if (selectedIdRef.current === summary.id) {
           void ipc.getScriptRun(summary.id).then((run) => {
             if (run) setDetail(run);
           });
         }
       }),
       listen<ScriptOutputPayload>(SCRIPT_RUN_OUTPUT_EVENT, (e) => {
-        if (selectedId !== e.payload.runId) return;
+        if (selectedIdRef.current !== e.payload.runId) return;
         setDetail((prev) => {
           if (!prev || prev.id !== e.payload.runId) return prev;
           if (e.payload.stream === "stdout") {
@@ -101,7 +108,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ enabled }) => {
     return () => {
       unlistens.forEach((p) => void p.then((fn) => fn()));
     };
-  }, [refreshList, selectedId]);
+  }, [refreshList]);
 
   const selectRun = React.useCallback(
     async (id: string) => {
