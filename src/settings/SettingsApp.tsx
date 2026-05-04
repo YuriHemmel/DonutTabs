@@ -5,6 +5,7 @@ import { TabList } from "./TabList";
 import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
+import { SystemSection } from "./SystemSection";
 import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
@@ -61,7 +62,14 @@ function resolveIntent(
   config: Config | null,
 ): IntentTarget | null {
   if (intent === "new-tab") {
-    return { section: "tabs", selection: { mode: "new" } };
+    // O "+" do donut sempre refere ao perfil ativo. Forçar o
+    // selectedProfileId aqui evita que o Settings reaproveite o perfil
+    // selecionado de uma sessão anterior (issue #23).
+    return {
+      section: "tabs",
+      selection: { mode: "new" },
+      selectedProfileId: config?.activeProfileId,
+    };
   }
   if (intent === "new-profile") {
     return {
@@ -76,6 +84,7 @@ function resolveIntent(
     return {
       section: "tabs",
       selection: { mode: "new", parentPath },
+      selectedProfileId: config?.activeProfileId,
     };
   }
   if (intent && intent.startsWith("edit-tab:")) {
@@ -145,11 +154,16 @@ export const SettingsApp: React.FC = () => {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     const handle = (intent: string | null) => {
-      // Intents que dependem do config (lookup de aba/perfil) ou que abrem
-      // prompt na UI (new-profile) ficam em buffer até o config carregar.
+      // Intents que dependem do config (lookup de aba/perfil, resolução do
+      // perfil ativo) ou que abrem prompt na UI (new-profile) ficam em
+      // buffer até o config carregar. `new-tab` e `new-tab-in-group:`
+      // precisam do config pra resolver `activeProfileId` (issue #23).
       const needsConfig =
         !!intent &&
-        (intent.startsWith("edit-tab:") || intent === "new-profile");
+        (intent.startsWith("edit-tab:") ||
+          intent === "new-profile" ||
+          intent === "new-tab" ||
+          intent.startsWith("new-tab-in-group:"));
       if (needsConfig && !configRef.current) {
         pendingIntentRef.current = intent;
         return;
@@ -383,14 +397,30 @@ export const SettingsApp: React.FC = () => {
       {section === "appearance" && (
         <AppearanceSection
           theme={selectedProfile.theme}
-          language={config.appearance.language}
-          autostart={config.system.autostart}
           onThemeChange={(theme) => {
             void setTheme(theme, selectedProfile.id);
           }}
+          onSetActiveProfile={
+            selectedProfile.id !== config.activeProfileId
+              ? () => {
+                  void setActiveProfile(selectedProfile.id);
+                }
+              : undefined
+          }
+          themeOverrides={selectedProfile.themeOverrides}
+          onThemeOverridesChange={(overrides) => {
+            void setProfileThemeOverrides(selectedProfile.id, overrides);
+          }}
+        />
+      )}
+
+      {section === "system" && (
+        <SystemSection
+          language={config.appearance.language}
           onLanguageChange={(language) => {
             void setLanguage(language);
           }}
+          autostart={config.system.autostart}
           onAutostartChange={(enabled) => {
             void setAutostart(enabled);
           }}
@@ -430,20 +460,9 @@ export const SettingsApp: React.FC = () => {
               }
             })();
           }}
-          onSetActiveProfile={
-            selectedProfile.id !== config.activeProfileId
-              ? () => {
-                  void setActiveProfile(selectedProfile.id);
-                }
-              : undefined
-          }
           allowScripts={selectedProfile.allowScripts}
           onAllowScriptsChange={(allow) => {
             void setProfileAllowScripts(selectedProfile.id, allow);
-          }}
-          themeOverrides={selectedProfile.themeOverrides}
-          onThemeOverridesChange={(overrides) => {
-            void setProfileThemeOverrides(selectedProfile.id, overrides);
           }}
           autoCheckUpdates={config.system.autoCheckUpdates}
           onAutoCheckUpdatesChange={(enabled) => {

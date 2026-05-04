@@ -28,6 +28,10 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [scriptPrompt, setScriptPrompt] = useState<ScriptPrompt | null>(null);
   const [tokens, setTokens] = useState<ThemeTokens | undefined>(undefined);
+  // Bumpa a cada re-show pra remontar o <Donut> e zerar estado local
+  // (mode profile-switcher, sub-donut navigation, hover-hold). Reabrir o
+  // donut sempre começa em "tabs" no root.
+  const [showKey, setShowKey] = useState(0);
 
   useEffect(() => {
     if (config) return;
@@ -65,6 +69,9 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
         requestAnimationFrame(() =>
           requestAnimationFrame(() => html.classList.add("donut-visible")),
         );
+        // Bumpa a key pra remontar o <Donut> e descartar estado local
+        // residual da sessão anterior (issue #13).
+        setShowKey((k) => k + 1);
       } else {
         // Limpa a class antes do hide pra que o próximo show comece em
         // opacity 0 (sem isso, próxima abertura aparece sem fade).
@@ -219,6 +226,7 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
             config.profiles.find((p) => p.id === config.activeProfileId) ?? null;
           return (
             <Donut
+              key={showKey}
               tabs={activeProfile?.tabs ?? []}
               size={WINDOW_SIZE}
               itemsPerPage={config.pagination.itemsPerPage}

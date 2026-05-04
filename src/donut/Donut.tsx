@@ -130,7 +130,7 @@ export const Donut: React.FC<DonutProps> = ({
   size,
   itemsPerPage,
   wheelDirection,
-  hoverHoldMs = 800,
+  hoverHoldMs = 1200,
   searchShortcut,
   tokens,
   onSelect,

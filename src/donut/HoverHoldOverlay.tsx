@@ -49,7 +49,7 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
     });
     return (
       <g data-testid="hover-hold-fill" pointerEvents="none">
-        <path d={d} fill="rgba(80, 130, 220, 0.45)" />
+        <path d={d} fill="rgba(80, 130, 220, 0.25)" />
       </g>
     );
   }
@@ -96,7 +96,7 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
           role="button"
           tabIndex={0}
           aria-label={t("donut.hoverHold.edit")}
-          fill="rgba(80, 130, 220, 0.55)"
+          fill="rgba(80, 130, 220, 0.35)"
           style={{ cursor: "pointer", outline: "none" }}
           onClick={(e) => {
             e.stopPropagation();
@@ -110,7 +110,7 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
           role="button"
           tabIndex={0}
           aria-label={t("donut.hoverHold.delete")}
-          fill="rgba(200, 60, 60, 0.55)"
+          fill="rgba(200, 60, 60, 0.35)"
           style={{ cursor: "pointer", outline: "none" }}
           onClick={(e) => {
             e.stopPropagation();

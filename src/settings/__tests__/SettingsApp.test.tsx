@@ -170,6 +170,46 @@ describe("SettingsApp intent routing", () => {
     expect(screen.getByRole("heading", { name: /atalho global/i })).toBeTruthy();
   });
 
+  it("intent 'new-tab' targets the active profile even if another profile was selected before", async () => {
+    // Regressão da issue #23: usuário selecionou perfil B no Settings; depois
+    // clicou no "+" do donut com perfil A ativo. O intent 'new-tab' deve
+    // forçar selectedProfileId = activeProfileId = A.
+    const cfg = makeConfig({
+      activeProfileId: PROFILE_ID, // A é o ativo
+      profiles: [
+        makeProfile({ id: PROFILE_ID, name: "Perfil A" }),
+        makeProfile({ id: PROFILE_ID_2, name: "Perfil B" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId(`profile-chip-${PROFILE_ID}`)).toBeTruthy();
+    });
+    // Usuário clica no chip do perfil B.
+    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`profile-chip-${PROFILE_ID_2}`).getAttribute("aria-selected"),
+      ).toBe("true");
+    });
+    // Donut emite 'new-tab' (perfil ativo = A).
+    act(() => {
+      (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
+        "settings-intent",
+        "new-tab",
+      );
+    });
+    // Settings deve voltar a apontar pra A.
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`profile-chip-${PROFILE_ID}`).getAttribute("aria-selected"),
+      ).toBe("true");
+    });
+    expect(screen.getByRole("heading", { name: /nova aba/i })).toBeTruthy();
+  });
+
   it("intent 'new-tab' also switches back to the tabs section when on another section", async () => {
     (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
     const user = userEvent.setup();
