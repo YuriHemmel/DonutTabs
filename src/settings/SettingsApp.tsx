@@ -5,6 +5,7 @@ import { TabList } from "./TabList";
 import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
+import { SystemSection } from "./SystemSection";
 import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
@@ -396,14 +397,30 @@ export const SettingsApp: React.FC = () => {
       {section === "appearance" && (
         <AppearanceSection
           theme={selectedProfile.theme}
-          language={config.appearance.language}
-          autostart={config.system.autostart}
           onThemeChange={(theme) => {
             void setTheme(theme, selectedProfile.id);
           }}
+          onSetActiveProfile={
+            selectedProfile.id !== config.activeProfileId
+              ? () => {
+                  void setActiveProfile(selectedProfile.id);
+                }
+              : undefined
+          }
+          themeOverrides={selectedProfile.themeOverrides}
+          onThemeOverridesChange={(overrides) => {
+            void setProfileThemeOverrides(selectedProfile.id, overrides);
+          }}
+        />
+      )}
+
+      {section === "system" && (
+        <SystemSection
+          language={config.appearance.language}
           onLanguageChange={(language) => {
             void setLanguage(language);
           }}
+          autostart={config.system.autostart}
           onAutostartChange={(enabled) => {
             void setAutostart(enabled);
           }}
@@ -443,20 +460,9 @@ export const SettingsApp: React.FC = () => {
               }
             })();
           }}
-          onSetActiveProfile={
-            selectedProfile.id !== config.activeProfileId
-              ? () => {
-                  void setActiveProfile(selectedProfile.id);
-                }
-              : undefined
-          }
           allowScripts={selectedProfile.allowScripts}
           onAllowScriptsChange={(allow) => {
             void setProfileAllowScripts(selectedProfile.id, allow);
-          }}
-          themeOverrides={selectedProfile.themeOverrides}
-          onThemeOverridesChange={(overrides) => {
-            void setProfileThemeOverrides(selectedProfile.id, overrides);
           }}
           autoCheckUpdates={config.system.autoCheckUpdates}
           onAutoCheckUpdatesChange={(enabled) => {
