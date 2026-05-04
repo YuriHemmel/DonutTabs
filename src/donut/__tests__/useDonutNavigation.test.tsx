@@ -9,7 +9,7 @@ const leaf = (id: string): Tab => ({
   icon: null,
   order: 0,
   openMode: "reuseOrNewWindow",
-  items: [{ kind: "url", value: "https://x", openWith: null }],
+  items: [{ kind: "url", value: "https://x", openWith: null, monitor: null }],
   kind: "leaf",
   children: [],
 });

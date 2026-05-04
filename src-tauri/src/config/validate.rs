@@ -284,7 +284,7 @@ fn validate_item(profile: &Profile, tab: &Tab, item: &Item) -> AppResult<()> {
                 ));
             }
         }
-        Item::App { name } => {
+        Item::App { name, .. } => {
             if name.trim().is_empty() {
                 return Err(AppError::config(
                     "app_name_empty",
@@ -439,6 +439,7 @@ mod tests {
             Some("X"),
             None,
             vec![Item::Url {
+                monitor: None,
                 value: "not a url".into(),
                 open_with: None,
             }],
@@ -460,6 +461,7 @@ mod tests {
         let id = Uuid::new_v4();
         let url_item = || {
             vec![Item::Url {
+                monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
             }]
@@ -487,6 +489,7 @@ mod tests {
             Some("F"),
             None,
             vec![Item::File {
+                monitor: None,
                 path: "C:/x.txt".into(),
                 open_with: None,
             }],
@@ -501,6 +504,7 @@ mod tests {
             Some("D"),
             None,
             vec![Item::Folder {
+                monitor: None,
                 path: "/tmp".into(),
                 open_with: None,
             }],
@@ -515,6 +519,7 @@ mod tests {
             Some("F"),
             None,
             vec![Item::File {
+                monitor: None,
                 path: "".into(),
                 open_with: None,
             }],
@@ -535,6 +540,7 @@ mod tests {
             Some("D"),
             None,
             vec![Item::Folder {
+                monitor: None,
                 path: "   ".into(),
                 open_with: None,
             }],
@@ -556,14 +562,17 @@ mod tests {
             None,
             vec![
                 Item::Url {
+                    monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
                 },
                 Item::File {
+                    monitor: None,
                     path: "/tmp/x".into(),
                     open_with: None,
                 },
                 Item::Folder {
+                    monitor: None,
                     path: "/tmp".into(),
                     open_with: None,
                 },
@@ -580,6 +589,7 @@ mod tests {
         let shared_tab_id = Uuid::new_v4();
         let url_item = || {
             vec![Item::Url {
+                monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
             }]
@@ -613,6 +623,7 @@ mod tests {
             Some("Work"),
             None,
             vec![Item::Url {
+                monitor: None,
                 value: "https://work.test".into(),
                 open_with: Some("firefox".into()),
             }],
@@ -627,6 +638,7 @@ mod tests {
             Some("Default"),
             None,
             vec![Item::Url {
+                monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
             }],
@@ -641,6 +653,7 @@ mod tests {
             Some("X"),
             None,
             vec![Item::Url {
+                monitor: None,
                 value: "https://x.test".into(),
                 open_with: Some("".into()),
             }],
@@ -661,6 +674,7 @@ mod tests {
             Some("X"),
             None,
             vec![Item::File {
+                monitor: None,
                 path: "/tmp/x".into(),
                 open_with: Some("   ".into()),
             }],
@@ -682,14 +696,17 @@ mod tests {
             None,
             vec![
                 Item::Url {
+                    monitor: None,
                     value: "https://work.test".into(),
                     open_with: Some("edge".into()),
                 },
                 Item::Url {
+                    monitor: None,
                     value: "https://personal.test".into(),
                     open_with: None,
                 },
                 Item::File {
+                    monitor: None,
                     path: "/tmp/x".into(),
                     open_with: Some("code".into()),
                 },
@@ -767,6 +784,7 @@ mod tests {
             Some("Browser"),
             None,
             vec![Item::App {
+                monitor: None,
                 name: "firefox".into(),
             }],
         ));
@@ -779,7 +797,10 @@ mod tests {
         cfg.profiles[0].tabs.push(tab_with(
             Some("X"),
             None,
-            vec![Item::App { name: "".into() }],
+            vec![Item::App {
+                monitor: None,
+                name: "".into(),
+            }],
         ));
         assert_config_code(validate(&cfg).unwrap_err(), "app_name_empty");
     }
@@ -790,7 +811,10 @@ mod tests {
         cfg.profiles[0].tabs.push(tab_with(
             Some("X"),
             None,
-            vec![Item::App { name: "   ".into() }],
+            vec![Item::App {
+                monitor: None,
+                name: "   ".into(),
+            }],
         ));
         assert_config_code(validate(&cfg).unwrap_err(), "app_name_empty");
     }
@@ -802,6 +826,7 @@ mod tests {
             Some("Build"),
             None,
             vec![Item::Script {
+                monitor: None,
                 command: "cargo build".into(),
                 trusted: false,
             }],
@@ -818,6 +843,7 @@ mod tests {
             Some("X"),
             None,
             vec![Item::Script {
+                monitor: None,
                 command: "".into(),
                 trusted: false,
             }],
@@ -1104,6 +1130,7 @@ mod tests {
             Some(name),
             None,
             vec![Item::Url {
+                monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
             }],
@@ -1145,6 +1172,7 @@ mod tests {
         let mut cfg = base_config();
         let mut bad = group_with(Some("G"), None, vec![url_leaf("c1")]);
         bad.items = vec![Item::Url {
+            monitor: None,
             value: "https://x.test".into(),
             open_with: None,
         }];
@@ -1213,6 +1241,7 @@ mod tests {
             Some("bad"),
             None,
             vec![Item::Url {
+                monitor: None,
                 value: "not a url".into(),
                 open_with: None,
             }],
@@ -1239,21 +1268,26 @@ mod tests {
             None,
             vec![
                 Item::Url {
+                    monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
                 },
                 Item::File {
+                    monitor: None,
                     path: "/tmp/x".into(),
                     open_with: None,
                 },
                 Item::Folder {
+                    monitor: None,
                     path: "/tmp".into(),
                     open_with: None,
                 },
                 Item::App {
+                    monitor: None,
                     name: "code".into(),
                 },
                 Item::Script {
+                    monitor: None,
                     command: "git pull".into(),
                     trusted: false,
                 },

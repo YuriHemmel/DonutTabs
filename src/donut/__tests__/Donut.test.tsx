@@ -10,7 +10,7 @@ function makeTab(id: string, name: string, order = 0): Tab {
     icon: null,
     order,
     openMode: "reuseOrNewWindow",
-    items: [{ kind: "url", value: "https://example.com", openWith: null }],
+    items: [{ kind: "url", value: "https://example.com", openWith: null, monitor: null }],
     kind: "leaf",
     children: [],
   };

@@ -247,7 +247,10 @@ pub(crate) fn check_script_gating(
     skip_trust_at: Option<usize>,
 ) -> Option<AppError> {
     for (idx, item) in tab.items.iter().enumerate() {
-        if let Item::Script { command, trusted } = item {
+        if let Item::Script {
+            command, trusted, ..
+        } = item
+        {
             if !profile.allow_scripts {
                 return Some(AppError::launcher(
                     "scripts_disabled",
@@ -774,6 +777,63 @@ pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
         .map_err(|e| AppError::io("apps_list_failed", &[("reason", e.to_string())]))?
 }
 
+/// Plano 21 — info do monitor pra picker no Settings. Frontend usa pra
+/// renderizar `<select>` por item; quando `len() <= 1` esconde a coluna.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorInfo {
+    /// Nome amigável reportado pelo SO (ou `"Tela {N}"` quando vazio).
+    pub name: String,
+    /// Índice 0-based — espelha a ordem de `available_monitors()` e é o
+    /// valor que vai pro `Item.monitor`.
+    pub index: u32,
+    pub width: u32,
+    pub height: u32,
+    pub x: i32,
+    pub y: i32,
+    /// `true` quando este monitor é o primário do SO. Usado pra marcar a
+    /// option-default no picker (ex.: "Tela 1 (primária)").
+    pub primary: bool,
+}
+
+#[tauri::command]
+pub fn list_monitors<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<Vec<MonitorInfo>, AppError> {
+    let monitors = app
+        .available_monitors()
+        .map_err(|e| AppError::launcher("monitors_query_failed", &[("reason", e.to_string())]))?;
+    let primary = app.primary_monitor().ok().flatten();
+    Ok(monitors
+        .into_iter()
+        .enumerate()
+        .map(|(idx, m)| {
+            let pos = m.position();
+            let size = m.size();
+            let raw_name = m.name().cloned().unwrap_or_default();
+            let name = if raw_name.trim().is_empty() {
+                format!("Tela {}", idx + 1)
+            } else {
+                raw_name
+            };
+            let is_primary = primary
+                .as_ref()
+                .map(|p| p.position() == m.position() && p.size() == m.size())
+                .unwrap_or(false);
+            MonitorInfo {
+                name,
+                index: idx as u32,
+                width: size.width,
+                height: size.height,
+                x: pos.x,
+                y: pos.y,
+                primary: is_primary,
+            }
+        })
+        .collect())
+}
+
 /// Plano 18 — verifica disponibilidade de atualização. `force = true`
 /// (Settings → "Verificar agora") ignora o gate `should_notify` e devolve
 /// qualquer update reportado pelo plugin; `force = false` (startup task)
@@ -993,6 +1053,7 @@ pub(crate) fn apply_set_script_trusted(
         Item::Script {
             trusted: t,
             command,
+            ..
         } => {
             if command != expected_command {
                 return Err(AppError::launcher(
@@ -1380,6 +1441,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![Item::Url {
+                monitor: None,
                 value: "https://example.com".into(),
                 open_with: None,
             }],
@@ -2073,6 +2135,7 @@ mod tests {
     #[test]
     fn check_script_gating_returns_none_when_no_scripts() {
         let tab = tab_with(vec![Item::Url {
+            monitor: None,
             value: "https://x".into(),
             open_with: None,
         }]);
@@ -2083,6 +2146,7 @@ mod tests {
     #[test]
     fn check_script_gating_blocks_on_kill_switch_even_for_trusted() {
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "git pull".into(),
             trusted: true,
         }]);
@@ -2096,6 +2160,7 @@ mod tests {
     #[test]
     fn check_script_gating_blocks_untrusted_when_allow_scripts_true() {
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: false,
         }]);
@@ -2113,6 +2178,7 @@ mod tests {
     #[test]
     fn check_script_gating_passes_when_trusted_and_allowed() {
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: true,
         }]);
@@ -2126,10 +2192,12 @@ mod tests {
         // gating ainda bloqueia, modal reabre na próxima iteração.
         let tab = tab_with(vec![
             Item::Script {
+                monitor: None,
                 command: "git pull".into(),
                 trusted: false,
             },
             Item::Script {
+                monitor: None,
                 command: "rm -rf /tmp/x".into(),
                 trusted: false,
             },
@@ -2152,10 +2220,12 @@ mod tests {
     fn check_script_gating_skip_index_passes_when_only_one_untrusted() {
         let tab = tab_with(vec![
             Item::Script {
+                monitor: None,
                 command: "git pull".into(),
                 trusted: false,
             },
             Item::Script {
+                monitor: None,
                 command: "cargo test".into(),
                 trusted: true,
             },
@@ -2169,6 +2239,7 @@ mod tests {
         // force_item_index não é override do allow_scripts. allow_scripts==false
         // bloqueia mesmo que o user tenha confirmado um item específico.
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: true,
         }]);
@@ -2185,10 +2256,12 @@ mod tests {
         let pid = cfg.profiles[0].id;
         let tab = tab_with(vec![
             Item::Url {
+                monitor: None,
                 value: "https://x".into(),
                 open_with: None,
             },
             Item::Script {
+                monitor: None,
                 command: "ls".into(),
                 trusted: false,
             },
@@ -2208,6 +2281,7 @@ mod tests {
         let mut cfg = Config::default();
         let pid = cfg.profiles[0].id;
         let tab = tab_with(vec![Item::Url {
+            monitor: None,
             value: "https://x".into(),
             open_with: None,
         }]);
@@ -2241,6 +2315,7 @@ mod tests {
         let mut cfg = Config::default();
         let pid = cfg.profiles[0].id;
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "rm -rf /".into(),
             trusted: false,
         }]);

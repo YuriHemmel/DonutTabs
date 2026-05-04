@@ -267,24 +267,40 @@ pub enum Item {
         value: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         open_with: Option<String>,
+        /// Plano 21 — índice 0-based do monitor alvo. `None` = OS default
+        /// (atual monitor do cursor / janela existente). Quando `Some`, o
+        /// launcher dispara cursor warp pro centro do monitor antes de abrir,
+        /// que faz a maioria dos browsers/apps abrir nessa tela. Apps que
+        /// reusam janela existente podem ignorar. Configs anteriores
+        /// deserializam como `None` graças ao `#[serde(default)]`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        monitor: Option<u32>,
     },
     #[serde(rename_all = "camelCase")]
     File {
         path: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         open_with: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        monitor: Option<u32>,
     },
     #[serde(rename_all = "camelCase")]
     Folder {
         path: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         open_with: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        monitor: Option<u32>,
     },
     /// Plano 14 — friendly app name (`"firefox"`, `"Visual Studio Code"`).
     /// Sem `open_with`: apps são spawned por nome via `tauri-plugin-shell`,
     /// não roteados via OS handler.
     #[serde(rename_all = "camelCase")]
-    App { name: String },
+    App {
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        monitor: Option<u32>,
+    },
     /// Plano 14 — comando shell arbitrário. **Alto risco** — gating duplo:
     /// `trusted: false` exige confirmação no `<ScriptConfirmModal>` na
     /// primeira execução; `Profile.allow_scripts: false` bloqueia toda
@@ -295,7 +311,23 @@ pub enum Item {
         command: String,
         #[serde(default)]
         trusted: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        monitor: Option<u32>,
     },
+}
+
+impl Item {
+    /// Plano 21 — atalho pra ler `monitor` qualquer que seja a variante.
+    /// Usado pelo launcher (cursor warp) e settings (round-trip).
+    pub fn monitor(&self) -> Option<u32> {
+        match self {
+            Item::Url { monitor, .. }
+            | Item::File { monitor, .. }
+            | Item::Folder { monitor, .. }
+            | Item::App { monitor, .. }
+            | Item::Script { monitor, .. } => *monitor,
+        }
+    }
 }
 
 impl Default for Profile {
@@ -384,6 +416,7 @@ mod tests {
                 order: 0,
                 open_mode: OpenMode::ReuseOrNewWindow,
                 items: vec![Item::Url {
+                    monitor: None,
                     value: "https://example.com".into(),
                     open_with: None,
                 }],
@@ -434,6 +467,7 @@ mod tests {
     #[test]
     fn item_url_wire_format() {
         let it = Item::Url {
+            monitor: None,
             value: "https://x.test".into(),
             open_with: None,
         };
@@ -446,6 +480,7 @@ mod tests {
     #[test]
     fn item_file_wire_format() {
         let it = Item::File {
+            monitor: None,
             path: "C:/Users/me/doc.pdf".into(),
             open_with: None,
         };
@@ -458,6 +493,7 @@ mod tests {
     #[test]
     fn item_folder_wire_format() {
         let it = Item::Folder {
+            monitor: None,
             path: "/home/me/projects".into(),
             open_with: None,
         };
@@ -477,14 +513,17 @@ mod tests {
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![
                 Item::Url {
+                    monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
                 },
                 Item::File {
+                    monitor: None,
                     path: "/tmp/x.txt".into(),
                     open_with: None,
                 },
                 Item::Folder {
+                    monitor: None,
                     path: "/tmp/dir".into(),
                     open_with: None,
                 },
@@ -500,6 +539,7 @@ mod tests {
     #[test]
     fn item_with_open_with_round_trips_and_serializes_field() {
         let it = Item::Url {
+            monitor: None,
             value: "https://x.test".into(),
             open_with: Some("firefox".into()),
         };
@@ -512,6 +552,7 @@ mod tests {
     #[test]
     fn item_without_open_with_omits_field() {
         let it = Item::File {
+            monitor: None,
             path: "/tmp/x".into(),
             open_with: None,
         };
@@ -529,6 +570,7 @@ mod tests {
         assert_eq!(
             url,
             Item::Url {
+                monitor: None,
                 value: "https://x".into(),
                 open_with: None
             }
@@ -537,6 +579,7 @@ mod tests {
         assert_eq!(
             file,
             Item::File {
+                monitor: None,
                 path: "/tmp/x".into(),
                 open_with: None
             }
@@ -546,6 +589,7 @@ mod tests {
     #[test]
     fn item_app_wire_format() {
         let it = Item::App {
+            monitor: None,
             name: "firefox".into(),
         };
         let json = serde_json::to_string(&it).unwrap();
@@ -557,6 +601,7 @@ mod tests {
     #[test]
     fn item_script_with_trusted_round_trips() {
         let it = Item::Script {
+            monitor: None,
             command: "git pull".into(),
             trusted: true,
         };
@@ -574,6 +619,7 @@ mod tests {
         assert_eq!(
             it,
             Item::Script {
+                monitor: None,
                 command: "ls".into(),
                 trusted: false
             }
@@ -703,6 +749,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![Item::Url {
+                monitor: None,
                 value: "https://x".into(),
                 open_with: None,
             }],
@@ -747,6 +794,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![Item::Url {
+                monitor: None,
                 value: "https://child".into(),
                 open_with: None,
             }],
@@ -803,6 +851,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![Item::Url {
+                monitor: None,
                 value: "https://l".into(),
                 open_with: None,
             }],
@@ -913,5 +962,107 @@ mod tests {
     fn default_config_enables_script_history() {
         let cfg = Config::default();
         assert!(cfg.system.script_history_enabled);
+    }
+
+    // ---------- Plano 21: Item.monitor ----------
+
+    #[test]
+    fn item_monitor_helper_extracts_field_from_each_variant() {
+        let url = Item::Url {
+            monitor: Some(1),
+            value: "https://x".into(),
+            open_with: None,
+        };
+        let file = Item::File {
+            monitor: Some(2),
+            path: "/x".into(),
+            open_with: None,
+        };
+        let folder = Item::Folder {
+            monitor: None,
+            path: "/x".into(),
+            open_with: None,
+        };
+        let app = Item::App {
+            monitor: Some(0),
+            name: "code".into(),
+        };
+        let script = Item::Script {
+            monitor: Some(3),
+            command: "ls".into(),
+            trusted: true,
+        };
+        assert_eq!(url.monitor(), Some(1));
+        assert_eq!(file.monitor(), Some(2));
+        assert_eq!(folder.monitor(), None);
+        assert_eq!(app.monitor(), Some(0));
+        assert_eq!(script.monitor(), Some(3));
+    }
+
+    #[test]
+    fn item_url_with_monitor_round_trips() {
+        let it = Item::Url {
+            monitor: Some(1),
+            value: "https://x".into(),
+            open_with: None,
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(json.contains("\"monitor\":1"));
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_without_monitor_omits_field_in_json() {
+        let it = Item::Url {
+            monitor: None,
+            value: "https://x".into(),
+            open_with: None,
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(
+            !json.contains("monitor"),
+            "field should be skipped when None: {json}"
+        );
+    }
+
+    #[test]
+    fn item_legacy_payload_without_monitor_deserializes_as_none() {
+        // Configs Plano-20 e anteriores não têm `monitor` no JSON. Devem
+        // deserializar como `None` graças ao `#[serde(default)]`.
+        let url: Item = serde_json::from_str(r#"{"kind":"url","value":"https://x"}"#).unwrap();
+        assert_eq!(url.monitor(), None);
+        let file: Item = serde_json::from_str(r#"{"kind":"file","path":"/x"}"#).unwrap();
+        assert_eq!(file.monitor(), None);
+        let app: Item = serde_json::from_str(r#"{"kind":"app","name":"code"}"#).unwrap();
+        assert_eq!(app.monitor(), None);
+        let script: Item =
+            serde_json::from_str(r#"{"kind":"script","command":"ls","trusted":true}"#).unwrap();
+        assert_eq!(script.monitor(), None);
+    }
+
+    #[test]
+    fn item_app_with_monitor_round_trips() {
+        let it = Item::App {
+            monitor: Some(0),
+            name: "firefox".into(),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(json.contains("\"monitor\":0"));
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_script_with_monitor_round_trips() {
+        let it = Item::Script {
+            monitor: Some(2),
+            command: "ls".into(),
+            trusted: true,
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(json.contains("\"monitor\":2"));
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
     }
 }

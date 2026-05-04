@@ -33,7 +33,7 @@ const existing: Tab = {
   icon: "💼",
   order: 0,
   openMode: "reuseOrNewWindow",
-  items: [{ kind: "url", value: "https://example.com", openWith: null }],
+  items: [{ kind: "url", value: "https://example.com", openWith: null, monitor: null }],
   kind: "leaf",
   children: [],
 };
@@ -188,9 +188,9 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://a.test", openWith: null },
-      { kind: "file", path: "C:/x.txt", openWith: null },
-      { kind: "folder", path: "/tmp", openWith: null },
+      { kind: "url", value: "https://a.test", openWith: null, monitor: null },
+      { kind: "file", path: "C:/x.txt", openWith: null, monitor: null },
+      { kind: "folder", path: "/tmp", openWith: null, monitor: null },
     ]);
   });
 
@@ -209,7 +209,7 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "file", path: "/home/me/doc.pdf", openWith: null },
+      { kind: "file", path: "/home/me/doc.pdf", openWith: null, monitor: null },
     ]);
   });
 
@@ -226,7 +226,7 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://kept.test", openWith: null },
+      { kind: "url", value: "https://kept.test", openWith: null, monitor: null },
     ]);
   });
 
@@ -243,7 +243,7 @@ describe("TabEditor", () => {
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://work.test", openWith: "firefox" },
+      { kind: "url", value: "https://work.test", openWith: "firefox", monitor: null },
     ]);
   });
 
@@ -268,7 +268,7 @@ describe("TabEditor", () => {
     const tabWithOpenWith: Tab = {
       ...existing,
       items: [
-        { kind: "url", value: "https://a.test", openWith: "edge" },
+        { kind: "url", value: "https://a.test", openWith: "edge", monitor: null },
       ],
     };
     await renderEditor({ mode: "edit", initial: tabWithOpenWith });
@@ -289,7 +289,7 @@ describe("TabEditor", () => {
     });
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
-    expect(payload.items).toEqual([{ kind: "app", name: "firefox" }]);
+    expect(payload.items).toEqual([{ kind: "app", name: "firefox", monitor: null }]);
   });
 
   it("saves a script item with trusted=false by default", async () => {
@@ -304,7 +304,7 @@ describe("TabEditor", () => {
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "script", command: "cargo build", trusted: false },
+      { kind: "script", command: "cargo build", trusted: false, monitor: null },
     ]);
   });
 
@@ -348,7 +348,7 @@ describe("TabEditor", () => {
   it("preserves trusted=true when editing a script item", async () => {
     const tabWithTrustedScript: Tab = {
       ...existing,
-      items: [{ kind: "script", command: "git pull", trusted: true }],
+      items: [{ kind: "script", command: "git pull", trusted: true, monitor: null }],
     };
     const user = userEvent.setup();
     const { props } = await renderEditor({
@@ -361,7 +361,7 @@ describe("TabEditor", () => {
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "script", command: "git pull", trusted: true },
+      { kind: "script", command: "git pull", trusted: true, monitor: null },
     ]);
   });
 });

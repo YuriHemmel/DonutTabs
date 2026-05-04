@@ -1,6 +1,7 @@
 mod apps_picker;
 mod commands;
 mod config;
+mod cursor_warp;
 mod donut_window;
 mod errors;
 mod favicon;
@@ -227,6 +228,7 @@ pub fn run() {
             commands::set_profile_allow_scripts,
             commands::set_profile_theme_overrides,
             commands::list_installed_apps,
+            commands::list_monitors,
             commands::check_for_updates,
             commands::install_update,
             commands::set_auto_check_updates,

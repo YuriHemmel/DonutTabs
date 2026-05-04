@@ -55,13 +55,28 @@ function randomUuid(): string {
 
 function itemToDraft(it: Item): ItemDraft {
   if (it.kind === "url") {
-    return { kind: "url", value: it.value, openWith: it.openWith ?? "" };
+    return {
+      kind: "url",
+      value: it.value,
+      openWith: it.openWith ?? "",
+      monitor: it.monitor ?? null,
+    };
   }
   if (it.kind === "file" || it.kind === "folder") {
-    return { kind: it.kind, value: it.path, openWith: it.openWith ?? "" };
+    return {
+      kind: it.kind,
+      value: it.path,
+      openWith: it.openWith ?? "",
+      monitor: it.monitor ?? null,
+    };
   }
   if (it.kind === "app") {
-    return { kind: "app", value: it.name, openWith: "" };
+    return {
+      kind: "app",
+      value: it.name,
+      openWith: "",
+      monitor: it.monitor ?? null,
+    };
   }
   // kind === "script"
   return {
@@ -69,16 +84,21 @@ function itemToDraft(it: Item): ItemDraft {
     value: it.command,
     openWith: "",
     trusted: it.trusted,
+    monitor: it.monitor ?? null,
   };
 }
 
 function draftToItem(d: ItemDraft): Item {
+  // Plano 21 — monitor é `null` quando não selecionado; round-trip mantém
+  // `null` (backend `Option<u32>` aceita null + omite na serialização).
+  const monitor = d.monitor ?? null;
   if (d.kind === "url") {
     const ow = d.openWith.trim();
     return {
       kind: "url",
       value: d.value,
       openWith: ow.length > 0 ? ow : null,
+      monitor,
     };
   }
   if (d.kind === "file" || d.kind === "folder") {
@@ -87,16 +107,18 @@ function draftToItem(d: ItemDraft): Item {
       kind: d.kind,
       path: d.value,
       openWith: ow.length > 0 ? ow : null,
+      monitor,
     };
   }
   if (d.kind === "app") {
-    return { kind: "app", name: d.value };
+    return { kind: "app", name: d.value, monitor };
   }
   // kind === "script" — novos sempre nascem trusted=false; edits preservam.
   return {
     kind: "script",
     command: d.value,
     trusted: d.trusted ?? false,
+    monitor,
   };
 }
 
@@ -107,7 +129,7 @@ function fromTab(tab: Tab | null, initialKind: TabKind = "leaf"): FormState {
       name: "",
       icon: "",
       openMode: "reuseOrNewWindow",
-      items: [{ kind: "url", value: "", openWith: "" }],
+      items: [{ kind: "url", value: "", openWith: "", monitor: null }],
       kind: initialKind,
     };
   }
@@ -174,6 +196,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           value: it.value.trim(),
           openWith: it.openWith.trim(),
           trusted: it.trusted,
+          monitor: it.monitor ?? null,
         }))
         .filter((it) => it.value.length > 0);
       if (trimmed.length === 0) {

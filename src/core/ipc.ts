@@ -12,6 +12,7 @@ import type { UpdateSummary } from "./types/UpdateSummary";
 import type { ScriptRun } from "./types/ScriptRun";
 import type { ScriptRunSummary } from "./types/ScriptRunSummary";
 import type { ScriptStream } from "./types/ScriptStream";
+import type { MonitorInfo } from "./types/MonitorInfo";
 
 export type SettingsIntent =
   | "new-tab"
@@ -144,6 +145,9 @@ export const ipc = {
    *  ao fire-and-forget Plano-14. */
   setScriptHistoryEnabled: (enabled: boolean) =>
     invoke<Config>("set_script_history_enabled", { enabled }),
+  /** Plano 21 — lista os monitores conectados. Read-only; usado pelo
+   *  picker per-item no `<ItemListEditor>` (escondido quando há só 1). */
+  listMonitors: () => invoke<MonitorInfo[]>("list_monitors"),
 };
 
 export interface DialogFilter {

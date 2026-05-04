@@ -47,6 +47,7 @@ vi.mock("../../core/ipc", () => ({
     setAutostart: vi.fn(),
     reorderTabs: vi.fn(),
     reorderProfiles: vi.fn(),
+    listMonitors: vi.fn().mockResolvedValue([]),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",
