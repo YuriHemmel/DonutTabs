@@ -70,6 +70,11 @@
   },
   "donut": {
     "toastDismiss": "Close",
+    "onboarding": {
+      "title": "Welcome to DonutTabs!",
+      "body": "Press {{shortcut}} any time to open this menu. Hit ESC to close.",
+      "dismiss": "Got it"
+    },
     "hoverHold": {
       "edit": "Edit",
       "delete": "Delete",
@@ -140,6 +145,8 @@
       "allowScriptsHint": "Shell scripts always require confirmation on first execution. Disable to block all scripts in this profile.",
       "scriptHistoryLabel": "Capture script output",
       "scriptHistoryHint": "When enabled, stdout and stderr from each script execution are visible in the History tab (in-memory; cleared on app close).",
+      "resetOnboardingButton": "Show welcome again",
+      "resetOnboardingHint": "The welcome overlay reappears the next time you open DonutTabs manually.",
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
       "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings.",
       "update": {

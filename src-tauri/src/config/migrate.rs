@@ -79,6 +79,7 @@ mod tests {
                 auto_check_updates: true,
                 last_notified_update_version: None,
                 script_history_enabled: true,
+                first_launch_completed: false,
             },
             tabs: vec![TabV1 {
                 id: Uuid::new_v4(),

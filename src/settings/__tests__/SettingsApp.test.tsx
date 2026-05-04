@@ -48,6 +48,8 @@ vi.mock("../../core/ipc", () => ({
     reorderTabs: vi.fn(),
     reorderProfiles: vi.fn(),
     listMonitors: vi.fn().mockResolvedValue([]),
+    consumeOnboardingPending: vi.fn().mockResolvedValue(false),
+    setFirstLaunchCompleted: vi.fn(),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",

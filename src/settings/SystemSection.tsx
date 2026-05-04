@@ -21,6 +21,9 @@ export interface SystemSectionProps {
   /** Plano 19: toggle global da captura de output de scripts. */
   scriptHistoryEnabled?: boolean;
   onScriptHistoryEnabledChange?: (enabled: boolean) => void;
+  /** Plano 22: re-armar tutorial de boas-vindas na próxima manual launch.
+   *  Quando ausente, o botão não renderiza. */
+  onResetOnboarding?: () => void;
 }
 
 export const SystemSection: React.FC<SystemSectionProps> = ({
@@ -36,6 +39,7 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
   onAutoCheckUpdatesChange,
   scriptHistoryEnabled,
   onScriptHistoryEnabledChange,
+  onResetOnboarding,
 }) => {
   const { t } = useTranslation();
 
@@ -132,6 +136,31 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
           </label>
           <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
             {t("settings.system.scriptHistoryHint")}
+          </small>
+        </div>
+      )}
+
+      {onResetOnboarding && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <button
+            type="button"
+            data-testid="reset-onboarding"
+            onClick={onResetOnboarding}
+            style={{
+              alignSelf: "flex-start",
+              background: "transparent",
+              color: "var(--fg)",
+              border: "1px solid var(--ghost-border)",
+              borderRadius: 4,
+              padding: "6px 12px",
+              cursor: "pointer",
+              font: "inherit",
+            }}
+          >
+            {t("settings.system.resetOnboardingButton")}
+          </button>
+          <small style={{ color: "var(--muted)" }}>
+            {t("settings.system.resetOnboardingHint")}
           </small>
         </div>
       )}

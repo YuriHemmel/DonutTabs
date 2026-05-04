@@ -148,6 +148,16 @@ export const ipc = {
   /** Plano 21 — lista os monitores conectados. Read-only; usado pelo
    *  picker per-item no `<ItemListEditor>` (escondido quando há só 1). */
   listMonitors: () => invoke<MonitorInfo[]>("list_monitors"),
+  /** Plano 22 — read-and-clear da flag de onboarding. Donut chama na
+   *  1ª montagem; backend marca `false` pra não mostrar overlay de novo
+   *  na mesma sessão. Persistir o flag de fato é responsabilidade do
+   *  `setFirstLaunchCompleted`. */
+  consumeOnboardingPending: () => invoke<boolean>("consume_onboarding_pending"),
+  /** Plano 22 — toggle persistido. Donut chama com `true` após dispensar
+   *  o overlay; Settings → Sistema "Resetar tutorial" chama com `false`
+   *  pra re-armar o fluxo na próxima manual launch. */
+  setFirstLaunchCompleted: (completed: boolean) =>
+    invoke<Config>("set_first_launch_completed", { completed }),
 };
 
 export interface DialogFilter {

@@ -54,6 +54,13 @@ pub struct AppState {
     /// remove + chama `kill()`. Quando o child termina natural, o task
     /// consumer também remove a entrada.
     pub script_children: Arc<Mutex<HashMap<Uuid, CommandChild>>>,
+    /// Plano 22 — flag transiente da sessão. `true` quando a launch foi
+    /// manual (sem `--autostart`) E `system.first_launch_completed ==
+    /// false`. Donut consome via `consume_onboarding_pending` na 1ª
+    /// montagem para mostrar o overlay de hint; flag é resetada após
+    /// consumida pra não repetir se o donut for re-aberto na mesma
+    /// sessão.
+    pub pending_onboarding: RwLock<bool>,
 }
 
 #[tauri::command]
@@ -944,6 +951,39 @@ pub(crate) fn apply_set_script_history_enabled(cfg: &mut Config, enabled: bool) 
     cfg.system.script_history_enabled = enabled;
 }
 
+/// Plano 22 — read-and-clear da flag `pending_onboarding`. Donut chama
+/// na 1ª montagem; flag é resetada pra `false` aqui pra evitar mostrar
+/// o overlay de novo se o donut for re-aberto na mesma sessão. A
+/// completion oficial (persistir `first_launch_completed = true`) só
+/// acontece via `set_first_launch_completed` quando o user dispensa
+/// explicitamente o overlay.
+#[tauri::command]
+pub fn consume_onboarding_pending(state: tauri::State<'_, AppState>) -> bool {
+    let mut flag = state.pending_onboarding.write().unwrap();
+    let was = *flag;
+    *flag = false;
+    was
+}
+
+/// Plano 22 — toggle persistido do flag de onboarding. `true` (default
+/// uso pelo donut após dispensar overlay) marca completed; `false`
+/// (reset via Settings) re-arma o fluxo pra próxima manual launch.
+#[tauri::command]
+pub fn set_first_launch_completed<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    completed: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_first_launch_completed(&mut cfg, completed);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 /// Plano 19 — lista todas as runs do buffer (mais nova primeiro). Usado
 /// pelo `<HistorySection>` na list view.
 #[tauri::command]
@@ -1161,6 +1201,10 @@ pub(crate) fn do_import(source: &Path) -> AppResult<Config> {
 
 pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
     let cfg = load_from_path(&config_path)?;
+    // Plano 22 — onboarding gate: launch manual + nunca completou onboarding.
+    // `is_autostart_invocation` lê os args injetados pelo plugin-autostart.
+    let is_autostart = is_autostart_invocation(std::env::args());
+    let pending_onboarding = !is_autostart && !cfg.system.first_launch_completed;
     Ok(AppState {
         config: RwLock::new(cfg),
         config_path,
@@ -1169,7 +1213,21 @@ pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
         pending_update: RwLock::new(None),
         script_history: Arc::new(ScriptHistory::new()),
         script_children: Arc::new(Mutex::new(HashMap::new())),
+        pending_onboarding: RwLock::new(pending_onboarding),
     })
+}
+
+/// Plano 22 — pure helper. `tauri-plugin-autostart` injeta `--autostart`
+/// no comando registrado no SO; presença do token = launch automática.
+/// Iterar `std::env::args()` cobre todos os SOs uniformemente.
+pub fn is_autostart_invocation(args: impl IntoIterator<Item = String>) -> bool {
+    args.into_iter().any(|a| a == "--autostart")
+}
+
+/// Plano 22 — helper puro pra mutar `Config.system.first_launch_completed`.
+/// Cobertura via teste; comando wrapper persiste + emite evento.
+pub(crate) fn apply_set_first_launch_completed(cfg: &mut Config, completed: bool) {
+    cfg.system.first_launch_completed = completed;
 }
 
 // ---------- helpers ----------
@@ -2417,5 +2475,58 @@ mod tests {
         assert!(!cfg.system.script_history_enabled);
         apply_set_script_history_enabled(&mut cfg, true);
         assert!(cfg.system.script_history_enabled);
+    }
+
+    // ---------- Plano 22: onboarding ----------
+
+    #[test]
+    fn is_autostart_invocation_detects_flag_anywhere() {
+        // Token pode aparecer em qualquer posição (depende de como o SO
+        // monta o comando). Aceitar ocorrência em qualquer índice.
+        assert!(is_autostart_invocation(
+            ["app.exe", "--autostart"].iter().map(|s| s.to_string()),
+        ));
+        assert!(is_autostart_invocation(
+            ["app.exe", "--autostart", "--other"]
+                .iter()
+                .map(|s| s.to_string()),
+        ));
+        assert!(is_autostart_invocation(
+            ["app.exe", "--other", "--autostart"]
+                .iter()
+                .map(|s| s.to_string()),
+        ));
+    }
+
+    #[test]
+    fn is_autostart_invocation_false_without_flag() {
+        assert!(!is_autostart_invocation(
+            ["app.exe"].iter().map(|s| s.to_string()),
+        ));
+        assert!(!is_autostart_invocation(
+            ["app.exe", "--other"].iter().map(|s| s.to_string()),
+        ));
+        // Substring dentro de outro arg não deve casar — só match exato.
+        assert!(!is_autostart_invocation(
+            ["app.exe", "--autostart-fake"]
+                .iter()
+                .map(|s| s.to_string()),
+        ));
+    }
+
+    #[test]
+    fn is_autostart_invocation_empty_args_is_false() {
+        let empty: Vec<String> = vec![];
+        assert!(!is_autostart_invocation(empty));
+    }
+
+    #[test]
+    fn apply_set_first_launch_completed_toggles_flag() {
+        let mut cfg = Config::default();
+        assert!(!cfg.system.first_launch_completed);
+        apply_set_first_launch_completed(&mut cfg, true);
+        assert!(cfg.system.first_launch_completed);
+        apply_set_first_launch_completed(&mut cfg, false);
+        assert!(!cfg.system.first_launch_completed);
     }
 }

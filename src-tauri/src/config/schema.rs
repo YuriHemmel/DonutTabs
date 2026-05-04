@@ -197,6 +197,14 @@ pub struct SystemConfig {
     /// `#[serde(default = "default_script_history_enabled")]`.
     #[serde(default = "default_script_history_enabled")]
     pub script_history_enabled: bool,
+    /// Plano 22 — flag one-shot do onboarding visual. Quando `false`, a
+    /// próxima launch manual (sem flag `--autostart` injetada pelo plugin
+    /// autostart) abre o donut com overlay de hint mostrando "ESC pra
+    /// fechar · {shortcut} pra abrir depois", marca `true` e persiste.
+    /// Configs anteriores deserializam como `false` (entram no fluxo
+    /// pela primeira vez). User pode resetar via toggle em Settings.
+    #[serde(default)]
+    pub first_launch_completed: bool,
 }
 
 fn default_auto_check_updates() -> bool {
@@ -371,6 +379,7 @@ impl Default for Config {
                 auto_check_updates: true,
                 last_notified_update_version: None,
                 script_history_enabled: true,
+                first_launch_completed: false,
             },
         }
     }
@@ -907,6 +916,7 @@ mod tests {
             auto_check_updates: false,
             last_notified_update_version: Some("0.2.0".into()),
             script_history_enabled: true,
+            first_launch_completed: false,
         };
         let json = serde_json::to_string(&s).unwrap();
         assert!(json.contains("\"autoCheckUpdates\":false"));
@@ -922,6 +932,7 @@ mod tests {
             auto_check_updates: true,
             last_notified_update_version: None,
             script_history_enabled: true,
+            first_launch_completed: false,
         };
         let json = serde_json::to_string(&s).unwrap();
         assert!(
@@ -951,6 +962,7 @@ mod tests {
             auto_check_updates: true,
             last_notified_update_version: None,
             script_history_enabled: false,
+            first_launch_completed: false,
         };
         let json = serde_json::to_string(&s).unwrap();
         assert!(json.contains("\"scriptHistoryEnabled\":false"));
@@ -962,6 +974,37 @@ mod tests {
     fn default_config_enables_script_history() {
         let cfg = Config::default();
         assert!(cfg.system.script_history_enabled);
+    }
+
+    // ---------- Plano 22: SystemConfig.first_launch_completed ----------
+
+    #[test]
+    fn system_config_defaults_first_launch_completed_to_false_when_absent() {
+        // Plano-21 e anteriores: payload sem o campo precisa virar `false`
+        // (entrada no fluxo de onboarding na próxima manual launch).
+        let s: SystemConfig = serde_json::from_str(r#"{"autostart":false}"#).unwrap();
+        assert!(!s.first_launch_completed);
+    }
+
+    #[test]
+    fn system_config_round_trip_with_first_launch_completed_true() {
+        let s = SystemConfig {
+            autostart: false,
+            auto_check_updates: true,
+            last_notified_update_version: None,
+            script_history_enabled: true,
+            first_launch_completed: true,
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(json.contains("\"firstLaunchCompleted\":true"));
+        let back: SystemConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(s, back);
+    }
+
+    #[test]
+    fn default_config_starts_with_first_launch_not_completed() {
+        let cfg = Config::default();
+        assert!(!cfg.system.first_launch_completed);
     }
 
     // ---------- Plano 21: Item.monitor ----------
