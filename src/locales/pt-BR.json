@@ -100,9 +100,6 @@
       "run": "Executar",
       "cancel": "Cancelar"
     },
-    "breadcrumb": {
-      "root": "Início"
-    },
     "confirmCascadeDelete": "Excluir grupo \"{{label}}\"? {{count}} sub-itens serão removidos."
   },
   "settings": {

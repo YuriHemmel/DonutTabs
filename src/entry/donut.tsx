@@ -12,9 +12,8 @@ import { initI18n, changeLanguage } from "../core/i18n";
 import { applyTokensAsCssVars, watchSystemTheme } from "../core/theme";
 import { resolveThemeTokens, type ThemeTokens } from "../core/themeTokens";
 import { translateAppError, isAppError } from "../core/errors";
+import { donutSizeForTabs } from "../donut/donutSize";
 import type { Config } from "../core/types/Config";
-
-const WINDOW_SIZE = 420;
 
 interface ScriptPrompt {
   tabId: string;
@@ -262,11 +261,15 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
         (() => {
           const activeProfile =
             config.profiles.find((p) => p.id === config.activeProfileId) ?? null;
+          // Plano 23 — espelha o cálculo do backend (`donut_window::show`):
+          // SVG precisa cobrir a janela inteira, senão rings externos são
+          // clipados. Tabs vazias caem em `donutSizeForTabs([]) = 420`.
+          const donutSize = donutSizeForTabs(activeProfile?.tabs ?? []);
           return (
             <Donut
               key={showKey}
               tabs={activeProfile?.tabs ?? []}
-              size={WINDOW_SIZE}
+              size={donutSize}
               itemsPerPage={config.pagination.itemsPerPage}
               wheelDirection={config.pagination.wheelDirection}
               hoverHoldMs={config.interaction.hoverHoldMs}

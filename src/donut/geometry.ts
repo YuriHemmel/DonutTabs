@@ -35,6 +35,64 @@ export interface ArcPathOpts {
   startAngle: number; endAngle: number;
 }
 
+export interface RingDims {
+  innerR: number;
+  outerR: number;
+}
+
+/** Plano 23 — bandWidth fixa para anéis externos (ring 1+). Menor que o
+ *  ring root pra "abas subsequentes ocuparem menos espaço". */
+export const OUTER_RING_BAND_WIDTH = 60;
+/** Plano 23 — gap radial entre anéis vizinhos. Cria separador visual e
+ *  região de "no-hit" no `pointToRingIndex` (cursor entre anéis não casa
+ *  nenhum). */
+export const RING_GAP = 4;
+
+/**
+ * Plano 23 — calcula os raios de cada anel concêntrico (`ring 0` =
+ * innermost = root; `ring N-1` = outermost). Ring 0 usa a banda derivada
+ * do tema (`innerRRoot..outerRRoot`); rings 1+ usam banda menor
+ * (`OUTER_RING_BAND_WIDTH`) com `RING_GAP` separando vizinhos.
+ *
+ * Pure pra teste; reusado pelo `<Donut>` e pelo highlight global pra mapear
+ * `radius → ringIndex`.
+ */
+export function ringDims(
+  ringIndex: number,
+  innerRRoot: number,
+  outerRRoot: number,
+): RingDims {
+  if (ringIndex <= 0) {
+    return { innerR: innerRRoot, outerR: outerRRoot };
+  }
+  const innerR =
+    outerRRoot + (ringIndex - 1) * (OUTER_RING_BAND_WIDTH + RING_GAP) + RING_GAP;
+  return { innerR, outerR: innerR + OUTER_RING_BAND_WIDTH };
+}
+
+/**
+ * Plano 23 — descobre qual anel concêntrico contém o ponto, usando a
+ * distância radial. Pure pra teste. Retorna `null` se o ponto está
+ * dentro do círculo central (raio < `innerRRoot`), na região de gap
+ * entre anéis, ou fora do anel mais externo. `ringCount` define quantos
+ * anéis estão renderizados.
+ */
+export function pointToRingIndex(
+  p: Point,
+  ringCount: number,
+  innerRRoot: number,
+  outerRRoot: number,
+): number | null {
+  if (ringCount <= 0) return null;
+  const r = Math.hypot(p.x, p.y);
+  if (r < innerRRoot) return null;
+  for (let i = 0; i < ringCount; i++) {
+    const dims = ringDims(i, innerRRoot, outerRRoot);
+    if (r >= dims.innerR && r <= dims.outerR) return i;
+  }
+  return null;
+}
+
 export function arcPath(o: ArcPathOpts): string {
   const { cx, cy, innerR, outerR, startAngle, endAngle } = o;
   const delta = endAngle - startAngle;

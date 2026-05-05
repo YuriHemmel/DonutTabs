@@ -77,10 +77,12 @@ pub fn open_tab<R: tauri::Runtime>(
 ) -> Result<(), AppError> {
     let cfg = state.config.read().unwrap();
     let active = active_profile(&cfg)?;
-    let tab = active
-        .tabs
-        .iter()
-        .find(|t| t.id == tab_id)
+    // Plano 23 — anéis externos expõem children de groups; lookup precisa
+    // ser recursivo. Plano 16 ainda permitia `find` em root porque o donut
+    // substituía conteúdo no drill. Agora múltiplos níveis ficam clicáveis
+    // simultaneamente, então o backend tem que aceitar tab_id de qualquer
+    // profundidade.
+    let tab = find_tab_recursive(&active.tabs, tab_id)
         .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", tab_id.to_string())]))?;
     let profile_id = active.id;
     let history_enabled = cfg.system.script_history_enabled;
@@ -1239,6 +1241,23 @@ fn active_profile(cfg: &Config) -> AppResult<&Profile> {
     })
 }
 
+/// Plano 23 — busca recursiva por tab via id na árvore de tabs do perfil
+/// (root + children + grandchildren). Necessário porque os anéis
+/// concêntricos no donut expõem groups aninhados clicáveis simultaneamente,
+/// então `open_tab` recebe ids de qualquer profundidade. Pure helper
+/// `pub(crate)` pra cobertura por teste.
+pub(crate) fn find_tab_recursive(tabs: &[Tab], id: Uuid) -> Option<&Tab> {
+    for tab in tabs {
+        if tab.id == id {
+            return Some(tab);
+        }
+        if let Some(found) = find_tab_recursive(&tab.children, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 fn profile_by_id_mut(cfg: &mut Config, id: Uuid) -> AppResult<&mut Profile> {
     cfg.profiles
         .iter_mut()
@@ -1676,6 +1695,110 @@ mod tests {
         let cfg = Config::default();
         let p = active_profile(&cfg).unwrap();
         assert_eq!(p.id, cfg.active_profile_id);
+    }
+
+    // ---------- Plano 23: find_tab_recursive ----------
+
+    fn build_tree() -> (Vec<Tab>, Uuid, Uuid, Uuid) {
+        // root: [leaf_root, group_a [leaf_a1, group_b [leaf_b1]]]
+        let leaf_root = Tab {
+            id: Uuid::new_v4(),
+            name: Some("root_leaf".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://r".into(),
+                open_with: None,
+            }],
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
+        };
+        let leaf_a1 = Tab {
+            id: Uuid::new_v4(),
+            name: Some("a1".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://a1".into(),
+                open_with: None,
+            }],
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
+        };
+        let leaf_b1 = Tab {
+            id: Uuid::new_v4(),
+            name: Some("b1".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://b1".into(),
+                open_with: None,
+            }],
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
+        };
+        let leaf_root_id = leaf_root.id;
+        let leaf_a1_id = leaf_a1.id;
+        let leaf_b1_id = leaf_b1.id;
+        let group_b = Tab {
+            id: Uuid::new_v4(),
+            name: Some("b".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            kind: crate::config::schema::TabKind::Group,
+            children: vec![leaf_b1],
+        };
+        let group_a = Tab {
+            id: Uuid::new_v4(),
+            name: Some("a".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            kind: crate::config::schema::TabKind::Group,
+            children: vec![leaf_a1, group_b],
+        };
+        (vec![leaf_root, group_a], leaf_root_id, leaf_a1_id, leaf_b1_id)
+    }
+
+    #[test]
+    fn find_tab_recursive_locates_root_leaf() {
+        let (tabs, root_id, _, _) = build_tree();
+        let found = find_tab_recursive(&tabs, root_id).expect("root leaf");
+        assert_eq!(found.id, root_id);
+    }
+
+    #[test]
+    fn find_tab_recursive_locates_first_level_child() {
+        let (tabs, _, a1_id, _) = build_tree();
+        let found = find_tab_recursive(&tabs, a1_id).expect("nested leaf");
+        assert_eq!(found.id, a1_id);
+    }
+
+    #[test]
+    fn find_tab_recursive_locates_second_level_child() {
+        let (tabs, _, _, b1_id) = build_tree();
+        let found = find_tab_recursive(&tabs, b1_id).expect("deep leaf");
+        assert_eq!(found.id, b1_id);
+    }
+
+    #[test]
+    fn find_tab_recursive_returns_none_when_missing() {
+        let (tabs, _, _, _) = build_tree();
+        assert!(find_tab_recursive(&tabs, Uuid::new_v4()).is_none());
+    }
+
+    #[test]
+    fn find_tab_recursive_empty_tree() {
+        assert!(find_tab_recursive(&[], Uuid::new_v4()).is_none());
     }
 
     #[test]

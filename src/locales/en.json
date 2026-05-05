@@ -100,9 +100,6 @@
       "run": "Run",
       "cancel": "Cancel"
     },
-    "breadcrumb": {
-      "root": "Home"
-    },
     "confirmCascadeDelete": "Delete group \"{{label}}\"? {{count}} sub-items will be removed."
   },
   "settings": {

@@ -8,9 +8,14 @@ import { CenterCircle } from "./CenterCircle";
 import { PaginationDots } from "./PaginationDots";
 import { HoverHoldOverlay } from "./HoverHoldOverlay";
 import { ProfileSwitcher } from "./ProfileSwitcher";
-import { sliceAngleRange } from "./geometry";
+import {
+  pointToRingIndex,
+  pointToSliceIndex,
+  ringDims,
+  sliceAngleRange,
+  type RingDims,
+} from "./geometry";
 import { paginate } from "./pagination";
-import { useSliceHighlight } from "./useSliceHighlight";
 import { useHoverHold } from "./useHoverHold";
 import { IconRenderer } from "./IconRenderer";
 import { useFavicon } from "./useFavicon";
@@ -20,8 +25,7 @@ import { matchesCombo } from "./matchesCombo";
 import { tabInitial } from "./tabUtils";
 import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
-import { useDonutNavigation } from "./useDonutNavigation";
-import { Breadcrumb } from "./Breadcrumb";
+import { useRingStack, MAX_RINGS } from "./useRingStack";
 
 function firstTabUrl(tab: Tab): string | null {
   for (const item of tab.items) {
@@ -45,11 +49,25 @@ export function countDescendants(tab: Tab): number {
 
 const isGroup = (tab: Tab): boolean => tab.kind === "group";
 
+/** Plano 23 — codifica (ring, slice) em índice composto pra reusar
+ *  `useHoverHold` que aceita um único `number`. Limite de 10000 slices/ring
+ *  é folgado (paginação corta bem antes). */
+const HOVER_RING_STRIDE = 10000;
+const encodeHoverIndex = (ring: number, slice: number) =>
+  ring * HOVER_RING_STRIDE + slice;
+const decodeHoverIndex = (idx: number) => ({
+  ring: Math.floor(idx / HOVER_RING_STRIDE),
+  slice: idx % HOVER_RING_STRIDE,
+});
+
 interface TabSliceProps {
   tab: Tab;
-  cx: number; cy: number;
-  innerR: number; outerR: number;
-  startAngle: number; endAngle: number;
+  cx: number;
+  cy: number;
+  innerR: number;
+  outerR: number;
+  startAngle: number;
+  endAngle: number;
   highlighted: boolean;
   onClick: () => void;
   onContextMenu?: (e: React.MouseEvent<SVGGElement>) => void;
@@ -64,7 +82,7 @@ const TabSlice: React.FC<TabSliceProps> = ({ tab, ...rest }) => {
   // próxima à borda externa pra não competir com o ícone/label central.
   const groupBadge = isGroup(tab);
   const mid = (rest.startAngle + rest.endAngle) / 2;
-  const badgeR = (rest.innerR + rest.outerR) / 2 + (rest.outerR - rest.innerR) * 0.30;
+  const badgeR = (rest.innerR + rest.outerR) / 2 + (rest.outerR - rest.innerR) * 0.3;
   const bx = rest.cx + badgeR * Math.cos(mid);
   const by = rest.cy + badgeR * Math.sin(mid);
   return (
@@ -95,6 +113,8 @@ const TabSlice: React.FC<TabSliceProps> = ({ tab, ...rest }) => {
 
 export interface DonutProps {
   tabs: Tab[];
+  /** Tamanho da janela. Backend escolhe baseado em `max_group_depth`
+   *  (Plano 23): 420 / 560 / 700 pra 1/2/3 anéis. */
   size: number;
   itemsPerPage: number;
   wheelDirection: "standard" | "inverted";
@@ -122,8 +142,18 @@ export interface DonutProps {
 }
 
 const PLUS_KEY = "__plus__";
-
 const DEFAULT_TOKENS: ThemeTokens = resolvePresetTokens("dark");
+/** Plano 23 — raios do ring root são derivados de uma base fixa (não do
+ *  `size` da janela), pra que sub-anéis caibam dentro do viewBox quando a
+ *  janela cresce: 420 → 560 → 700 conforme `MAX_TAB_DEPTH`. Com base 420
+ *  e ratios default (0.20/0.40), bandWidth=84; ring outermost no max
+ *  depth termina a 336 do centro — bem dentro de 700/2 = 350. */
+const RING_BASE_SIZE = 420;
+
+interface RingPage {
+  tabs: Tab[];
+  hasPlus: boolean;
+}
 
 export const Donut: React.FC<DonutProps> = ({
   tabs,
@@ -145,17 +175,36 @@ export const Donut: React.FC<DonutProps> = ({
   const effectiveTokens = tokens ?? DEFAULT_TOKENS;
   const cx = size / 2;
   const cy = size / 2;
-  const outerR = size * effectiveTokens.dimensions.outerRatio;
-  const innerR = size * effectiveTokens.dimensions.innerRatio;
+  // Plano 23 — raios são absolutos (relativos a `RING_BASE_SIZE` fixo) e
+  // NÃO escalam com `size`. Janela cresce pra acomodar mais anéis sem
+  // distorcê-los. Theme ratios continuam controlando proporção visual do
+  // ring root via base fixa.
+  const innerRRoot = RING_BASE_SIZE * effectiveTokens.dimensions.innerRatio;
+  const outerRRoot = RING_BASE_SIZE * effectiveTokens.dimensions.outerRatio;
 
   const { t } = useTranslation();
   const [mode, setMode] = useState<"tabs" | "profiles">("tabs");
   const switcherEnabled = !!(profiles && activeProfileId && onSelectProfile);
   const [contextMenu, setContextMenu] = useState<
-    | { x: number; y: number; tabId: string; tabLabel: string }
+    | {
+        x: number;
+        y: number;
+        tabId: string;
+        tabLabel: string;
+        ringDepth: number;
+      }
     | null
   >(null);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const ringStack = useRingStack(tabs);
+  // Plano 23 — outermost ring é o último em `rings`. Limita anéis a
+  // `MAX_RINGS` (3); useRingStack já garante isso, este `slice` é
+  // defesa adicional contra states inconsistentes.
+  const visibleRings = useMemo(
+    () => ringStack.rings.slice(0, MAX_RINGS),
+    [ringStack.rings],
+  );
 
   // Atalho window-level pra abrir o overlay de busca. Suprimido quando
   // donut está em modo perfil ou com context menu aberto.
@@ -187,41 +236,95 @@ export const Donut: React.FC<DonutProps> = ({
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, [mode]);
 
-  const navigation = useDonutNavigation(tabs);
-  const ordered = useMemo(
-    () => [...navigation.currentTabs].sort((a, b) => a.order - b.order),
-    [navigation.currentTabs],
+  // Plano 23 — paginação por ring. Chave = `${depth}:${parentId}` para
+  // que mudança de parent (toggle de grupo diferente no mesmo depth)
+  // resete pra página 0 sem precisar limpeza manual.
+  const ringKey = (depth: number, parentId: string | null) =>
+    `${depth}:${parentId ?? "root"}`;
+  const [pageByKey, setPageByKey] = useState<Record<string, number>>({});
+
+  const ringPages: RingPage[][] = useMemo(
+    () =>
+      visibleRings.map((ring) => {
+        const ordered = [...ring.tabs].sort((a, b) => a.order - b.order);
+        return paginate(ordered, itemsPerPage);
+      }),
+    [visibleRings, itemsPerPage],
   );
-  const pages = useMemo(() => paginate(ordered, itemsPerPage), [ordered, itemsPerPage]);
-  const [page, setPage] = useState(0);
 
-  // Mudou de nível: reseta paginação para começar na primeira página.
-  useEffect(() => {
-    setPage(0);
-  }, [navigation.path.length]);
+  // Para cada ring, página atual (clamped ao número de páginas).
+  const safePages = useMemo(
+    () =>
+      visibleRings.map((ring, i) => {
+        const key = ringKey(ring.depth, ring.parentId);
+        const requested = pageByKey[key] ?? 0;
+        const len = ringPages[i].length;
+        return Math.min(Math.max(0, requested), Math.max(0, len - 1));
+      }),
+    [visibleRings, pageByKey, ringPages],
+  );
 
-  useEffect(() => {
-    if (page >= pages.length) setPage(Math.max(0, pages.length - 1));
-  }, [pages.length, page]);
+  // Plano 23 — slices renderizados em cada ring nesta página.
+  const currentPerRing = useMemo(
+    () =>
+      visibleRings.map((_, i) => {
+        const page = ringPages[i][safePages[i]];
+        return page ?? { tabs: [], hasPlus: true };
+      }),
+    [visibleRings, ringPages, safePages],
+  );
 
-  const safePage = Math.min(page, pages.length - 1);
-  const current = pages[safePage] ?? { tabs: [], hasPlus: true };
-  const sliceCount = current.tabs.length + (current.hasPlus ? 1 : 0);
-  const plusIndex = current.hasPlus ? current.tabs.length : -1;
+  // Hover-hold global: rastreia (ring, slice) via composto.
+  const [hovered, setHovered] = useState<number | null>(null);
 
-  const { highlighted, onMouseMove, onMouseLeave } = useSliceHighlight({
-    center: { x: cx, y: cy },
-    slices: sliceCount,
-    innerRadius: innerR,
-    outerRadius: outerR,
-  });
+  const onMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (visibleRings.length === 0) {
+      setHovered(null);
+      return;
+    }
+    // Coordenadas relativas ao centro do SVG. clientX/Y → svg-local subtraindo
+    // o bounding rect (cx/cy do svg viewport == size/2 logical).
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = e.clientX - rect.left - cx;
+    const py = e.clientY - rect.top - cy;
+    const ring = pointToRingIndex(
+      { x: px, y: py },
+      visibleRings.length,
+      innerRRoot,
+      outerRRoot,
+    );
+    if (ring === null) {
+      setHovered(null);
+      return;
+    }
+    const dims = ringDims(ring, innerRRoot, outerRRoot);
+    const current = currentPerRing[ring];
+    const sliceCount = current.tabs.length + (current.hasPlus ? 1 : 0);
+    if (sliceCount <= 0) {
+      setHovered(null);
+      return;
+    }
+    const slice = pointToSliceIndex({ x: px, y: py }, sliceCount, {
+      innerRadius: dims.innerR,
+      outerRadius: dims.outerR,
+    });
+    if (slice === null) {
+      setHovered(null);
+      return;
+    }
+    setHovered(encodeHoverIndex(ring, slice));
+  };
+  const onMouseLeave = () => setHovered(null);
 
-  const isTabSlice = (i: number) => i >= 0 && i < current.tabs.length;
+  const isTabSlice = (idx: number) => {
+    const { ring, slice } = decodeHoverIndex(idx);
+    if (ring < 0 || ring >= currentPerRing.length) return false;
+    const current = currentPerRing[ring];
+    return slice >= 0 && slice < current.tabs.length;
+  };
 
   const hoverHold = useHoverHold({
-    // While a context menu is open, lock the hover-hold gesture so the
-    // overlay doesn't fight the menu for the same slice.
-    hoveredSlice: contextMenu || searchOpen ? null : highlighted,
+    hoveredSlice: contextMenu || searchOpen ? null : hovered,
     isTabSlice,
     holdMs: hoverHoldMs,
     onComplete: () => {
@@ -229,7 +332,7 @@ export const Donut: React.FC<DonutProps> = ({
     },
   });
 
-  // ESC durante actionable/confirming → cancela o gesto
+  // ESC durante actionable/confirming → cancela o gesto.
   useEffect(() => {
     const phase = hoverHold.state.phase;
     if (phase !== "actionable" && phase !== "confirming") return;
@@ -244,305 +347,331 @@ export const Donut: React.FC<DonutProps> = ({
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, [hoverHold.state.phase, hoverHold]);
 
-  // Plano 16 — ESC dentro de sub-donut volta um nível em vez de fechar o
-  // donut. Suprimido se overlay/menu já lidou com Esc, ou se hover-hold está
-  // em fase de ação (handler acima cuida).
-  useEffect(() => {
-    if (mode !== "tabs" || navigation.path.length === 0) return;
-    const phase = hoverHold.state.phase;
-    if (phase === "actionable" || phase === "confirming") return;
-    const onKey = (e: KeyboardEvent) => {
-      if (contextMenu || searchOpen) return;
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        navigation.back();
-      }
-    };
-    window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [mode, navigation, contextMenu, searchOpen, hoverHold.state.phase]);
+  // Plano 23 — sem level-back: ESC NÃO tira anel. Donut entry trata ESC e
+  // fecha tudo. Mantemos só os ESC handlers acima (modo perfil + hover-hold).
 
-  const changePage = (next: number) => {
-    setPage((p) => {
-      const clamped = Math.max(0, Math.min(pages.length - 1, next));
-      // Mudou de página: o sliceIndex do hover-hold passa a referenciar outra
-      // aba. Resetar evita disparar edit/delete no alvo errado.
-      if (clamped !== p && hoverHold.state.phase !== "idle") {
-        hoverHold.reset();
-      }
-      return clamped;
+  const setRingPage = (ring: number, next: number) => {
+    if (ring < 0 || ring >= visibleRings.length) return;
+    const key = ringKey(visibleRings[ring].depth, visibleRings[ring].parentId);
+    setPageByKey((prev) => {
+      const total = ringPages[ring].length;
+      const clamped = Math.max(0, Math.min(total - 1, next));
+      if (clamped === (prev[key] ?? 0)) return prev;
+      // Página mudou: hover-hold pode estar apontando pra slice agora
+      // sumida; reseta defensivamente.
+      if (hoverHold.state.phase !== "idle") hoverHold.reset();
+      return { ...prev, [key]: clamped };
     });
   };
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     if (searchOpen) return;
-    if (pages.length <= 1) return;
+    // Plano 23 — wheel rotaciona páginas do ring sob o cursor; fallback =
+    // outermost. Permite paginar root mesmo com sub-anel aberto.
+    const targetRing =
+      hovered !== null
+        ? decodeHoverIndex(hovered).ring
+        : visibleRings.length - 1;
+    if (targetRing < 0) return;
+    const total = ringPages[targetRing]?.length ?? 0;
+    if (total <= 1) return;
     const direction = wheelDirection === "inverted" ? -1 : 1;
     const delta = e.deltaY > 0 ? 1 : -1;
-    changePage(safePage + delta * direction);
+    setRingPage(targetRing, safePages[targetRing] + delta * direction);
   };
 
-  const activeSliceIndex =
-    hoverHold.state.phase === "idle" ? -1 : hoverHold.state.sliceIndex;
+  // Decode active hover-hold target.
+  const activeIdx =
+    hoverHold.state.phase === "idle" ? null : hoverHold.state.sliceIndex;
+  const active = activeIdx !== null ? decodeHoverIndex(activeIdx) : null;
   const activeTab =
-    activeSliceIndex >= 0 ? current.tabs[activeSliceIndex] : null;
+    active && active.ring >= 0 && active.ring < currentPerRing.length
+      ? currentPerRing[active.ring].tabs[active.slice] ?? null
+      : null;
+  const activeRingDims =
+    active && active.ring < visibleRings.length
+      ? ringDims(active.ring, innerRRoot, outerRRoot)
+      : null;
+  const activeRingSliceCount =
+    active && active.ring < currentPerRing.length
+      ? currentPerRing[active.ring].tabs.length +
+        (currentPerRing[active.ring].hasPlus ? 1 : 0)
+      : 0;
 
+  // Caminho de parent até o ring N. Pra `onDeleteTab(id, parentPath)`,
+  // parentPath é os ids dos rings expandidos antes desse ring.
+  const parentPathForRing = (ringDepth: number): string[] =>
+    ringStack.expandedGroupIds.slice(0, ringDepth);
+
+  // Profile mode unchanged.
   if (mode === "profiles" && profiles && activeProfileId && onSelectProfile) {
     return (
       <ThemeContext.Provider value={effectiveTokens}>
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-      >
-        <ProfileSwitcher
-          cx={cx}
-          cy={cy}
-          innerR={innerR}
-          outerR={outerR}
-          profiles={profiles}
-          activeProfileId={activeProfileId}
-          onSelect={(id) => {
-            setMode("tabs");
-            onSelectProfile(id);
-          }}
-          onCreate={() => {
-            setMode("tabs");
-            onCreateProfile?.();
-          }}
-        />
-        <CenterCircle
-          cx={cx}
-          cy={cy}
-          r={innerR * 0.85}
-          onGearClick={onOpenSettings}
-          onProfileSwitcherClick={() => setMode("tabs")}
-        />
-      </svg>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <ProfileSwitcher
+            cx={cx}
+            cy={cy}
+            innerR={innerRRoot}
+            outerR={outerRRoot}
+            profiles={profiles}
+            activeProfileId={activeProfileId}
+            onSelect={(id) => {
+              setMode("tabs");
+              onSelectProfile(id);
+            }}
+            onCreate={() => {
+              setMode("tabs");
+              onCreateProfile?.();
+            }}
+          />
+          <CenterCircle
+            cx={cx}
+            cy={cy}
+            r={innerRRoot * 0.85}
+            onGearClick={onOpenSettings}
+            onProfileSwitcherClick={() => setMode("tabs")}
+          />
+        </svg>
       </ThemeContext.Provider>
     );
   }
 
+  // Pagination dots: outermost ring com mais de 1 página.
+  const outermostIdx = visibleRings.length - 1;
+  const outermostPagesCount = ringPages[outermostIdx]?.length ?? 0;
+  const outermostSafePage = safePages[outermostIdx] ?? 0;
+
   return (
     <ThemeContext.Provider value={effectiveTokens}>
-    <>
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      onMouseMove={onMouseMove}
-      onMouseLeave={onMouseLeave}
-      onWheel={handleWheel}
-    >
-      {current.tabs.map((tab, i) => {
-        const { start, end } = sliceAngleRange(i, sliceCount);
-        return (
-          <TabSlice
-            key={tab.id}
-            tab={tab}
+      <>
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+          onWheel={handleWheel}
+        >
+          {visibleRings.map((ring, ringIdx) => {
+            const dims: RingDims = ringDims(ringIdx, innerRRoot, outerRRoot);
+            const current = currentPerRing[ringIdx];
+            const sliceCount = current.tabs.length + (current.hasPlus ? 1 : 0);
+            const plusIdx = current.hasPlus ? current.tabs.length : -1;
+            const ringKeyStr = ringKey(ring.depth, ring.parentId);
+            // Plus intent: root = "new-tab"; sub-rings = caminho até o
+            // group atual (parentId). Para ring 1, parentId = id do
+            // root-group expandido. Para ring 2, parentId = id do ring-1
+            // group. Ambos são corretos como "último id" do path.
+            const plusIntent: SettingsIntent =
+              ring.depth === 0
+                ? "new-tab"
+                : (`new-tab-in-group:${parentPathForRing(ring.depth)
+                    .concat(ring.parentId ?? "")
+                    .filter(Boolean)
+                    .join(",")}` as SettingsIntent);
+            return (
+              <g key={ringKeyStr}>
+                {current.tabs.map((tab, sliceIdx) => {
+                  const { start, end } = sliceAngleRange(sliceIdx, sliceCount);
+                  const isHighlighted =
+                    hovered !== null &&
+                    decodeHoverIndex(hovered).ring === ringIdx &&
+                    decodeHoverIndex(hovered).slice === sliceIdx;
+                  return (
+                    <TabSlice
+                      key={tab.id}
+                      tab={tab}
+                      cx={cx}
+                      cy={cy}
+                      innerR={dims.innerR}
+                      outerR={dims.outerR}
+                      startAngle={start}
+                      endAngle={end}
+                      highlighted={isHighlighted}
+                      onClick={() => {
+                        const phase = hoverHold.state.phase;
+                        if (
+                          (phase === "actionable" || phase === "confirming") &&
+                          active &&
+                          active.ring === ringIdx &&
+                          active.slice === sliceIdx
+                        ) {
+                          return;
+                        }
+                        if (isGroup(tab)) {
+                          // Plano 23 — toggle abre/fecha o ring no `depth+1`.
+                          // Ring 2 (outermost permitido) → groups dentro são
+                          // no-op pois não há onde expandir.
+                          ringStack.toggle(tab.id, ring.depth);
+                        } else {
+                          onSelect(tab.id);
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hoverHold.reset();
+                        setContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          tabId: tab.id,
+                          tabLabel: tab.name ?? tab.icon ?? tab.id,
+                          ringDepth: ring.depth,
+                        });
+                      }}
+                    />
+                  );
+                })}
+                {current.hasPlus &&
+                  (() => {
+                    const { start, end } = sliceAngleRange(plusIdx, sliceCount);
+                    return (
+                      <Slice
+                        key={PLUS_KEY}
+                        cx={cx}
+                        cy={cy}
+                        innerR={dims.innerR}
+                        outerR={dims.outerR}
+                        startAngle={start}
+                        endAngle={end}
+                        icon="+"
+                        highlighted={
+                          hovered !== null &&
+                          decodeHoverIndex(hovered).ring === ringIdx &&
+                          decodeHoverIndex(hovered).slice === plusIdx
+                        }
+                        onClick={() => onOpenSettings?.(plusIntent)}
+                      />
+                    );
+                  })()}
+              </g>
+            );
+          })}
+          {activeTab &&
+            active &&
+            activeRingDims &&
+            (() => {
+              const { start, end } = sliceAngleRange(
+                active.slice,
+                activeRingSliceCount,
+              );
+              const parentPath = parentPathForRing(
+                visibleRings[active.ring]?.depth ?? 0,
+              );
+              return (
+                <HoverHoldOverlay
+                  cx={cx}
+                  cy={cy}
+                  innerR={activeRingDims.innerR}
+                  outerR={activeRingDims.outerR}
+                  startAngle={start}
+                  endAngle={end}
+                  state={hoverHold.state}
+                  onEdit={() => {
+                    hoverHold.cancel();
+                    onEditTab?.(activeTab.id);
+                  }}
+                  onRequestDelete={() => {
+                    if (isGroup(activeTab)) {
+                      hoverHold.cancel();
+                      const count = countDescendants(activeTab);
+                      const ok = window.confirm(
+                        t("donut.confirmCascadeDelete", {
+                          label: activeTab.name ?? activeTab.icon ?? activeTab.id,
+                          count,
+                        }),
+                      );
+                      if (ok) onDeleteTab?.(activeTab.id, parentPath);
+                      return;
+                    }
+                    hoverHold.requestDelete();
+                  }}
+                  onConfirmDelete={() => {
+                    const id = activeTab.id;
+                    hoverHold.confirmDelete();
+                    onDeleteTab?.(id, parentPath);
+                  }}
+                  onCancelConfirm={hoverHold.cancel}
+                />
+              );
+            })()}
+          <CenterCircle
             cx={cx}
             cy={cy}
-            innerR={innerR}
-            outerR={outerR}
-            startAngle={start}
-            endAngle={end}
-            highlighted={highlighted === i}
-            onClick={() => {
-              // Se está em modo ação para esta fatia, clique não dispara select
-              // (o overlay tem seus próprios click handlers).
-              const phase = hoverHold.state.phase;
-              if (
-                (phase === "actionable" || phase === "confirming") &&
-                hoverHold.state.sliceIndex === i
-              ) {
-                return;
-              }
-              if (isGroup(tab)) {
-                navigation.enter(tab.id);
-              } else {
-                onSelect(tab.id);
-              }
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              hoverHold.reset();
-              setContextMenu({
-                x: e.clientX,
-                y: e.clientY,
-                tabId: tab.id,
-                tabLabel: tab.name ?? tab.icon ?? tab.id,
-              });
+            r={innerRRoot * 0.85}
+            onGearClick={onOpenSettings}
+            onProfileSwitcherClick={
+              switcherEnabled ? () => setMode("profiles") : undefined
+            }
+          />
+          {outermostPagesCount > 1 && (
+            <PaginationDots
+              total={outermostPagesCount}
+              active={outermostSafePage}
+              cx={cx}
+              cy={size * 0.94}
+              onChange={(p) => setRingPage(outermostIdx, p)}
+            />
+          )}
+        </svg>
+        {contextMenu && (
+          <SliceContextMenu
+            position={{ x: contextMenu.x, y: contextMenu.y }}
+            onClose={() => setContextMenu(null)}
+            items={[
+              {
+                id: "open-all",
+                label: t("donut.contextMenu.openAll"),
+                onSelect: () => onSelect(contextMenu.tabId),
+              },
+              {
+                id: "edit",
+                label: t("donut.contextMenu.edit"),
+                onSelect: () => onEditTab?.(contextMenu.tabId),
+              },
+              {
+                id: "delete",
+                label: t("donut.contextMenu.delete"),
+                variant: "danger",
+                onSelect: () => {
+                  // Encontra o tab no ring certo via depth do contexto.
+                  const ringTabs = currentPerRing[
+                    visibleRings.findIndex((r) => r.depth === contextMenu.ringDepth)
+                  ]?.tabs ?? [];
+                  const tab = ringTabs.find((tt) => tt.id === contextMenu.tabId);
+                  const tabIsGroup = tab ? isGroup(tab) : false;
+                  const promptKey = tabIsGroup
+                    ? "donut.confirmCascadeDelete"
+                    : "donut.contextMenu.confirmDelete";
+                  const promptVars = tabIsGroup
+                    ? {
+                        label: contextMenu.tabLabel,
+                        count: tab ? countDescendants(tab) : 0,
+                      }
+                    : { label: contextMenu.tabLabel };
+                  const ok = window.confirm(t(promptKey, promptVars));
+                  if (ok) {
+                    onDeleteTab?.(
+                      contextMenu.tabId,
+                      parentPathForRing(contextMenu.ringDepth),
+                    );
+                  }
+                },
+              },
+            ]}
+          />
+        )}
+        {searchOpen && (
+          <TabSearchOverlay
+            tabs={tabs}
+            onClose={() => setSearchOpen(false)}
+            onSelect={(tabId) => {
+              setSearchOpen(false);
+              onSelect(tabId);
             }}
           />
-        );
-      })}
-      {current.hasPlus &&
-        (() => {
-          const { start, end } = sliceAngleRange(plusIndex, sliceCount);
-          // Em sub-donut, intent leva o caminho até o group atual; root mantém
-          // o intent simples "new-tab".
-          const intent: SettingsIntent =
-            navigation.path.length === 0
-              ? "new-tab"
-              : (`new-tab-in-group:${navigation.path.join(",")}` as SettingsIntent);
-          return (
-            <Slice
-              key={PLUS_KEY}
-              cx={cx}
-              cy={cy}
-              innerR={innerR}
-              outerR={outerR}
-              startAngle={start}
-              endAngle={end}
-              icon="+"
-              highlighted={highlighted === plusIndex}
-              onClick={() => onOpenSettings?.(intent)}
-            />
-          );
-        })()}
-      {activeTab &&
-        (() => {
-          const { start, end } = sliceAngleRange(activeSliceIndex, sliceCount);
-          return (
-            <HoverHoldOverlay
-              cx={cx}
-              cy={cy}
-              innerR={innerR}
-              outerR={outerR}
-              startAngle={start}
-              endAngle={end}
-              state={hoverHold.state}
-              onEdit={() => {
-                hoverHold.cancel();
-                onEditTab?.(activeTab.id);
-              }}
-              onRequestDelete={() => {
-                // Plano 16 — group: jump direto pra confirm com count via
-                // window.confirm; salta a fase ✓✕ inline (que é genérica e
-                // não comunica cascading).
-                if (isGroup(activeTab)) {
-                  hoverHold.cancel();
-                  const count = countDescendants(activeTab);
-                  const ok = window.confirm(
-                    t("donut.confirmCascadeDelete", {
-                      label: activeTab.name ?? activeTab.icon ?? activeTab.id,
-                      count,
-                    }),
-                  );
-                  if (ok) onDeleteTab?.(activeTab.id, navigation.path);
-                  return;
-                }
-                hoverHold.requestDelete();
-              }}
-              onConfirmDelete={() => {
-                const id = activeTab.id;
-                hoverHold.confirmDelete();
-                onDeleteTab?.(id, navigation.path);
-              }}
-              onCancelConfirm={hoverHold.cancel}
-            />
-          );
-        })()}
-      <CenterCircle
-        cx={cx}
-        cy={cy}
-        r={innerR * 0.85}
-        onGearClick={onOpenSettings}
-        onProfileSwitcherClick={
-          // Em sub-donut, a metade direita do centro vira "voltar"; switcher
-          // de perfis fica disponível só no root.
-          navigation.path.length > 0
-            ? () => navigation.back()
-            : switcherEnabled
-              ? () => setMode("profiles")
-              : undefined
-        }
-      />
-      <PaginationDots
-        total={pages.length}
-        active={safePage}
-        cx={cx}
-        cy={size * 0.94}
-        onChange={changePage}
-      />
-    </svg>
-    {contextMenu && (
-      <SliceContextMenu
-        position={{ x: contextMenu.x, y: contextMenu.y }}
-        onClose={() => setContextMenu(null)}
-        items={[
-          {
-            id: "open-all",
-            label: t("donut.contextMenu.openAll"),
-            onSelect: () => onSelect(contextMenu.tabId),
-          },
-          {
-            id: "edit",
-            label: t("donut.contextMenu.edit"),
-            onSelect: () => onEditTab?.(contextMenu.tabId),
-          },
-          {
-            id: "delete",
-            label: t("donut.contextMenu.delete"),
-            variant: "danger",
-            onSelect: () => {
-              // Plano 16 — delete em group via context menu mostra
-              // cascade-confirm com count, igual ao hover-hold; assim
-              // os dois caminhos avisam sobre a remoção dos descendentes.
-              const tab = current.tabs.find((tt) => tt.id === contextMenu.tabId);
-              const tabIsGroup = tab ? isGroup(tab) : false;
-              const promptKey = tabIsGroup
-                ? "donut.confirmCascadeDelete"
-                : "donut.contextMenu.confirmDelete";
-              const promptVars = tabIsGroup
-                ? {
-                    label: contextMenu.tabLabel,
-                    count: tab ? countDescendants(tab) : 0,
-                  }
-                : { label: contextMenu.tabLabel };
-              const ok = window.confirm(t(promptKey, promptVars));
-              if (ok) onDeleteTab?.(contextMenu.tabId, navigation.path);
-            },
-          },
-        ]}
-      />
-    )}
-    {searchOpen && (
-      <TabSearchOverlay
-        tabs={ordered}
-        onClose={() => setSearchOpen(false)}
-        onSelect={(tabId) => {
-          setSearchOpen(false);
-          onSelect(tabId);
-        }}
-      />
-    )}
-    <Breadcrumb
-      segments={navigation.path.map((id) => labelForPathSegment(tabs, navigation.path, id))}
-      onJumpTo={(idx) => navigation.jumpTo(idx)}
-    />
-    </>
+        )}
+      </>
     </ThemeContext.Provider>
   );
 };
-
-/**
- * Resolve o label de exibição de cada segmento do path. Caminha em `tabs`
- * seguindo a ordem do path completo até bater no `targetId`.
- */
-function labelForPathSegment(
-  rootTabs: Tab[],
-  fullPath: string[],
-  targetId: string,
-): string {
-  let current = rootTabs;
-  for (const id of fullPath) {
-    const found = current.find((t) => t.id === id);
-    if (!found) return targetId;
-    if (id === targetId) return found.name ?? found.icon ?? targetId;
-    current = found.children ?? [];
-  }
-  return targetId;
-}
