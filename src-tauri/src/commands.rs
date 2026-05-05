@@ -1791,7 +1791,12 @@ mod tests {
             kind: crate::config::schema::TabKind::Group,
             children: vec![leaf_a1, group_b],
         };
-        (vec![leaf_root, group_a], leaf_root_id, leaf_a1_id, leaf_b1_id)
+        (
+            vec![leaf_root, group_a],
+            leaf_root_id,
+            leaf_a1_id,
+            leaf_b1_id,
+        )
     }
 
     #[test]
