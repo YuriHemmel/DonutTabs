@@ -464,17 +464,17 @@ export const Donut: React.FC<DonutProps> = ({
             const sliceCount = current.tabs.length + (current.hasPlus ? 1 : 0);
             const plusIdx = current.hasPlus ? current.tabs.length : -1;
             const ringKeyStr = ringKey(ring.depth, ring.parentId);
-            // Plus intent: root = "new-tab"; sub-rings = caminho até o
-            // group atual (parentId). Para ring 1, parentId = id do
-            // root-group expandido. Para ring 2, parentId = id do ring-1
-            // group. Ambos são corretos como "último id" do path.
+            // Plus intent: root = "new-tab"; sub-rings = path até o group
+            // pai (cujos children são renderizados no ring). Como
+            // `parentPathForRing(N)` já retorna `expandedGroupIds.slice(0,N)`
+            // — i.e., o caminho completo do root até esse parent group —
+            // basta `join(",")`. Concatenar `ring.parentId` aqui duplicaria
+            // o último id do path (ring.parentId === expandedGroupIds[depth-1]),
+            // resultando em CSV inválido tipo "g1,g1".
             const plusIntent: SettingsIntent =
               ring.depth === 0
                 ? "new-tab"
-                : (`new-tab-in-group:${parentPathForRing(ring.depth)
-                    .concat(ring.parentId ?? "")
-                    .filter(Boolean)
-                    .join(",")}` as SettingsIntent);
+                : (`new-tab-in-group:${parentPathForRing(ring.depth).join(",")}` as SettingsIntent);
             return (
               <g key={ringKeyStr}>
                 {current.tabs.map((tab, sliceIdx) => {
