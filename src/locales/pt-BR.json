@@ -106,6 +106,7 @@
     "title": "Configurações",
     "sections": {
       "tabs": "Abas",
+      "profiles": "Perfis",
       "appearance": "Aparência",
       "shortcut": "Atalho",
       "system": "Sistema",
@@ -118,6 +119,10 @@
       "delete": "Excluir perfil",
       "activate": "Definir como perfil ativo",
       "activeMarker": "(ativo)",
+      "activeBadge": "Ativo",
+      "sectionTitle": "Perfis",
+      "addProfile": "Adicionar perfil",
+      "selectPrompt": "Selecione um perfil para editar ou clique em \"+ Adicionar perfil\".",
       "confirmDelete": "Excluir perfil \"{{name}}\"? As abas e configurações dele serão perdidas.",
       "newTitle": "Novo perfil",
       "editTitle": "Editar perfil",

@@ -24,9 +24,6 @@ async function renderPicker(
     selectedId: string;
     activeId: string;
     onSelect: (id: string) => void;
-    onCreate: () => void;
-    onEdit: (id: string) => void;
-    onDelete: (id: string) => void;
     onReorder: (ids: string[]) => void;
   }> = {},
 ) {
@@ -36,9 +33,6 @@ async function renderPicker(
     selectedId: "p1",
     activeId: "p1",
     onSelect: vi.fn(),
-    onCreate: vi.fn(),
-    onEdit: vi.fn(),
-    onDelete: vi.fn(),
     onReorder: vi.fn(),
     ...overrides,
   };
@@ -51,18 +45,6 @@ async function renderPicker(
 }
 
 describe("ProfilePicker", () => {
-  it("hides delete button when only one profile exists", async () => {
-    await renderPicker({ profiles: [profile()] });
-    expect(screen.queryByTestId("profile-delete")).toBeNull();
-  });
-
-  it("shows delete button when there are 2+ profiles", async () => {
-    await renderPicker({
-      profiles: [profile(), profile({ id: "p2", name: "Estudo" })],
-    });
-    expect(screen.getByTestId("profile-delete")).toBeTruthy();
-  });
-
   it("renders chips for every profile via DraggableProfileList", async () => {
     await renderPicker({
       profiles: [
@@ -97,30 +79,12 @@ describe("ProfilePicker", () => {
     expect(props.onSelect).toHaveBeenCalledWith("p2");
   });
 
-  it("calls onCreate when the new button is clicked", async () => {
-    const user = userEvent.setup();
-    const { props } = await renderPicker();
-    await user.click(screen.getByTestId("profile-create"));
-    expect(props.onCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls onEdit with the currently selected id when edit is clicked", async () => {
-    const user = userEvent.setup();
-    const { props } = await renderPicker({
+  it("issue #39: no longer renders create/edit/delete buttons (moved to Perfis section)", async () => {
+    await renderPicker({
       profiles: [profile(), profile({ id: "p2", name: "Estudo" })],
-      selectedId: "p2",
     });
-    await user.click(screen.getByTestId("profile-edit"));
-    expect(props.onEdit).toHaveBeenCalledWith("p2");
-  });
-
-  it("calls onDelete with the currently selected id when delete is clicked", async () => {
-    const user = userEvent.setup();
-    const { props } = await renderPicker({
-      profiles: [profile(), profile({ id: "p2", name: "Estudo" })],
-      selectedId: "p2",
-    });
-    await user.click(screen.getByTestId("profile-delete"));
-    expect(props.onDelete).toHaveBeenCalledWith("p2");
+    expect(screen.queryByTestId("profile-create")).toBeNull();
+    expect(screen.queryByTestId("profile-edit")).toBeNull();
+    expect(screen.queryByTestId("profile-delete")).toBeNull();
   });
 });

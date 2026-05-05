@@ -8,31 +8,25 @@ export interface ProfilePickerProps {
   selectedId: string;
   activeId: string;
   onSelect: (profileId: string) => void;
-  onCreate: () => void;
-  onEdit: (profileId: string) => void;
-  onDelete: (profileId: string) => void;
   onReorder: (orderedIds: string[]) => void;
 }
 
 /**
- * Topbar acima do `<SectionTabs>`. Mostra qual perfil está sendo editado +
- * botões de criar/excluir. Os chips arrastáveis ficam em
- * `<DraggableProfileList>` (substitui o `<select>` nativo: `<option>` não é
- * draggable). O perfil **ativo** (que comanda o donut) pode ser diferente do
- * **selecionado** (que está sob edição); o marcador dourado sinaliza isso.
+ * Topbar acima do `<SectionTabs>`. Mostra os chips draggable de perfis pra
+ * trocar o contexto de edição (qual perfil é alvo das seções "Abas",
+ * "Aparência", "Atalho"). Issue #39: criação/edição/exclusão de perfis
+ * mudaram pra a seção dedicada `<ProfilesSection>`. Aqui só ficam os chips
+ * de seleção e o label. O perfil **ativo** (que comanda o donut) pode ser
+ * diferente do **selecionado**; o marcador dourado sinaliza isso.
  */
 export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   profiles,
   selectedId,
   activeId,
   onSelect,
-  onCreate,
-  onEdit,
-  onDelete,
   onReorder,
 }) => {
   const { t } = useTranslation();
-  const canDelete = profiles.length > 1;
   return (
     <div
       data-testid="profile-picker"
@@ -55,56 +49,6 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           onReorder={onReorder}
         />
       </div>
-      <button
-        type="button"
-        data-testid="profile-edit"
-        onClick={() => onEdit(selectedId)}
-        style={{
-          background: "transparent",
-          color: "var(--fg)",
-          border: "1px solid var(--ghost-border)",
-          borderRadius: 4,
-          padding: "6px 12px",
-          cursor: "pointer",
-          font: "inherit",
-        }}
-      >
-        {t("settings.profile.edit")}
-      </button>
-      <button
-        type="button"
-        data-testid="profile-create"
-        onClick={onCreate}
-        style={{
-          background: "var(--accent-bg)",
-          color: "var(--accent-fg)",
-          border: 0,
-          borderRadius: 4,
-          padding: "6px 12px",
-          cursor: "pointer",
-          font: "inherit",
-        }}
-      >
-        + {t("settings.profile.new")}
-      </button>
-      {canDelete && (
-        <button
-          type="button"
-          data-testid="profile-delete"
-          onClick={() => onDelete(selectedId)}
-          style={{
-            background: "transparent",
-            color: "var(--danger-fg)",
-            border: "1px solid var(--danger-border)",
-            borderRadius: 4,
-            padding: "6px 12px",
-            cursor: "pointer",
-            font: "inherit",
-          }}
-        >
-          {t("settings.profile.delete")}
-        </button>
-      )}
     </div>
   );
 };

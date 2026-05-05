@@ -50,6 +50,48 @@ fn current_donut_size<R: Runtime>(app: &AppHandle<R>) -> f64 {
     donut_size_for_rings(depth)
 }
 
+/// Issue #39 (donut clipping bug) — resincroniza tamanho + posição do donut
+/// se ele estiver visível. Disparado depois que o perfil ativo muda
+/// (`set_active_profile`), porque novos perfis podem ter quantidade
+/// diferente de níveis de grupos e o SVG do frontend muda de tamanho.
+/// Sem resync, a janela OS fica no tamanho do perfil anterior e o donut é
+/// clipado nos rings externos. Reposiciona mantendo o **centro** atual da
+/// janela (não o cursor) — cursor pode ter movido desde o show inicial.
+pub fn resync_size<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
+    let Some(window) = app.get_webview_window(DONUT_LABEL) else {
+        return Ok(());
+    };
+    if !window.is_visible().unwrap_or(false) {
+        return Ok(());
+    }
+    let new_size_logical = current_donut_size(app);
+    let scale = window.scale_factor().map_err(|e| {
+        AppError::window("window_scale_factor_failed", &[("reason", e.to_string())])
+    })?;
+    let cur_pos = window
+        .outer_position()
+        .map_err(|e| AppError::window("window_position_failed", &[("reason", e.to_string())]))?;
+    let cur_size = window
+        .outer_size()
+        .map_err(|e| AppError::window("window_size_failed", &[("reason", e.to_string())]))?;
+    let center_x = cur_pos.x as f64 + cur_size.width as f64 / 2.0;
+    let center_y = cur_pos.y as f64 + cur_size.height as f64 / 2.0;
+    let half = (new_size_logical / 2.0) * scale;
+    let new_x = (center_x - half).round() as i32;
+    let new_y = (center_y - half).round() as i32;
+    window
+        .set_size(LogicalSize::new(new_size_logical, new_size_logical))
+        .map_err(|e| {
+            AppError::window("window_set_size_failed", &[("reason", e.to_string())])
+        })?;
+    window
+        .set_position(PhysicalPosition::new(new_x, new_y))
+        .map_err(|e| {
+            AppError::window("window_set_position_failed", &[("reason", e.to_string())])
+        })?;
+    Ok(())
+}
+
 pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     let size = current_donut_size(app);
     if let Some(window) = app.get_webview_window(DONUT_LABEL) {

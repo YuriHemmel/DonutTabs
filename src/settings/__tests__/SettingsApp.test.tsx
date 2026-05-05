@@ -412,9 +412,10 @@ describe("SettingsApp intent routing", () => {
     const user = userEvent.setup();
     await renderApp();
     await waitFor(() => {
-      expect(screen.getByTestId("profile-create")).toBeTruthy();
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
     });
-    await user.click(screen.getByTestId("profile-create"));
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId("profile-add"));
     const editor = await waitFor(() => screen.getByTestId("profile-editor"));
     const nameInput = editor.querySelector("input") as HTMLInputElement;
     await user.type(nameInput, "Estudo");
@@ -437,10 +438,10 @@ describe("SettingsApp intent routing", () => {
     const user = userEvent.setup();
     await renderApp();
     await waitFor(() => {
-      expect(screen.getByTestId("profile-edit")).toBeTruthy();
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
     });
-    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
-    await user.click(screen.getByTestId("profile-edit"));
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID_2}`));
     const editor = await waitFor(() => screen.getByTestId("profile-editor"));
     const nameInput = editor.querySelector("input") as HTMLInputElement;
     expect(nameInput.value).toBe("Estudo");
@@ -462,9 +463,10 @@ describe("SettingsApp intent routing", () => {
     const user = userEvent.setup();
     await renderApp();
     await waitFor(() => {
-      expect(screen.getByTestId("profile-create")).toBeTruthy();
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
     });
-    await user.click(screen.getByTestId("profile-create"));
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId("profile-add"));
     await waitFor(() => {
       expect(screen.getByTestId("profile-editor")).toBeTruthy();
     });
@@ -550,11 +552,12 @@ describe("SettingsApp intent routing", () => {
     const user = userEvent.setup();
     await renderApp();
     await waitFor(() => {
-      expect(screen.getByTestId("profile-delete")).toBeTruthy();
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
     });
-    // Seleciona o segundo perfil para mirar o delete nele.
-    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
-    await user.click(screen.getByTestId("profile-delete"));
+    await user.click(screen.getByTestId("section-profiles"));
+    // Abre o segundo perfil no editor para mirar o delete nele.
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID_2}`));
+    await user.click(await screen.findByTestId("profile-editor-delete"));
     expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(ipc.deleteProfile).toHaveBeenCalledWith(PROFILE_ID_2);
     confirmSpy.mockRestore();
@@ -572,12 +575,88 @@ describe("SettingsApp intent routing", () => {
     const user = userEvent.setup();
     await renderApp();
     await waitFor(() => {
-      expect(screen.getByTestId("profile-delete")).toBeTruthy();
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
     });
-    await user.click(screen.getByTestId("profile-delete"));
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID_2}`));
+    await user.click(await screen.findByTestId("profile-editor-delete"));
     expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(ipc.deleteProfile).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+
+  it("issue #39: ProfilesSection lists every profile with an active badge on the active one", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-profiles"));
+    expect(screen.getByTestId(`profile-row-${PROFILE_ID}`)).toBeTruthy();
+    expect(screen.getByTestId(`profile-row-${PROFILE_ID_2}`)).toBeTruthy();
+    // Apenas o perfil ativo (PROFILE_ID) carrega o badge.
+    const badges = screen.getAllByTestId("profile-row-active-badge");
+    expect(badges.length).toBe(1);
+  });
+
+  it("issue #39: 'new-profile' intent lands on the Perfis section", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "new-profile",
+    );
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-editor")).toBeTruthy();
+    });
+    expect(
+      screen.getByTestId("section-profiles").getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("issue #39: profile-editor-delete is hidden when only one profile remains", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID}`));
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-editor")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("profile-editor-delete")).toBeNull();
+  });
+
+  it("issue #39: set-active button in ProfileEditor calls ipc.setActiveProfile", async () => {
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.setActiveProfile as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID_2}`));
+    const btn = await screen.findByTestId("profile-editor-set-active");
+    await user.click(btn);
+    expect(ipc.setActiveProfile).toHaveBeenCalledWith(PROFILE_ID_2);
+    // Editando o ativo: o botão não aparece.
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID}`));
+    expect(screen.queryByTestId("profile-editor-set-active")).toBeNull();
   });
 
   it("AppearanceSection shows the set-active button only when editing a non-active profile", async () => {

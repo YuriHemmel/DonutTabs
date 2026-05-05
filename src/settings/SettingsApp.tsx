@@ -9,7 +9,7 @@ import { SystemSection } from "./SystemSection";
 import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
-import { ProfileEditor } from "./ProfileEditor";
+import { ProfilesSection, type ProfilesEditorMode } from "./ProfilesSection";
 import { useConfig } from "./useConfig";
 import { ipc, dialog, SETTINGS_INTENT_EVENT } from "../core/ipc";
 import { translateAppError } from "../core/errors";
@@ -26,9 +26,9 @@ interface IntentTarget {
   section: Section;
   selection: Selection;
   selectedProfileId?: string;
-  /** Quando `true`, dispara o fluxo de criação de perfil após aplicar o
-   *  target. Usado pelo intent `new-profile` vindo do donut. */
-  triggerCreateProfile?: boolean;
+  /** Issue #39: o intent `new-profile` (donut) agora abre a seção dedicada
+   *  "Perfis" com o editor já em modo "new". `null` = não toca no editor. */
+  profileEditorMode?: ProfilesEditorMode;
 }
 
 /**
@@ -73,9 +73,9 @@ function resolveIntent(
   }
   if (intent === "new-profile") {
     return {
-      section: "tabs",
+      section: "profiles",
       selection: { mode: "empty" },
-      triggerCreateProfile: true,
+      profileEditorMode: { mode: "new" },
     };
   }
   if (intent && intent.startsWith("new-tab-in-group:")) {
@@ -130,25 +130,21 @@ export const SettingsApp: React.FC = () => {
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
   // Perfil sob edição. Default = ativo do config quando ele carrega.
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
-  // Painel `<ProfileEditor>` sobreposto. `null` = oculto.
-  const [profileEditorMode, setProfileEditorMode] = useState<
-    | null
-    | { mode: "new" }
-    | { mode: "edit"; profileId: string }
-  >(null);
+  // Issue #39 — estado do editor da seção "Perfis". Vive no SettingsApp
+  // (não dentro de ProfilesSection) pra sobreviver à troca de seção e pra
+  // que intents `new-profile` consigam abrir o editor já no mount.
+  const [profileEditorMode, setProfileEditorMode] =
+    useState<ProfilesEditorMode | null>(null);
 
   const configRef = useRef<Config | null>(config);
   configRef.current = config;
   const pendingIntentRef = useRef<string | null>(null);
-  // Ref para `handleCreateProfile` permite que `apply` (declarado antes)
-  // dispare o fluxo de criação sem depender da ordem de declaração.
-  const createProfileRef = useRef<() => void>(() => {});
 
   const apply = (target: IntentTarget) => {
     setSection(target.section);
     setSelection(target.selection);
     if (target.selectedProfileId) setSelectedProfileId(target.selectedProfileId);
-    if (target.triggerCreateProfile) createProfileRef.current();
+    if (target.profileEditorMode) setProfileEditorMode(target.profileEditorMode);
   };
 
   useEffect(() => {
@@ -271,17 +267,6 @@ export const SettingsApp: React.FC = () => {
     setSelection({ mode: "empty" });
   };
 
-  const handleCreateProfile = () => {
-    setProfileEditorMode({ mode: "new" });
-  };
-  createProfileRef.current = () => {
-    handleCreateProfile();
-  };
-
-  const handleEditProfile = (profileId: string) => {
-    setProfileEditorMode({ mode: "edit", profileId });
-  };
-
   const handleProfileEditorSubmit = async ({
     name,
     icon,
@@ -310,17 +295,18 @@ export const SettingsApp: React.FC = () => {
     if (!confirmed) return;
     try {
       await deleteProfile(profileId);
-      // Se excluímos o selecionado, volta para o ativo (que o backend pode ter trocado).
+      // Se excluímos o selecionado, volta para o ativo (que o backend pode
+      // ter trocado).
       setSelectedProfileId(null);
+      setProfileEditorMode(null);
     } catch (e) {
       console.error("deleteProfile failed", e);
     }
   };
 
-  const profileEditorInitial: Profile | null =
-    profileEditorMode?.mode === "edit"
-      ? config.profiles.find((p) => p.id === profileEditorMode.profileId) ?? null
-      : null;
+  const handleSetActiveFromEditor = (profileId: string) => {
+    void setActiveProfile(profileId);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -332,19 +318,8 @@ export const SettingsApp: React.FC = () => {
           setSelectedProfileId(id);
           setSelection({ mode: "empty" });
         }}
-        onCreate={handleCreateProfile}
-        onEdit={handleEditProfile}
-        onDelete={handleDeleteProfile}
         onReorder={handleReorderProfiles}
       />
-      {profileEditorMode && (
-        <ProfileEditor
-          mode={profileEditorMode.mode}
-          initial={profileEditorInitial}
-          onSubmit={handleProfileEditorSubmit}
-          onCancel={() => setProfileEditorMode(null)}
-        />
-      )}
       <SectionTabs active={section} onChange={setSection} />
 
       {section === "tabs" && (
@@ -392,6 +367,22 @@ export const SettingsApp: React.FC = () => {
             </section>
           )}
         </div>
+      )}
+
+      {section === "profiles" && (
+        <ProfilesSection
+          profiles={config.profiles}
+          activeId={config.activeProfileId}
+          editorMode={profileEditorMode}
+          onOpenNew={() => setProfileEditorMode({ mode: "new" })}
+          onOpenEdit={(profileId) =>
+            setProfileEditorMode({ mode: "edit", profileId })
+          }
+          onCloseEditor={() => setProfileEditorMode(null)}
+          onSubmit={handleProfileEditorSubmit}
+          onDelete={handleDeleteProfile}
+          onSetActive={handleSetActiveFromEditor}
+        />
       )}
 
       {section === "appearance" && (
