@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { dialog } from "../core/ipc";
+import { dialog, ipc } from "../core/ipc";
 import { AppPicker } from "./AppPicker";
+import type { MonitorInfo } from "../core/types/MonitorInfo";
 
 export type ItemKind = "url" | "file" | "folder" | "app" | "script";
 
@@ -15,11 +16,17 @@ export interface ItemDraft {
   /** Só `kind: "script"` carrega esse flag. Default `false`; flipped via
    *  `<ScriptConfirmModal>` ou checkbox no editor. */
   trusted?: boolean;
+  /** Plano 21 — índice 0-based do monitor alvo. `null` (default) = OS
+   *  decide. Round-trips com o backend via `Item.monitor`. */
+  monitor?: number | null;
 }
 
 export interface ItemListEditorProps {
   values: ItemDraft[];
   onChange: (next: ItemDraft[]) => void;
+  /** Plano 21 — injectable pra testes. Quando ausente, hook chama
+   *  `ipc.listMonitors()` no mount. */
+  monitorsOverride?: MonitorInfo[];
 }
 
 const KIND_OPTIONS: ReadonlyArray<ItemKind> = [
@@ -52,6 +59,10 @@ const selectStyle: React.CSSProperties = {
   flex: "0 0 110px",
 };
 const openWithStyle: React.CSSProperties = {
+  ...inputStyle,
+  flex: "0 0 140px",
+};
+const monitorSelectStyle: React.CSSProperties = {
   ...inputStyle,
   flex: "0 0 140px",
 };
@@ -90,11 +101,40 @@ const isApp = (k: ItemKind) => k === "app";
 export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   values,
   onChange,
+  monitorsOverride,
 }) => {
   const { t } = useTranslation();
   /** Plano 17 — index do row de `kind: "app"` aberto no `<AppPicker>`,
    *  ou `null` quando o picker está fechado. */
   const [appPickerIndex, setAppPickerIndex] = useState<number | null>(null);
+  /** Plano 21 — monitores conectados. Fetched no mount; `null` enquanto
+   *  carregando (esconde a coluna até saber a contagem real). */
+  const [monitors, setMonitors] = useState<MonitorInfo[] | null>(
+    monitorsOverride ?? null,
+  );
+
+  useEffect(() => {
+    if (monitorsOverride !== undefined) {
+      setMonitors(monitorsOverride);
+      return;
+    }
+    let cancelled = false;
+    ipc
+      .listMonitors()
+      .then((list) => {
+        if (!cancelled) setMonitors(list);
+      })
+      .catch(() => {
+        // Falha de query — assume 1 monitor (esconde coluna). User não fica
+        // bloqueado se o SO recusar a query (raro).
+        if (!cancelled) setMonitors([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [monitorsOverride]);
+
+  const showMonitorSelect = monitors !== null && monitors.length > 1;
 
   const updateAt = (i: number, patch: Partial<ItemDraft>) => {
     const next = values.map((v, idx) => (idx === i ? { ...v, ...patch } : v));
@@ -106,6 +146,9 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   };
 
   const add = (kind: ItemKind) => {
+    // Plano 21 — `monitor` fica omitido do draft inicial (não vira `null`
+    // explícito) pra evitar poluir testes existentes que comparam shape
+    // estrita; backend deserializa a ausência como `None`.
     const draft: ItemDraft = { kind, value: "", openWith: "" };
     if (isScript(kind)) draft.trusted = false;
     onChange([...values, draft]);
@@ -203,6 +246,27 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                 title={t("settings.editor.openWithHint")}
                 style={openWithStyle}
               />
+            )}
+            {showMonitorSelect && monitors && (
+              <select
+                aria-label={`${t("settings.editor.monitorLabel")} ${i + 1}`}
+                data-testid={`item-monitor-${i}`}
+                title={t("settings.editor.monitorHint")}
+                value={it.monitor ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateAt(i, { monitor: v === "" ? null : Number(v) });
+                }}
+                style={monitorSelectStyle}
+              >
+                <option value="">{t("settings.editor.monitorDefault")}</option>
+                {monitors.map((m) => (
+                  <option key={m.index} value={m.index}>
+                    {m.name}
+                    {m.primary ? t("settings.editor.monitorPrimarySuffix") : ""}
+                  </option>
+                ))}
+              </select>
             )}
             <button
               type="button"

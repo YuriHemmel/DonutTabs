@@ -12,6 +12,7 @@ import type { UpdateSummary } from "./types/UpdateSummary";
 import type { ScriptRun } from "./types/ScriptRun";
 import type { ScriptRunSummary } from "./types/ScriptRunSummary";
 import type { ScriptStream } from "./types/ScriptStream";
+import type { MonitorInfo } from "./types/MonitorInfo";
 
 export type SettingsIntent =
   | "new-tab"
@@ -83,6 +84,10 @@ export const ipc = {
     invoke<ImportResult>("import_config", { sourcePath }),
   setSearchShortcut: (combo: string) =>
     invoke<Config>("set_search_shortcut", { combo }),
+  /** Plano 23 — toggle do gap angular entre slices vizinhos no donut.
+   *  Mora em `interaction.sliceGapEnabled` (global, não per-perfil). */
+  setSliceGapEnabled: (enabled: boolean) =>
+    invoke<Config>("set_slice_gap_enabled", { enabled }),
   /** `expectedCommand`: comando que o user viu no modal. Backend rejeita com
    *  `script_command_mismatch` se o item foi editado por outra janela entre
    *  o modal abrir e o user confirmar — evita autorizar comando que o user
@@ -144,6 +149,19 @@ export const ipc = {
    *  ao fire-and-forget Plano-14. */
   setScriptHistoryEnabled: (enabled: boolean) =>
     invoke<Config>("set_script_history_enabled", { enabled }),
+  /** Plano 21 — lista os monitores conectados. Read-only; usado pelo
+   *  picker per-item no `<ItemListEditor>` (escondido quando há só 1). */
+  listMonitors: () => invoke<MonitorInfo[]>("list_monitors"),
+  /** Plano 22 — read-and-clear da flag de onboarding. Donut chama na
+   *  1ª montagem; backend marca `false` pra não mostrar overlay de novo
+   *  na mesma sessão. Persistir o flag de fato é responsabilidade do
+   *  `setFirstLaunchCompleted`. */
+  consumeOnboardingPending: () => invoke<boolean>("consume_onboarding_pending"),
+  /** Plano 22 — toggle persistido. Donut chama com `true` após dispensar
+   *  o overlay; Settings → Sistema "Resetar tutorial" chama com `false`
+   *  pra re-armar o fluxo na próxima manual launch. */
+  setFirstLaunchCompleted: (completed: boolean) =>
+    invoke<Config>("set_first_launch_completed", { completed }),
 };
 
 export interface DialogFilter {

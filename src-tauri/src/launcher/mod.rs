@@ -39,6 +39,15 @@ pub trait Opener: Send + Sync {
     fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String>;
     fn spawn_app(&self, name: &str) -> Result<(), String>;
     fn spawn_script(&self, command: &str) -> Result<(), String>;
+    /// Plano 21 — move o cursor pro centro do monitor especificado antes
+    /// do launch. Browsers/apps spawnam fresh windows na tela com cursor;
+    /// apps que reusam janela ignoram. Best-effort: erro retornado pra
+    /// log mas não aborta launch (chamado fora da match arm).
+    /// Default impl no-op pra implementações que não suportam (testes,
+    /// futuros backends).
+    fn warp_cursor_to_monitor(&self, _monitor_index: u32) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 /// Resultado da tentativa de abrir uma aba: lista de erros por item.
@@ -80,18 +89,33 @@ pub fn launch_tab(
         ..Default::default()
     };
     for (idx, item) in tab.items.iter().enumerate() {
+        // Plano 21 — cursor warp pré-launch quando o item carrega `monitor`.
+        // Best-effort: warp falhar (Wayland sem suporte, FFI error) não
+        // bloqueia o launch — segue pro OS handler que abre na tela default.
+        if let Some(m) = item.monitor() {
+            if let Err(e) = opener.warp_cursor_to_monitor(m) {
+                eprintln!("[launcher] cursor warp pro monitor {m} falhou: {e}");
+            }
+        }
         match item {
-            Item::Url { value, open_with } => {
+            Item::Url {
+                value, open_with, ..
+            } => {
                 if let Err(e) = opener.open_url(value, open_with.as_deref()) {
                     outcome.failures.push((value.clone(), e));
                 }
             }
-            Item::File { path, open_with } | Item::Folder { path, open_with } => {
+            Item::File {
+                path, open_with, ..
+            }
+            | Item::Folder {
+                path, open_with, ..
+            } => {
                 if let Err(e) = opener.open_path(path, open_with.as_deref()) {
                     outcome.failures.push((path.clone(), e));
                 }
             }
-            Item::App { name } => {
+            Item::App { name, .. } => {
                 if let Err(e) = opener.spawn_app(name) {
                     outcome.failures.push((name.clone(), e));
                 }
@@ -209,6 +233,10 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
             .map(|_| ())
             .map_err(|e| e.to_string())
     }
+
+    fn warp_cursor_to_monitor(&self, monitor_index: u32) -> Result<(), String> {
+        crate::cursor_warp::warp_to_monitor(self.app, monitor_index).map_err(|e| format!("{e:?}"))
+    }
 }
 
 #[cfg(test)]
@@ -225,10 +253,14 @@ mod tests {
         path_calls: Mutex<Vec<Call>>,
         app_calls: Mutex<Vec<String>>,
         script_calls: Mutex<Vec<String>>,
+        /// Plano 21 — registra cada chamada `warp_cursor_to_monitor`. Pré-launch:
+        /// a ordem dos warps relativa aos opens é o que validamos nos tests.
+        warp_calls: Mutex<Vec<u32>>,
         fail_urls: Vec<String>,
         fail_paths: Vec<String>,
         fail_apps: Vec<String>,
         fail_scripts: Vec<String>,
+        fail_warps: Vec<u32>,
     }
 
     impl MockOpener {
@@ -238,10 +270,12 @@ mod tests {
                 path_calls: Mutex::new(vec![]),
                 app_calls: Mutex::new(vec![]),
                 script_calls: Mutex::new(vec![]),
+                warp_calls: Mutex::new(vec![]),
                 fail_urls: vec![],
                 fail_paths: vec![],
                 fail_apps: vec![],
                 fail_scripts: vec![],
+                fail_warps: vec![],
             }
         }
     }
@@ -288,6 +322,15 @@ mod tests {
                 Ok(())
             }
         }
+
+        fn warp_cursor_to_monitor(&self, monitor_index: u32) -> Result<(), String> {
+            self.warp_calls.lock().unwrap().push(monitor_index);
+            if self.fail_warps.iter().any(|i| *i == monitor_index) {
+                Err("simulated warp failure".into())
+            } else {
+                Ok(())
+            }
+        }
     }
 
     fn tab_url(urls: &[&str]) -> Tab {
@@ -302,6 +345,7 @@ mod tests {
                 .map(|u| Item::Url {
                     value: (*u).into(),
                     open_with: None,
+                    monitor: None,
                 })
                 .collect(),
             kind: TabKind::Leaf,
@@ -383,14 +427,17 @@ mod tests {
         let opener = MockOpener::new();
         let tab = tab_with_items(vec![
             Item::Url {
+                monitor: None,
                 value: "https://a".into(),
                 open_with: None,
             },
             Item::File {
+                monitor: None,
                 path: "/tmp/x.txt".into(),
                 open_with: None,
             },
             Item::Folder {
+                monitor: None,
                 path: "/tmp".into(),
                 open_with: None,
             },
@@ -417,10 +464,12 @@ mod tests {
         opener.fail_paths = vec!["/missing".into()];
         let tab = tab_with_items(vec![
             Item::Url {
+                monitor: None,
                 value: "https://a".into(),
                 open_with: None,
             },
             Item::File {
+                monitor: None,
                 path: "/missing".into(),
                 open_with: None,
             },
@@ -437,10 +486,12 @@ mod tests {
         opener.fail_paths = vec!["/a".into(), "/b".into()];
         let tab = tab_with_items(vec![
             Item::File {
+                monitor: None,
                 path: "/a".into(),
                 open_with: None,
             },
             Item::Folder {
+                monitor: None,
                 path: "/b".into(),
                 open_with: None,
             },
@@ -456,14 +507,17 @@ mod tests {
         let opener = MockOpener::new();
         let tab = tab_with_items(vec![
             Item::Url {
+                monitor: None,
                 value: "https://work".into(),
                 open_with: Some("edge".into()),
             },
             Item::Url {
+                monitor: None,
                 value: "https://personal".into(),
                 open_with: None,
             },
             Item::File {
+                monitor: None,
                 path: "/tmp/x.txt".into(),
                 open_with: Some("code".into()),
             },
@@ -489,6 +543,7 @@ mod tests {
     fn dispatches_app_to_spawn_app() {
         let opener = MockOpener::new();
         let tab = tab_with_items(vec![Item::App {
+            monitor: None,
             name: "firefox".into(),
         }]);
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
@@ -510,10 +565,12 @@ mod tests {
         let opener = MockOpener::new();
         let tab = tab_with_items(vec![
             Item::Script {
+                monitor: None,
                 command: "ls".into(),
                 trusted: false,
             },
             Item::Script {
+                monitor: None,
                 command: "git status".into(),
                 trusted: true,
             },
@@ -532,9 +589,11 @@ mod tests {
         opener.fail_apps = vec!["nonexistent".into()];
         let tab = tab_with_items(vec![
             Item::App {
+                monitor: None,
                 name: "firefox".into(),
             },
             Item::App {
+                monitor: None,
                 name: "nonexistent".into(),
             },
         ]);
@@ -548,6 +607,7 @@ mod tests {
         let mut opener = MockOpener::new();
         opener.fail_scripts = vec!["rm -rf /".into()];
         let tab = tab_with_items(vec![Item::Script {
+            monitor: None,
             command: "rm -rf /".into(),
             trusted: true,
         }]);
@@ -578,21 +638,26 @@ mod tests {
         let opener = MockOpener::new();
         let tab = tab_with_items(vec![
             Item::Url {
+                monitor: None,
                 value: "https://a".into(),
                 open_with: None,
             },
             Item::File {
+                monitor: None,
                 path: "/tmp/x".into(),
                 open_with: None,
             },
             Item::Folder {
+                monitor: None,
                 path: "/tmp".into(),
                 open_with: None,
             },
             Item::App {
+                monitor: None,
                 name: "code".into(),
             },
             Item::Script {
+                monitor: None,
                 command: "git pull".into(),
                 trusted: true,
             },
@@ -649,14 +714,17 @@ mod tests {
         let profile_id = Uuid::new_v4();
         let tab = tab_with_items(vec![
             Item::Url {
+                monitor: None,
                 value: "https://a".into(),
                 open_with: None,
             },
             Item::Script {
+                monitor: None,
                 command: "ls".into(),
                 trusted: true,
             },
             Item::Script {
+                monitor: None,
                 command: "git status".into(),
                 trusted: true,
             },
@@ -680,6 +748,7 @@ mod tests {
         let opener = MockOpener::new();
         let executor = MockCaptureExecutor::new();
         let tab = tab_with_items(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: true,
         }]);
@@ -697,10 +766,12 @@ mod tests {
         executor.fail_commands = vec!["bad-cmd".into()];
         let tab = tab_with_items(vec![
             Item::Script {
+                monitor: None,
                 command: "good".into(),
                 trusted: true,
             },
             Item::Script {
+                monitor: None,
                 command: "bad-cmd".into(),
                 trusted: true,
             },
@@ -716,13 +787,16 @@ mod tests {
         let executor = MockCaptureExecutor::new();
         let tab = tab_with_items(vec![
             Item::Url {
+                monitor: None,
                 value: "https://a".into(),
                 open_with: None,
             },
             Item::App {
+                monitor: None,
                 name: "firefox".into(),
             },
             Item::File {
+                monitor: None,
                 path: "/tmp/x".into(),
                 open_with: None,
             },
@@ -732,6 +806,136 @@ mod tests {
         assert!(executor.calls.lock().unwrap().is_empty());
         assert_eq!(opener.url_calls.lock().unwrap().len(), 1);
         assert_eq!(opener.app_calls.lock().unwrap().len(), 1);
+        assert_eq!(opener.path_calls.lock().unwrap().len(), 1);
+    }
+
+    // ---------- Plano 21: cursor warp pre-launch ----------
+
+    #[test]
+    fn no_warp_when_item_has_no_monitor() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                monitor: None,
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::App {
+                monitor: None,
+                name: "firefox".into(),
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(outcome.failures.is_empty());
+        assert!(opener.warp_calls.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn warp_called_per_item_with_monitor_set() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                monitor: Some(0),
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::Url {
+                monitor: None,
+                value: "https://b".into(),
+                open_with: None,
+            },
+            Item::Url {
+                monitor: Some(1),
+                value: "https://c".into(),
+                open_with: None,
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(outcome.failures.is_empty());
+        // Apenas os items 0 e 2 dispararam warp; ordem preservada.
+        assert_eq!(*opener.warp_calls.lock().unwrap(), vec![0, 1]);
+    }
+
+    #[test]
+    fn warp_called_for_all_kinds_with_monitor() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                monitor: Some(2),
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::File {
+                monitor: Some(1),
+                path: "/tmp/x".into(),
+                open_with: None,
+            },
+            Item::Folder {
+                monitor: Some(0),
+                path: "/tmp".into(),
+                open_with: None,
+            },
+            Item::App {
+                monitor: Some(1),
+                name: "code".into(),
+            },
+            Item::Script {
+                monitor: Some(0),
+                command: "git pull".into(),
+                trusted: true,
+            },
+        ]);
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(outcome.failures.is_empty());
+        assert_eq!(*opener.warp_calls.lock().unwrap(), vec![2, 1, 0, 1, 0]);
+    }
+
+    #[test]
+    fn warp_failure_does_not_abort_launch() {
+        let mut opener = MockOpener::new();
+        opener.fail_warps = vec![1];
+        let tab = tab_with_items(vec![
+            Item::Url {
+                monitor: Some(1),
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::Url {
+                monitor: None,
+                value: "https://b".into(),
+                open_with: None,
+            },
+        ]);
+        // Warp failure não impede open_url de rodar — best-effort.
+        let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(outcome.failures.is_empty());
+        assert_eq!(opener.url_calls.lock().unwrap().len(), 2);
+        assert_eq!(*opener.warp_calls.lock().unwrap(), vec![1]);
+    }
+
+    #[test]
+    fn warp_happens_before_open_for_same_item() {
+        // Ordem das chamadas: warp(idx=2) → open_url; warp(idx=0) → open_path.
+        // Mock não preserva ordem entre métodos diferentes, mas total counts e
+        // sequência interna de cada Vec confirmam pareamento por iteração.
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![
+            Item::Url {
+                monitor: Some(2),
+                value: "https://a".into(),
+                open_with: None,
+            },
+            Item::File {
+                monitor: Some(0),
+                path: "/tmp/x".into(),
+                open_with: None,
+            },
+        ]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        // Warps na ordem dos items.
+        assert_eq!(*opener.warp_calls.lock().unwrap(), vec![2, 0]);
+        // Opens nas suas respectivas filas, na ordem dos items.
+        assert_eq!(opener.url_calls.lock().unwrap().len(), 1);
         assert_eq!(opener.path_calls.lock().unwrap().len(), 1);
     }
 }

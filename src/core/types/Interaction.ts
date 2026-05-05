@@ -8,4 +8,11 @@ export type Interaction = { spawnPosition: SpawnPosition, selectionMode: Selecti
  * Formato Tauri (`CommandOrControl+F`). Configs do Plano 12 ou
  * anteriores deserializam usando `default_search_shortcut`.
  */
-searchShortcut: string, };
+searchShortcut: string, 
+/**
+ * Plano 23 — quando `true` (default), o donut pinta gap angular
+ * entre slices vizinhos. Quando `false`, slices ficam coladas (look
+ * original Plano 16). Configs anteriores deserializam como `true`
+ * graças ao `#[serde(default = "default_slice_gap_enabled")]`.
+ */
+sliceGapEnabled: boolean, };

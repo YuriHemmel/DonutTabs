@@ -15,6 +15,11 @@ vi.mock("../../core/ipc", () => ({
       { name: "Firefox", value: "Firefox", path: "/Applications/Firefox.app" },
       { name: "VSCode", value: "/usr/local/bin/code", path: "/usr/local/bin/code" },
     ]),
+    // Plano 21 — default mock = single monitor (esconde o select).
+    // Tests que precisam mostrar o select usam `monitorsOverride` direto.
+    listMonitors: vi.fn().mockResolvedValue([
+      { name: "Tela 1", index: 0, x: 0, y: 0, width: 1920, height: 1080, primary: true },
+    ]),
   },
 }));
 
@@ -24,12 +29,19 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-async function renderEditor(values: ItemDraft[]) {
+async function renderEditor(
+  values: ItemDraft[],
+  monitorsOverride?: Parameters<typeof ItemListEditor>[0]["monitorsOverride"],
+) {
   const i18n = await createI18n("pt-BR");
   const onChange = vi.fn();
   const utils = render(
     <I18nextProvider i18n={i18n}>
-      <ItemListEditor values={values} onChange={onChange} />
+      <ItemListEditor
+        values={values}
+        onChange={onChange}
+        monitorsOverride={monitorsOverride}
+      />
     </I18nextProvider>,
   );
   return { ...utils, onChange };
@@ -271,5 +283,234 @@ describe("ItemListEditor", () => {
     expect(screen.queryByTestId("item-open-with-0")).toBeNull();
     expect(screen.queryByTestId("item-browse-0")).toBeNull();
     expect(screen.getByTestId("item-app-picker-0")).toBeTruthy();
+  });
+
+  // ---------- Plano 21: monitor select per row ----------
+
+  it("hides monitor select when only 1 monitor is connected", async () => {
+    await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "" }],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+      ],
+    );
+    expect(screen.queryByTestId("item-monitor-0")).toBeNull();
+  });
+
+  it("hides monitor select when fetch returns empty list", async () => {
+    await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "" }],
+      [],
+    );
+    expect(screen.queryByTestId("item-monitor-0")).toBeNull();
+  });
+
+  it("renders monitor select per row when 2+ monitors are connected", async () => {
+    await renderEditor(
+      [
+        { kind: "url", value: "https://a", openWith: "" },
+        { kind: "app", value: "firefox", openWith: "" },
+      ],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    expect(screen.getByTestId("item-monitor-0")).toBeTruthy();
+    expect(screen.getByTestId("item-monitor-1")).toBeTruthy();
+  });
+
+  it("monitor select includes a Default option plus one per monitor and marks the primary", async () => {
+    await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "" }],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    const select = screen.getByTestId("item-monitor-0") as HTMLSelectElement;
+    const opts = Array.from(select.options).map((o) => ({
+      value: o.value,
+      label: o.textContent ?? "",
+    }));
+    expect(opts[0].value).toBe("");
+    expect(opts[0].label).toMatch(/padrão/i);
+    expect(opts[1].value).toBe("0");
+    expect(opts[1].label).toContain("Tela 1");
+    expect(opts[1].label).toMatch(/primária/i);
+    expect(opts[2].value).toBe("1");
+    expect(opts[2].label).toBe("Tela 2");
+  });
+
+  it("selecting a monitor emits onChange with monitor=index", async () => {
+    const { onChange } = await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "" }],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    fireEvent.change(screen.getByTestId("item-monitor-0"), {
+      target: { value: "1" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "", monitor: 1 },
+    ]);
+  });
+
+  it("selecting Default option clears monitor (sets to null)", async () => {
+    const { onChange } = await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "", monitor: 1 }],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    fireEvent.change(screen.getByTestId("item-monitor-0"), {
+      target: { value: "" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "", monitor: null },
+    ]);
+  });
+
+  it("monitor select reflects the existing item.monitor value", async () => {
+    await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "", monitor: 1 }],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    const select = screen.getByTestId("item-monitor-0") as HTMLSelectElement;
+    expect(select.value).toBe("1");
+  });
+
+  it("monitor select also appears for app and script rows", async () => {
+    await renderEditor(
+      [
+        { kind: "app", value: "firefox", openWith: "" },
+        { kind: "script", value: "ls", openWith: "", trusted: false },
+      ],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    expect(screen.getByTestId("item-monitor-0")).toBeTruthy();
+    expect(screen.getByTestId("item-monitor-1")).toBeTruthy();
+  });
+
+  it("fetches monitors via ipc.listMonitors when no override is passed", async () => {
+    await renderEditor([{ kind: "url", value: "https://a", openWith: "" }]);
+    // Default mock retorna 1 monitor → select escondido. O hook deve ter
+    // disparado ipc.listMonitors mesmo assim.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(ipc.listMonitors).toHaveBeenCalled();
   });
 });

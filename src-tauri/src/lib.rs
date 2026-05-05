@@ -1,6 +1,7 @@
 mod apps_picker;
 mod commands;
 mod config;
+mod cursor_warp;
 mod donut_window;
 mod errors;
 mod favicon;
@@ -88,7 +89,12 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            // Plano 22 — `--autostart` é injetado pelo plugin no comando
+            // registrado no SO. Detectado em runtime via
+            // `commands::is_autostart_invocation` pra distinguir launch
+            // automática (sem onboarding visual) de manual (mostra hint na
+            // 1ª vez).
+            Some(vec!["--autostart"]),
         ))
         .setup(|app| {
             let dir = app
@@ -182,9 +188,22 @@ pub fn run() {
                 }
             }
 
+            // Plano 22 — onboarding visual: 1ª manual launch (sem
+            // `--autostart`) com `first_launch_completed = false` deixa o
+            // donut visível em vez de só pré-aquecer escondido. Donut lê
+            // `consume_onboarding_pending` na montagem pra renderizar o
+            // overlay de hint. Subsequentes launches voltam ao
+            // pré-aquecimento normal (oculto até o atalho).
+            let pending_onboarding = {
+                let state = app.state::<commands::AppState>();
+                let val = *state.pending_onboarding.read().unwrap();
+                val
+            };
             let _ = donut_window::show(app.handle());
-            if let Some(w) = app.get_webview_window("donut") {
-                let _ = w.hide();
+            if !pending_onboarding {
+                if let Some(w) = app.get_webview_window("donut") {
+                    let _ = w.hide();
+                }
             }
 
             // Pré-aquece a janela Settings oculta. Criar janelas a partir de
@@ -223,10 +242,12 @@ pub fn run() {
             commands::export_config,
             commands::import_config,
             commands::set_search_shortcut,
+            commands::set_slice_gap_enabled,
             commands::set_script_trusted,
             commands::set_profile_allow_scripts,
             commands::set_profile_theme_overrides,
             commands::list_installed_apps,
+            commands::list_monitors,
             commands::check_for_updates,
             commands::install_update,
             commands::set_auto_check_updates,
@@ -236,6 +257,8 @@ pub fn run() {
             commands::clear_script_runs,
             commands::cancel_script_run,
             commands::set_script_history_enabled,
+            commands::consume_onboarding_pending,
+            commands::set_first_launch_completed,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

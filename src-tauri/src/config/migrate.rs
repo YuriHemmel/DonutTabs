@@ -69,6 +69,7 @@ mod tests {
                 selection_mode: SelectionMode::ClickOrRelease,
                 hover_hold_ms: 800,
                 search_shortcut: "CommandOrControl+F".into(),
+                slice_gap_enabled: true,
             },
             pagination: Pagination {
                 items_per_page: 6,
@@ -79,6 +80,7 @@ mod tests {
                 auto_check_updates: true,
                 last_notified_update_version: None,
                 script_history_enabled: true,
+                first_launch_completed: false,
             },
             tabs: vec![TabV1 {
                 id: Uuid::new_v4(),
@@ -87,6 +89,7 @@ mod tests {
                 order: 0,
                 open_mode: OpenMode::ReuseOrNewWindow,
                 items: vec![Item::Url {
+                    monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
                 }],

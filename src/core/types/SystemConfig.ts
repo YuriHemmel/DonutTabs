@@ -28,4 +28,13 @@ lastNotifiedUpdateVersion: string | null,
  * deserializam com `true` graças ao
  * `#[serde(default = "default_script_history_enabled")]`.
  */
-scriptHistoryEnabled: boolean, };
+scriptHistoryEnabled: boolean, 
+/**
+ * Plano 22 — flag one-shot do onboarding visual. Quando `false`, a
+ * próxima launch manual (sem flag `--autostart` injetada pelo plugin
+ * autostart) abre o donut com overlay de hint mostrando "ESC pra
+ * fechar · {shortcut} pra abrir depois", marca `true` e persiste.
+ * Configs anteriores deserializam como `false` (entram no fluxo
+ * pela primeira vez). User pode resetar via toggle em Settings.
+ */
+firstLaunchCompleted: boolean, };

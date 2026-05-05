@@ -54,6 +54,13 @@ pub struct AppState {
     /// remove + chama `kill()`. Quando o child termina natural, o task
     /// consumer também remove a entrada.
     pub script_children: Arc<Mutex<HashMap<Uuid, CommandChild>>>,
+    /// Plano 22 — flag transiente da sessão. `true` quando a launch foi
+    /// manual (sem `--autostart`) E `system.first_launch_completed ==
+    /// false`. Donut consome via `consume_onboarding_pending` na 1ª
+    /// montagem para mostrar o overlay de hint; flag é resetada após
+    /// consumida pra não repetir se o donut for re-aberto na mesma
+    /// sessão.
+    pub pending_onboarding: RwLock<bool>,
 }
 
 #[tauri::command]
@@ -70,10 +77,12 @@ pub fn open_tab<R: tauri::Runtime>(
 ) -> Result<(), AppError> {
     let cfg = state.config.read().unwrap();
     let active = active_profile(&cfg)?;
-    let tab = active
-        .tabs
-        .iter()
-        .find(|t| t.id == tab_id)
+    // Plano 23 — anéis externos expõem children de groups; lookup precisa
+    // ser recursivo. Plano 16 ainda permitia `find` em root porque o donut
+    // substituía conteúdo no drill. Agora múltiplos níveis ficam clicáveis
+    // simultaneamente, então o backend tem que aceitar tab_id de qualquer
+    // profundidade.
+    let tab = find_tab_recursive(&active.tabs, tab_id)
         .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", tab_id.to_string())]))?;
     let profile_id = active.id;
     let history_enabled = cfg.system.script_history_enabled;
@@ -247,7 +256,10 @@ pub(crate) fn check_script_gating(
     skip_trust_at: Option<usize>,
 ) -> Option<AppError> {
     for (idx, item) in tab.items.iter().enumerate() {
-        if let Item::Script { command, trusted } = item {
+        if let Item::Script {
+            command, trusted, ..
+        } = item
+        {
             if !profile.allow_scripts {
                 return Some(AppError::launcher(
                     "scripts_disabled",
@@ -670,6 +682,31 @@ pub fn set_search_shortcut<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Plano 23 — toggle do gap angular entre slices vizinhos no donut.
+/// `true` (default) pinta com gap; `false` mantém slices coladas (look
+/// Plano 16). Persiste + emite `CONFIG_CHANGED_EVENT`.
+#[tauri::command]
+pub fn set_slice_gap_enabled<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_slice_gap_enabled(&mut cfg, enabled);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Plano 23 — helper puro pra mutar `Config.interaction.slice_gap_enabled`.
+/// Cobertura via teste; comando wrapper persiste + emite evento.
+pub(crate) fn apply_set_slice_gap_enabled(cfg: &mut Config, enabled: bool) {
+    cfg.interaction.slice_gap_enabled = enabled;
+}
+
 /// Plano 14 — marca um item Script de uma aba como confiável (ou desfaz a
 /// confiança). Trust persistido evita que o `<ScriptConfirmModal>` apareça
 /// nas próximas execuções. Identificação por `(profile_id, tab_id, item_index)`;
@@ -772,6 +809,63 @@ pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
     tauri::async_runtime::spawn_blocking(apps_picker::list_installed_apps)
         .await
         .map_err(|e| AppError::io("apps_list_failed", &[("reason", e.to_string())]))?
+}
+
+/// Plano 21 — info do monitor pra picker no Settings. Frontend usa pra
+/// renderizar `<select>` por item; quando `len() <= 1` esconde a coluna.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export, export_to = "../../src/core/types/")]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorInfo {
+    /// Nome amigável reportado pelo SO (ou `"Tela {N}"` quando vazio).
+    pub name: String,
+    /// Índice 0-based — espelha a ordem de `available_monitors()` e é o
+    /// valor que vai pro `Item.monitor`.
+    pub index: u32,
+    pub width: u32,
+    pub height: u32,
+    pub x: i32,
+    pub y: i32,
+    /// `true` quando este monitor é o primário do SO. Usado pra marcar a
+    /// option-default no picker (ex.: "Tela 1 (primária)").
+    pub primary: bool,
+}
+
+#[tauri::command]
+pub fn list_monitors<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<Vec<MonitorInfo>, AppError> {
+    let monitors = app
+        .available_monitors()
+        .map_err(|e| AppError::launcher("monitors_query_failed", &[("reason", e.to_string())]))?;
+    let primary = app.primary_monitor().ok().flatten();
+    Ok(monitors
+        .into_iter()
+        .enumerate()
+        .map(|(idx, m)| {
+            let pos = m.position();
+            let size = m.size();
+            let raw_name = m.name().cloned().unwrap_or_default();
+            let name = if raw_name.trim().is_empty() {
+                format!("Tela {}", idx + 1)
+            } else {
+                raw_name
+            };
+            let is_primary = primary
+                .as_ref()
+                .map(|p| p.position() == m.position() && p.size() == m.size())
+                .unwrap_or(false);
+            MonitorInfo {
+                name,
+                index: idx as u32,
+                width: size.width,
+                height: size.height,
+                x: pos.x,
+                y: pos.y,
+                primary: is_primary,
+            }
+        })
+        .collect())
 }
 
 /// Plano 18 — verifica disponibilidade de atualização. `force = true`
@@ -884,6 +978,39 @@ pub(crate) fn apply_set_script_history_enabled(cfg: &mut Config, enabled: bool) 
     cfg.system.script_history_enabled = enabled;
 }
 
+/// Plano 22 — read-and-clear da flag `pending_onboarding`. Donut chama
+/// na 1ª montagem; flag é resetada pra `false` aqui pra evitar mostrar
+/// o overlay de novo se o donut for re-aberto na mesma sessão. A
+/// completion oficial (persistir `first_launch_completed = true`) só
+/// acontece via `set_first_launch_completed` quando o user dispensa
+/// explicitamente o overlay.
+#[tauri::command]
+pub fn consume_onboarding_pending(state: tauri::State<'_, AppState>) -> bool {
+    let mut flag = state.pending_onboarding.write().unwrap();
+    let was = *flag;
+    *flag = false;
+    was
+}
+
+/// Plano 22 — toggle persistido do flag de onboarding. `true` (default
+/// uso pelo donut após dispensar overlay) marca completed; `false`
+/// (reset via Settings) re-arma o fluxo pra próxima manual launch.
+#[tauri::command]
+pub fn set_first_launch_completed<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    completed: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_first_launch_completed(&mut cfg, completed);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
 /// Plano 19 — lista todas as runs do buffer (mais nova primeiro). Usado
 /// pelo `<HistorySection>` na list view.
 #[tauri::command]
@@ -993,6 +1120,7 @@ pub(crate) fn apply_set_script_trusted(
         Item::Script {
             trusted: t,
             command,
+            ..
         } => {
             if command != expected_command {
                 return Err(AppError::launcher(
@@ -1100,6 +1228,10 @@ pub(crate) fn do_import(source: &Path) -> AppResult<Config> {
 
 pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
     let cfg = load_from_path(&config_path)?;
+    // Plano 22 — onboarding gate: launch manual + nunca completou onboarding.
+    // `is_autostart_invocation` lê os args injetados pelo plugin-autostart.
+    let is_autostart = is_autostart_invocation(std::env::args());
+    let pending_onboarding = !is_autostart && !cfg.system.first_launch_completed;
     Ok(AppState {
         config: RwLock::new(cfg),
         config_path,
@@ -1108,7 +1240,21 @@ pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
         pending_update: RwLock::new(None),
         script_history: Arc::new(ScriptHistory::new()),
         script_children: Arc::new(Mutex::new(HashMap::new())),
+        pending_onboarding: RwLock::new(pending_onboarding),
     })
+}
+
+/// Plano 22 — pure helper. `tauri-plugin-autostart` injeta `--autostart`
+/// no comando registrado no SO; presença do token = launch automática.
+/// Iterar `std::env::args()` cobre todos os SOs uniformemente.
+pub fn is_autostart_invocation(args: impl IntoIterator<Item = String>) -> bool {
+    args.into_iter().any(|a| a == "--autostart")
+}
+
+/// Plano 22 — helper puro pra mutar `Config.system.first_launch_completed`.
+/// Cobertura via teste; comando wrapper persiste + emite evento.
+pub(crate) fn apply_set_first_launch_completed(cfg: &mut Config, completed: bool) {
+    cfg.system.first_launch_completed = completed;
 }
 
 // ---------- helpers ----------
@@ -1118,6 +1264,23 @@ fn active_profile(cfg: &Config) -> AppResult<&Profile> {
     cfg.profiles.iter().find(|p| p.id == id).ok_or_else(|| {
         AppError::config("active_profile_not_found", &[("profileId", id.to_string())])
     })
+}
+
+/// Plano 23 — busca recursiva por tab via id na árvore de tabs do perfil
+/// (root + children + grandchildren). Necessário porque os anéis
+/// concêntricos no donut expõem groups aninhados clicáveis simultaneamente,
+/// então `open_tab` recebe ids de qualquer profundidade. Pure helper
+/// `pub(crate)` pra cobertura por teste.
+pub(crate) fn find_tab_recursive(tabs: &[Tab], id: Uuid) -> Option<&Tab> {
+    for tab in tabs {
+        if tab.id == id {
+            return Some(tab);
+        }
+        if let Some(found) = find_tab_recursive(&tab.children, id) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 fn profile_by_id_mut(cfg: &mut Config, id: Uuid) -> AppResult<&mut Profile> {
@@ -1380,6 +1543,7 @@ mod tests {
             order: 0,
             open_mode: OpenMode::ReuseOrNewWindow,
             items: vec![Item::Url {
+                monitor: None,
                 value: "https://example.com".into(),
                 open_with: None,
             }],
@@ -1556,6 +1720,115 @@ mod tests {
         let cfg = Config::default();
         let p = active_profile(&cfg).unwrap();
         assert_eq!(p.id, cfg.active_profile_id);
+    }
+
+    // ---------- Plano 23: find_tab_recursive ----------
+
+    fn build_tree() -> (Vec<Tab>, Uuid, Uuid, Uuid) {
+        // root: [leaf_root, group_a [leaf_a1, group_b [leaf_b1]]]
+        let leaf_root = Tab {
+            id: Uuid::new_v4(),
+            name: Some("root_leaf".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://r".into(),
+                open_with: None,
+            }],
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
+        };
+        let leaf_a1 = Tab {
+            id: Uuid::new_v4(),
+            name: Some("a1".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://a1".into(),
+                open_with: None,
+            }],
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
+        };
+        let leaf_b1 = Tab {
+            id: Uuid::new_v4(),
+            name: Some("b1".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://b1".into(),
+                open_with: None,
+            }],
+            kind: crate::config::schema::TabKind::Leaf,
+            children: vec![],
+        };
+        let leaf_root_id = leaf_root.id;
+        let leaf_a1_id = leaf_a1.id;
+        let leaf_b1_id = leaf_b1.id;
+        let group_b = Tab {
+            id: Uuid::new_v4(),
+            name: Some("b".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            kind: crate::config::schema::TabKind::Group,
+            children: vec![leaf_b1],
+        };
+        let group_a = Tab {
+            id: Uuid::new_v4(),
+            name: Some("a".into()),
+            icon: None,
+            order: 0,
+            open_mode: crate::config::schema::OpenMode::ReuseOrNewWindow,
+            items: vec![],
+            kind: crate::config::schema::TabKind::Group,
+            children: vec![leaf_a1, group_b],
+        };
+        (
+            vec![leaf_root, group_a],
+            leaf_root_id,
+            leaf_a1_id,
+            leaf_b1_id,
+        )
+    }
+
+    #[test]
+    fn find_tab_recursive_locates_root_leaf() {
+        let (tabs, root_id, _, _) = build_tree();
+        let found = find_tab_recursive(&tabs, root_id).expect("root leaf");
+        assert_eq!(found.id, root_id);
+    }
+
+    #[test]
+    fn find_tab_recursive_locates_first_level_child() {
+        let (tabs, _, a1_id, _) = build_tree();
+        let found = find_tab_recursive(&tabs, a1_id).expect("nested leaf");
+        assert_eq!(found.id, a1_id);
+    }
+
+    #[test]
+    fn find_tab_recursive_locates_second_level_child() {
+        let (tabs, _, _, b1_id) = build_tree();
+        let found = find_tab_recursive(&tabs, b1_id).expect("deep leaf");
+        assert_eq!(found.id, b1_id);
+    }
+
+    #[test]
+    fn find_tab_recursive_returns_none_when_missing() {
+        let (tabs, _, _, _) = build_tree();
+        assert!(find_tab_recursive(&tabs, Uuid::new_v4()).is_none());
+    }
+
+    #[test]
+    fn find_tab_recursive_empty_tree() {
+        assert!(find_tab_recursive(&[], Uuid::new_v4()).is_none());
     }
 
     #[test]
@@ -2073,6 +2346,7 @@ mod tests {
     #[test]
     fn check_script_gating_returns_none_when_no_scripts() {
         let tab = tab_with(vec![Item::Url {
+            monitor: None,
             value: "https://x".into(),
             open_with: None,
         }]);
@@ -2083,6 +2357,7 @@ mod tests {
     #[test]
     fn check_script_gating_blocks_on_kill_switch_even_for_trusted() {
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "git pull".into(),
             trusted: true,
         }]);
@@ -2096,6 +2371,7 @@ mod tests {
     #[test]
     fn check_script_gating_blocks_untrusted_when_allow_scripts_true() {
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: false,
         }]);
@@ -2113,6 +2389,7 @@ mod tests {
     #[test]
     fn check_script_gating_passes_when_trusted_and_allowed() {
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: true,
         }]);
@@ -2126,10 +2403,12 @@ mod tests {
         // gating ainda bloqueia, modal reabre na próxima iteração.
         let tab = tab_with(vec![
             Item::Script {
+                monitor: None,
                 command: "git pull".into(),
                 trusted: false,
             },
             Item::Script {
+                monitor: None,
                 command: "rm -rf /tmp/x".into(),
                 trusted: false,
             },
@@ -2152,10 +2431,12 @@ mod tests {
     fn check_script_gating_skip_index_passes_when_only_one_untrusted() {
         let tab = tab_with(vec![
             Item::Script {
+                monitor: None,
                 command: "git pull".into(),
                 trusted: false,
             },
             Item::Script {
+                monitor: None,
                 command: "cargo test".into(),
                 trusted: true,
             },
@@ -2169,6 +2450,7 @@ mod tests {
         // force_item_index não é override do allow_scripts. allow_scripts==false
         // bloqueia mesmo que o user tenha confirmado um item específico.
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "ls".into(),
             trusted: true,
         }]);
@@ -2185,10 +2467,12 @@ mod tests {
         let pid = cfg.profiles[0].id;
         let tab = tab_with(vec![
             Item::Url {
+                monitor: None,
                 value: "https://x".into(),
                 open_with: None,
             },
             Item::Script {
+                monitor: None,
                 command: "ls".into(),
                 trusted: false,
             },
@@ -2208,6 +2492,7 @@ mod tests {
         let mut cfg = Config::default();
         let pid = cfg.profiles[0].id;
         let tab = tab_with(vec![Item::Url {
+            monitor: None,
             value: "https://x".into(),
             open_with: None,
         }]);
@@ -2241,6 +2526,7 @@ mod tests {
         let mut cfg = Config::default();
         let pid = cfg.profiles[0].id;
         let tab = tab_with(vec![Item::Script {
+            monitor: None,
             command: "rm -rf /".into(),
             trusted: false,
         }]);
@@ -2342,5 +2628,69 @@ mod tests {
         assert!(!cfg.system.script_history_enabled);
         apply_set_script_history_enabled(&mut cfg, true);
         assert!(cfg.system.script_history_enabled);
+    }
+
+    // ---------- Plano 22: onboarding ----------
+
+    #[test]
+    fn is_autostart_invocation_detects_flag_anywhere() {
+        // Token pode aparecer em qualquer posição (depende de como o SO
+        // monta o comando). Aceitar ocorrência em qualquer índice.
+        assert!(is_autostart_invocation(
+            ["app.exe", "--autostart"].iter().map(|s| s.to_string()),
+        ));
+        assert!(is_autostart_invocation(
+            ["app.exe", "--autostart", "--other"]
+                .iter()
+                .map(|s| s.to_string()),
+        ));
+        assert!(is_autostart_invocation(
+            ["app.exe", "--other", "--autostart"]
+                .iter()
+                .map(|s| s.to_string()),
+        ));
+    }
+
+    #[test]
+    fn is_autostart_invocation_false_without_flag() {
+        assert!(!is_autostart_invocation(
+            ["app.exe"].iter().map(|s| s.to_string()),
+        ));
+        assert!(!is_autostart_invocation(
+            ["app.exe", "--other"].iter().map(|s| s.to_string()),
+        ));
+        // Substring dentro de outro arg não deve casar — só match exato.
+        assert!(!is_autostart_invocation(
+            ["app.exe", "--autostart-fake"]
+                .iter()
+                .map(|s| s.to_string()),
+        ));
+    }
+
+    #[test]
+    fn is_autostart_invocation_empty_args_is_false() {
+        let empty: Vec<String> = vec![];
+        assert!(!is_autostart_invocation(empty));
+    }
+
+    #[test]
+    fn apply_set_first_launch_completed_toggles_flag() {
+        let mut cfg = Config::default();
+        assert!(!cfg.system.first_launch_completed);
+        apply_set_first_launch_completed(&mut cfg, true);
+        assert!(cfg.system.first_launch_completed);
+        apply_set_first_launch_completed(&mut cfg, false);
+        assert!(!cfg.system.first_launch_completed);
+    }
+
+    #[test]
+    fn apply_set_slice_gap_enabled_toggles_flag() {
+        let mut cfg = Config::default();
+        // Default = true.
+        assert!(cfg.interaction.slice_gap_enabled);
+        apply_set_slice_gap_enabled(&mut cfg, false);
+        assert!(!cfg.interaction.slice_gap_enabled);
+        apply_set_slice_gap_enabled(&mut cfg, true);
+        assert!(cfg.interaction.slice_gap_enabled);
     }
 }

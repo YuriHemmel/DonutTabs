@@ -12,6 +12,39 @@ export function sliceAngleRange(index: number, n: number): AngleRange {
   return { start, end: start + step };
 }
 
+/**
+ * Plano 23 — range angular para *pintura* do slice em anéis externos
+ * (ring 1+). Encolhe `gapRad/2` de cada lado pra criar respiro visual
+ * entre vizinhos. Pure pra teste.
+ *
+ * Não usar em hit-test — o `pointToSliceIndex` deve continuar enxergando
+ * o range completo via `sliceAngleRange`, senão cursor entre slices vira
+ * deadzone irritante.
+ *
+ * Quando `gapRad` >= step, retorna range degenerado (start == end) — slice
+ * fica sumido. Caller deveria evitar configurar gap maior que step,
+ * mas é defensivo.
+ */
+export function slicePaintRange(
+  index: number,
+  n: number,
+  gapRad: number,
+): AngleRange {
+  // Plano 23 — slice única (n=1): retorna o range completo sem gap pra
+  // pintar um anel fechado. Caso contrário, gap de top deixaria um corte
+  // visível no slice "único" (visualmente feio).
+  if (n <= 1) return sliceAngleRange(index, n);
+  const raw = sliceAngleRange(index, n);
+  const half = gapRad / 2;
+  const newStart = raw.start + half;
+  const newEnd = raw.end - half;
+  if (newEnd <= newStart) {
+    const mid = (raw.start + raw.end) / 2;
+    return { start: mid, end: mid };
+  }
+  return { start: newStart, end: newEnd };
+}
+
 export interface SliceLookupOpts {
   innerRadius?: number;
   outerRadius?: number;
@@ -33,6 +66,69 @@ export interface ArcPathOpts {
   cx: number; cy: number;
   innerR: number; outerR: number;
   startAngle: number; endAngle: number;
+}
+
+export interface RingDims {
+  innerR: number;
+  outerR: number;
+}
+
+/** Plano 23 — bandWidth fixa para anéis externos (ring 1+). Menor que o
+ *  ring root pra "abas subsequentes ocuparem menos espaço". */
+export const OUTER_RING_BAND_WIDTH = 60;
+/** Plano 23 — gap radial entre anéis vizinhos. Cria separador visual e
+ *  região de "no-hit" no `pointToRingIndex` (cursor entre anéis não casa
+ *  nenhum). */
+export const RING_GAP = 4;
+/** Plano 23 — gap angular (radianos) entre slices vizinhos em anéis
+ *  externos (ring 1+). Encolhe a pintura de cada slice em metade desse
+ *  valor de cada lado. Hit-test mantém range completo (sem deadzone),
+ *  só a pintura tem o respiro. ~2.3° (0.04 rad). */
+export const OUTER_SLICE_ANGULAR_GAP_RAD = 0.04;
+
+/**
+ * Plano 23 — calcula os raios de cada anel concêntrico (`ring 0` =
+ * innermost = root; `ring N-1` = outermost). Ring 0 usa a banda derivada
+ * do tema (`innerRRoot..outerRRoot`); rings 1+ usam banda menor
+ * (`OUTER_RING_BAND_WIDTH`) com `RING_GAP` separando vizinhos.
+ *
+ * Pure pra teste; reusado pelo `<Donut>` e pelo highlight global pra mapear
+ * `radius → ringIndex`.
+ */
+export function ringDims(
+  ringIndex: number,
+  innerRRoot: number,
+  outerRRoot: number,
+): RingDims {
+  if (ringIndex <= 0) {
+    return { innerR: innerRRoot, outerR: outerRRoot };
+  }
+  const innerR =
+    outerRRoot + (ringIndex - 1) * (OUTER_RING_BAND_WIDTH + RING_GAP) + RING_GAP;
+  return { innerR, outerR: innerR + OUTER_RING_BAND_WIDTH };
+}
+
+/**
+ * Plano 23 — descobre qual anel concêntrico contém o ponto, usando a
+ * distância radial. Pure pra teste. Retorna `null` se o ponto está
+ * dentro do círculo central (raio < `innerRRoot`), na região de gap
+ * entre anéis, ou fora do anel mais externo. `ringCount` define quantos
+ * anéis estão renderizados.
+ */
+export function pointToRingIndex(
+  p: Point,
+  ringCount: number,
+  innerRRoot: number,
+  outerRRoot: number,
+): number | null {
+  if (ringCount <= 0) return null;
+  const r = Math.hypot(p.x, p.y);
+  if (r < innerRRoot) return null;
+  for (let i = 0; i < ringCount; i++) {
+    const dims = ringDims(i, innerRRoot, outerRRoot);
+    if (r >= dims.innerR && r <= dims.outerR) return i;
+  }
+  return null;
 }
 
 export function arcPath(o: ArcPathOpts): string {

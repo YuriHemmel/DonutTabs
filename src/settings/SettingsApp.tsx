@@ -411,6 +411,12 @@ export const SettingsApp: React.FC = () => {
           onThemeOverridesChange={(overrides) => {
             void setProfileThemeOverrides(selectedProfile.id, overrides);
           }}
+          sliceGapEnabled={config.interaction.sliceGapEnabled}
+          onSliceGapEnabledChange={(enabled) => {
+            void ipc.setSliceGapEnabled(enabled).catch((err) => {
+              window.alert(translateAppError(err, t));
+            });
+          }}
         />
       )}
 
@@ -471,6 +477,14 @@ export const SettingsApp: React.FC = () => {
           scriptHistoryEnabled={config.system.scriptHistoryEnabled}
           onScriptHistoryEnabledChange={(enabled) => {
             void setScriptHistoryEnabled(enabled);
+          }}
+          onResetOnboarding={() => {
+            // Plano 22 — re-arma o overlay de boas-vindas pra próxima
+            // launch manual. Falha silenciosa: user vê erro via toast
+            // do useConfig; sem necessidade de bloqueio extra aqui.
+            ipc.setFirstLaunchCompleted(false).catch((e) => {
+              window.alert(translateAppError(e, t));
+            });
           }}
         />
       )}
