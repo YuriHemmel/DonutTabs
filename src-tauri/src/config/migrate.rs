@@ -69,6 +69,7 @@ mod tests {
                 selection_mode: SelectionMode::ClickOrRelease,
                 hover_hold_ms: 800,
                 search_shortcut: "CommandOrControl+F".into(),
+                slice_gap_enabled: true,
             },
             pagination: Pagination {
                 items_per_page: 6,

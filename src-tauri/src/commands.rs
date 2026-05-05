@@ -682,6 +682,31 @@ pub fn set_search_shortcut<R: tauri::Runtime>(
     Ok(snapshot)
 }
 
+/// Plano 23 — toggle do gap angular entre slices vizinhos no donut.
+/// `true` (default) pinta com gap; `false` mantém slices coladas (look
+/// Plano 16). Persiste + emite `CONFIG_CHANGED_EVENT`.
+#[tauri::command]
+pub fn set_slice_gap_enabled<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_slice_gap_enabled(&mut cfg, enabled);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Plano 23 — helper puro pra mutar `Config.interaction.slice_gap_enabled`.
+/// Cobertura via teste; comando wrapper persiste + emite evento.
+pub(crate) fn apply_set_slice_gap_enabled(cfg: &mut Config, enabled: bool) {
+    cfg.interaction.slice_gap_enabled = enabled;
+}
+
 /// Plano 14 — marca um item Script de uma aba como confiável (ou desfaz a
 /// confiança). Trust persistido evita que o `<ScriptConfirmModal>` apareça
 /// nas próximas execuções. Identificação por `(profile_id, tab_id, item_index)`;
@@ -2651,5 +2676,16 @@ mod tests {
         assert!(cfg.system.first_launch_completed);
         apply_set_first_launch_completed(&mut cfg, false);
         assert!(!cfg.system.first_launch_completed);
+    }
+
+    #[test]
+    fn apply_set_slice_gap_enabled_toggles_flag() {
+        let mut cfg = Config::default();
+        // Default = true.
+        assert!(cfg.interaction.slice_gap_enabled);
+        apply_set_slice_gap_enabled(&mut cfg, false);
+        assert!(!cfg.interaction.slice_gap_enabled);
+        apply_set_slice_gap_enabled(&mut cfg, true);
+        assert!(cfg.interaction.slice_gap_enabled);
     }
 }

@@ -9,10 +9,11 @@ import { PaginationDots } from "./PaginationDots";
 import { HoverHoldOverlay } from "./HoverHoldOverlay";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import {
+  OUTER_SLICE_ANGULAR_GAP_RAD,
   pointToRingIndex,
   pointToSliceIndex,
   ringDims,
-  sliceAngleRange,
+  slicePaintRange,
   type RingDims,
 } from "./geometry";
 import { paginate } from "./pagination";
@@ -123,6 +124,10 @@ export interface DonutProps {
    *  rápida das abas do perfil ativo. Quando ausente, o overlay fica
    *  desabilitado. */
   searchShortcut?: string;
+  /** Plano 23 — quando `true` (default), pinta gap angular entre slices
+   *  vizinhos. Quando `false`, slices ficam coladas (look Plano 16).
+   *  Toggle vive em `interaction.sliceGapEnabled` no config. */
+  sliceGapEnabled?: boolean;
   /** Plano 15 — tokens visuais resolvidos (preset + overrides do perfil
    *  ativo). Quando ausente, default = preset dark. Os ratios internos
    *  controlam o raio interno/externo do donut. */
@@ -162,6 +167,7 @@ export const Donut: React.FC<DonutProps> = ({
   wheelDirection,
   hoverHoldMs = 1200,
   searchShortcut,
+  sliceGapEnabled = true,
   tokens,
   onSelect,
   onOpenSettings,
@@ -472,7 +478,13 @@ export const Donut: React.FC<DonutProps> = ({
             return (
               <g key={ringKeyStr}>
                 {current.tabs.map((tab, sliceIdx) => {
-                  const { start, end } = sliceAngleRange(sliceIdx, sliceCount);
+                  // Plano 23 — todos os rings (incluindo root) ganham
+                  // respiro angular entre vizinhos.
+                  const { start, end } = slicePaintRange(
+                    sliceIdx,
+                    sliceCount,
+                    sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0,
+                  );
                   const isHighlighted =
                     hovered !== null &&
                     decodeHoverIndex(hovered).ring === ringIdx &&
@@ -524,7 +536,11 @@ export const Donut: React.FC<DonutProps> = ({
                 })}
                 {current.hasPlus &&
                   (() => {
-                    const { start, end } = sliceAngleRange(plusIdx, sliceCount);
+                    const { start, end } = slicePaintRange(
+                      plusIdx,
+                      sliceCount,
+                      sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0,
+                    );
                     return (
                       <Slice
                         key={PLUS_KEY}
@@ -551,9 +567,12 @@ export const Donut: React.FC<DonutProps> = ({
             active &&
             activeRingDims &&
             (() => {
-              const { start, end } = sliceAngleRange(
+              // Plano 23 — overlay casa a pintura do slice. Todos os rings
+              // usam o mesmo gap angular.
+              const { start, end } = slicePaintRange(
                 active.slice,
                 activeRingSliceCount,
+                sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0,
               );
               const parentPath = parentPathForRing(
                 visibleRings[active.ring]?.depth ?? 0,

@@ -84,6 +84,10 @@ export const ipc = {
     invoke<ImportResult>("import_config", { sourcePath }),
   setSearchShortcut: (combo: string) =>
     invoke<Config>("set_search_shortcut", { combo }),
+  /** Plano 23 — toggle do gap angular entre slices vizinhos no donut.
+   *  Mora em `interaction.sliceGapEnabled` (global, não per-perfil). */
+  setSliceGapEnabled: (enabled: boolean) =>
+    invoke<Config>("set_slice_gap_enabled", { enabled }),
   /** `expectedCommand`: comando que o user viu no modal. Backend rejeita com
    *  `script_command_mismatch` se o item foi editado por outra janela entre
    *  o modal abrir e o user confirmar — evita autorizar comando que o user

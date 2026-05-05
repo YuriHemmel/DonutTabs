@@ -411,6 +411,12 @@ export const SettingsApp: React.FC = () => {
           onThemeOverridesChange={(overrides) => {
             void setProfileThemeOverrides(selectedProfile.id, overrides);
           }}
+          sliceGapEnabled={config.interaction.sliceGapEnabled}
+          onSliceGapEnabledChange={(enabled) => {
+            void ipc.setSliceGapEnabled(enabled).catch((err) => {
+              window.alert(translateAppError(err, t));
+            });
+          }}
         />
       )}
 

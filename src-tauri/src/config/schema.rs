@@ -128,10 +128,20 @@ pub struct Interaction {
     /// anteriores deserializam usando `default_search_shortcut`.
     #[serde(default = "default_search_shortcut")]
     pub search_shortcut: String,
+    /// Plano 23 — quando `true` (default), o donut pinta gap angular
+    /// entre slices vizinhos. Quando `false`, slices ficam coladas (look
+    /// original Plano 16). Configs anteriores deserializam como `true`
+    /// graças ao `#[serde(default = "default_slice_gap_enabled")]`.
+    #[serde(default = "default_slice_gap_enabled")]
+    pub slice_gap_enabled: bool,
 }
 
 fn default_search_shortcut() -> String {
     "CommandOrControl+F".to_string()
+}
+
+fn default_slice_gap_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
@@ -369,6 +379,7 @@ impl Default for Config {
                 selection_mode: SelectionMode::ClickOrRelease,
                 hover_hold_ms: 1200,
                 search_shortcut: default_search_shortcut(),
+                slice_gap_enabled: default_slice_gap_enabled(),
             },
             pagination: Pagination {
                 items_per_page: 6,
@@ -974,6 +985,42 @@ mod tests {
     fn default_config_enables_script_history() {
         let cfg = Config::default();
         assert!(cfg.system.script_history_enabled);
+    }
+
+    // ---------- Plano 23: Interaction.slice_gap_enabled ----------
+
+    #[test]
+    fn interaction_defaults_slice_gap_enabled_to_true_when_absent() {
+        // Configs anteriores ao Plano 23 não têm o campo. Precisa virar `true`.
+        let json = r#"{
+            "spawnPosition": "cursor",
+            "selectionMode": "clickOrRelease",
+            "hoverHoldMs": 1200,
+            "searchShortcut": "CommandOrControl+F"
+        }"#;
+        let i: Interaction = serde_json::from_str(json).unwrap();
+        assert!(i.slice_gap_enabled);
+    }
+
+    #[test]
+    fn interaction_round_trip_with_slice_gap_disabled() {
+        let i = Interaction {
+            spawn_position: SpawnPosition::Cursor,
+            selection_mode: SelectionMode::ClickOrRelease,
+            hover_hold_ms: 1200,
+            search_shortcut: "CommandOrControl+F".into(),
+            slice_gap_enabled: false,
+        };
+        let json = serde_json::to_string(&i).unwrap();
+        assert!(json.contains("\"sliceGapEnabled\":false"));
+        let back: Interaction = serde_json::from_str(&json).unwrap();
+        assert_eq!(i, back);
+    }
+
+    #[test]
+    fn default_config_enables_slice_gap() {
+        let cfg = Config::default();
+        assert!(cfg.interaction.slice_gap_enabled);
     }
 
     // ---------- Plano 22: SystemConfig.first_launch_completed ----------

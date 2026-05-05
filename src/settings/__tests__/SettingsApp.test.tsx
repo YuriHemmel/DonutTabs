@@ -50,6 +50,7 @@ vi.mock("../../core/ipc", () => ({
     listMonitors: vi.fn().mockResolvedValue([]),
     consumeOnboardingPending: vi.fn().mockResolvedValue(false),
     setFirstLaunchCompleted: vi.fn(),
+    setSliceGapEnabled: vi.fn(),
   },
   CONFIG_CHANGED_EVENT: "config-changed",
   SETTINGS_INTENT_EVENT: "settings-intent",

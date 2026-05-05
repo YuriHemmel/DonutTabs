@@ -274,6 +274,7 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
               wheelDirection={config.pagination.wheelDirection}
               hoverHoldMs={config.interaction.hoverHoldMs}
               searchShortcut={config.interaction.searchShortcut}
+              sliceGapEnabled={config.interaction.sliceGapEnabled}
               tokens={tokens}
               onSelect={handleSelect}
               onOpenSettings={handleOpenSettings}

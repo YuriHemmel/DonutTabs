@@ -5,6 +5,7 @@ import {
   arcPath,
   ringDims,
   pointToRingIndex,
+  slicePaintRange,
 } from "../geometry";
 
 describe("sliceAngleRange", () => {
@@ -143,5 +144,42 @@ describe("pointToRingIndex", () => {
 
   it("ringCount 0 = sempre null", () => {
     expect(pointToRingIndex({ x: 100, y: 0 }, 0, 80, 160)).toBeNull();
+  });
+});
+
+describe("slicePaintRange", () => {
+  it("encolhe gap/2 de cada lado, preservando midpoint", () => {
+    const raw = sliceAngleRange(0, 4);
+    const painted = slicePaintRange(0, 4, 0.04);
+    expect(painted.start).toBeCloseTo(raw.start + 0.02);
+    expect(painted.end).toBeCloseTo(raw.end - 0.02);
+    // Midpoint inalterado (slice continua centrado no mesmo lugar).
+    expect((painted.start + painted.end) / 2).toBeCloseTo(
+      (raw.start + raw.end) / 2,
+    );
+  });
+
+  it("gap = 0 resulta em range igual ao raw", () => {
+    const raw = sliceAngleRange(2, 6);
+    const painted = slicePaintRange(2, 6, 0);
+    expect(painted.start).toBeCloseTo(raw.start);
+    expect(painted.end).toBeCloseTo(raw.end);
+  });
+
+  it("gap excessivo (>= step) degenera pro midpoint sem virar negativo", () => {
+    // step = 2π/4 = π/2. gap maior que step → range inválido. Helper
+    // colapsa pro midpoint pra não pintar arco invertido.
+    const painted = slicePaintRange(1, 4, Math.PI);
+    expect(painted.start).toBeCloseTo(painted.end);
+  });
+
+  it("n=1 retorna range completo (2π) ignorando gap pra evitar fenda", () => {
+    // Slice única numa página deve virar anel fechado, não uma fatia com
+    // pequeno corte no topo.
+    const raw = sliceAngleRange(0, 1);
+    const painted = slicePaintRange(0, 1, 0.04);
+    expect(painted.start).toBeCloseTo(raw.start);
+    expect(painted.end).toBeCloseTo(raw.end);
+    expect(painted.end - painted.start).toBeCloseTo(Math.PI * 2);
   });
 });

@@ -218,7 +218,9 @@
       "dimensionInnerRatio": "Inner radius",
       "dimensionOuterRatio": "Outer radius",
       "themeReset": "Restore defaults",
-      "themePreviewLabel": "Preview"
+      "themePreviewLabel": "Preview",
+      "sliceGapLabel": "Space between adjacent tabs",
+      "sliceGapHint": "When enabled, adjacent slices show a small angular gap between them."
     },
     "shortcut": {
       "sectionTitle": "Global shortcut",

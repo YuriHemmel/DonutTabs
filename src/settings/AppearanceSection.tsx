@@ -12,6 +12,9 @@ export interface AppearanceSectionProps {
   /** Plano 15: overrides cosméticos do perfil em edição. */
   themeOverrides?: ThemeOverrides | null;
   onThemeOverridesChange?: (overrides: ThemeOverrides | null) => void;
+  /** Plano 23 — toggle global do gap angular entre slices vizinhos. */
+  sliceGapEnabled?: boolean;
+  onSliceGapEnabledChange?: (enabled: boolean) => void;
 }
 
 const THEMES: Theme[] = ["dark", "light", "auto"];
@@ -27,6 +30,8 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   onSetActiveProfile,
   themeOverrides,
   onThemeOverridesChange,
+  sliceGapEnabled,
+  onSliceGapEnabledChange,
 }) => {
   const { t } = useTranslation();
 
@@ -69,6 +74,25 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           overrides={themeOverrides ?? null}
           onOverridesChange={onThemeOverridesChange}
         />
+      )}
+
+      {sliceGapEnabled !== undefined && onSliceGapEnabledChange && (
+        <div>
+          <label
+            style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+          >
+            <input
+              type="checkbox"
+              data-testid="slice-gap-toggle"
+              checked={sliceGapEnabled}
+              onChange={(e) => onSliceGapEnabledChange(e.target.checked)}
+            />
+            {t("settings.appearance.sliceGapLabel")}
+          </label>
+          <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
+            {t("settings.appearance.sliceGapHint")}
+          </small>
+        </div>
       )}
 
       {onSetActiveProfile && (

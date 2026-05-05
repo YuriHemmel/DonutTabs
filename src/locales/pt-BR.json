@@ -218,7 +218,9 @@
       "dimensionInnerRatio": "Raio interno",
       "dimensionOuterRatio": "Raio externo",
       "themeReset": "Restaurar padrão",
-      "themePreviewLabel": "Pré-visualização"
+      "themePreviewLabel": "Pré-visualização",
+      "sliceGapLabel": "Espaço entre abas vizinhas",
+      "sliceGapHint": "Quando ligado, fatias adjacentes mostram um pequeno respiro angular entre si."
     },
     "shortcut": {
       "sectionTitle": "Atalho global",
