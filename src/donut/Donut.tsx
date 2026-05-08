@@ -204,9 +204,9 @@ export const Donut: React.FC<DonutProps> = ({
   const [searchOpen, setSearchOpen] = useState(false);
 
   const ringStack = useRingStack(tabs);
-  // Plano 23 — outermost ring é o último em `rings`. Limita anéis a
-  // `MAX_RINGS` (3); useRingStack já garante isso, este `slice` é
-  // defesa adicional contra states inconsistentes.
+  // Plano 23 / Issue #39 — outermost ring é o último em `rings`. Limita
+  // anéis a `MAX_RINGS` (2); useRingStack já garante isso, este `slice`
+  // é defesa adicional contra states inconsistentes.
   const visibleRings = useMemo(
     () => ringStack.rings.slice(0, MAX_RINGS),
     [ringStack.rings],

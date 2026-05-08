@@ -13,7 +13,7 @@ use std::path::Path;
 /// igual ao path v1→v2 — pra preservar a possibilidade de rollback se o
 /// usuário voltar pra uma versão anterior do app. Próxima mutação grava
 /// a árvore já trimada.
-pub(crate) fn clamp_tab_depth(tab: &mut Tab, depth: usize) {
+fn clamp_tab_depth(tab: &mut Tab, depth: usize) {
     if depth >= MAX_TAB_DEPTH {
         tab.children.clear();
         return;
@@ -345,5 +345,77 @@ mod tests {
         std::fs::write(&path, serde_json::to_string(&cfg_in).unwrap()).unwrap();
         let loaded = load_from_path(&path).unwrap();
         assert_eq!(loaded, cfg_in);
+    }
+
+    #[test]
+    fn loads_legacy_4_level_config_and_clamps_recursively() {
+        // Sanity: árvore profunda (3 sub-níveis) também é trimada no
+        // primeiro nível que excede MAX. Verifica que a recursão do clamp
+        // não deixa nada passar.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let raw = r#"{
+            "version": 2,
+            "activeProfileId": "11111111-1111-1111-1111-111111111111",
+            "profiles": [{
+                "id": "11111111-1111-1111-1111-111111111111",
+                "name": "P",
+                "icon": null,
+                "shortcut": "CommandOrControl+Shift+Space",
+                "theme": "dark",
+                "allowScripts": false,
+                "tabs": [{
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "name": "L1",
+                    "icon": null,
+                    "order": 0,
+                    "openMode": "reuseOrNewWindow",
+                    "items": [],
+                    "kind": "group",
+                    "children": [{
+                        "id": "33333333-3333-3333-3333-333333333333",
+                        "name": "L2",
+                        "icon": null,
+                        "order": 0,
+                        "openMode": "reuseOrNewWindow",
+                        "items": [],
+                        "kind": "group",
+                        "children": [{
+                            "id": "44444444-4444-4444-4444-444444444444",
+                            "name": "L3",
+                            "icon": null,
+                            "order": 0,
+                            "openMode": "reuseOrNewWindow",
+                            "items": [],
+                            "kind": "group",
+                            "children": [{
+                                "id": "55555555-5555-5555-5555-555555555555",
+                                "name": "L4",
+                                "icon": null,
+                                "order": 0,
+                                "openMode": "reuseOrNewWindow",
+                                "items": [{"kind":"url","value":"https://x.test"}],
+                                "kind": "leaf",
+                                "children": []
+                            }]
+                        }]
+                    }]
+                }]
+            }],
+            "appearance": {"language": "auto"},
+            "interaction": {"spawnPosition": "cursor", "selectionMode": "clickOrRelease", "hoverHoldMs": 800, "searchShortcut": "CommandOrControl+F", "sliceGapEnabled": true},
+            "pagination": {"itemsPerPage": 6, "wheelDirection": "standard"},
+            "system": {"autostart": false, "autoCheckUpdates": true, "scriptHistoryEnabled": true}
+        }"#;
+        std::fs::write(&path, raw).unwrap();
+        let cfg = load_from_path(&path).unwrap();
+        let l1 = &cfg.profiles[0].tabs[0];
+        assert_eq!(l1.name.as_deref(), Some("L1"));
+        assert_eq!(l1.children.len(), 1);
+        let l2 = &l1.children[0];
+        // L2 está em depth=2 (limite). Suas children (L3 + descendentes) são
+        // trimadas; L3 e L4 não sobrevivem.
+        assert_eq!(l2.name.as_deref(), Some("L2"));
+        assert!(l2.children.is_empty());
     }
 }

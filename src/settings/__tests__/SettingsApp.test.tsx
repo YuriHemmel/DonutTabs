@@ -659,6 +659,41 @@ describe("SettingsApp intent routing", () => {
     expect(screen.queryByTestId("profile-editor-set-active")).toBeNull();
   });
 
+  it("issue #39: closes the ProfileEditor when the edited profile vanishes via config-changed", async () => {
+    // Safety net pra mutações externas (ex: outra janela excluiu o perfil).
+    // Sem o effect, ProfileEditor renderizaria com `initial=null` em mode=edit.
+    const cfg = makeConfig({
+      profiles: [
+        makeProfile(),
+        makeProfile({ id: PROFILE_ID_2, name: "Estudo" }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-profiles")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("section-profiles"));
+    await user.click(screen.getByTestId(`profile-row-${PROFILE_ID_2}`));
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-editor")).toBeTruthy();
+    });
+    // Emite config-changed sem o perfil editado.
+    const without = makeConfig({
+      profiles: [makeProfile()],
+    });
+    act(() => {
+      (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
+        "config-changed",
+        without,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId("profile-editor")).toBeNull();
+    });
+  });
+
   it("AppearanceSection shows the set-active button only when editing a non-active profile", async () => {
     const cfg = makeConfig({
       profiles: [

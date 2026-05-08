@@ -198,6 +198,19 @@ export const SettingsApp: React.FC = () => {
     }
   }, [config]);
 
+  // Issue #39 — se o perfil sob edição sumiu do config (ex: outra janela
+  // o excluiu via config-changed), fecha o editor pra evitar render com
+  // `initial=null` em mode=edit. Delete local já zera no `handleDeleteProfile`;
+  // este effect é o safety net pra mutações externas.
+  useEffect(() => {
+    if (!config) return;
+    if (profileEditorMode?.mode !== "edit") return;
+    const exists = config.profiles.some(
+      (p) => p.id === profileEditorMode.profileId,
+    );
+    if (!exists) setProfileEditorMode(null);
+  }, [config, profileEditorMode]);
+
   // Computado mesmo com `config` nulo para manter os hooks abaixo na ordem
   // estável (não pode haver early-return acima de `useCallback`).
   const effectiveProfileId = config
