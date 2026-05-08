@@ -64,7 +64,10 @@ describe("Donut", () => {
     expect(onOpenSettings).toHaveBeenCalledWith("new-tab-in-group:g1");
   });
 
-  it("clicking '+' inside a 2-level deep sub-ring carries the full parent path", () => {
+  it("clicking a group slice in the outermost permitted ring is a no-op (MAX_RINGS=2)", () => {
+    // Issue #39 — MAX_RINGS = 2 (root + 1 sub). Click em group dentro do
+    // ring 1 não expande ring 2 (não há ring 2). Nem o group abre, nem o
+    // onSelect é chamado (groups não são tabs).
     const inner: Tab = {
       id: "g2",
       name: "Inner",
@@ -86,24 +89,25 @@ describe("Donut", () => {
       children: [inner],
     };
     const onOpenSettings = vi.fn();
+    const onSelect = vi.fn();
     const { container } = render(
-      <Donut {...baseProps} tabs={[outer]} onOpenSettings={onOpenSettings} />,
+      <Donut
+        {...baseProps}
+        tabs={[outer]}
+        onSelect={onSelect}
+        onOpenSettings={onOpenSettings}
+      />,
     );
-    // Root: 1 group + 1 plus.
     let slices = container.querySelectorAll('[data-testid="donut-slice"]');
     fireEvent.click(slices[0]);
-    // Expand outer → ring 1 has inner group + plus.
     slices = container.querySelectorAll('[data-testid="donut-slice"]');
-    // Root (2) + ring 1 (group + plus = 2) = 4.
+    // Root (group g1 + plus = 2) + ring 1 (group g2 + plus = 2) = 4.
     expect(slices).toHaveLength(4);
-    // Click inner group in ring 1 → expand ring 2.
+    // Click no group g2 (ring 1, slice 2) — no-op.
     fireEvent.click(slices[2]);
     slices = container.querySelectorAll('[data-testid="donut-slice"]');
-    // Root (2) + ring 1 (2) + ring 2 (plus = 1) = 5.
-    expect(slices).toHaveLength(5);
-    // Last slice = plus in ring 2.
-    fireEvent.click(slices[4]);
-    expect(onOpenSettings).toHaveBeenCalledWith("new-tab-in-group:g1,g2");
+    expect(slices).toHaveLength(4);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("clicking the '+' slice calls onOpenSettings with 'new-tab'", () => {

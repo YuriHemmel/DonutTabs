@@ -65,11 +65,11 @@ describe("donutSizeForRings", () => {
   });
   it("grows per ring", () => {
     expect(donutSizeForRings(2)).toBe(DONUT_BASE_SIZE + DONUT_RING_INCREMENT);
-    expect(donutSizeForRings(3)).toBe(DONUT_BASE_SIZE + 2 * DONUT_RING_INCREMENT);
   });
   it("clamps upper to MAX_RINGS", () => {
+    // Issue #39: MAX_RINGS reduzido pra 2.
     const max = donutSizeForRings(DONUT_MAX_RINGS);
-    expect(donutSizeForRings(4)).toBe(max);
+    expect(donutSizeForRings(3)).toBe(max);
     expect(donutSizeForRings(99)).toBe(max);
   });
 });
@@ -83,9 +83,11 @@ describe("donutSizeForTabs", () => {
       DONUT_BASE_SIZE + DONUT_RING_INCREMENT,
     );
   });
-  it("returns max size for 3-level nested", () => {
+  it("clamps deeper-than-MAX nesting to MAX", () => {
+    // Issue #39: validação rejeita configs com depth > 2, mas o helper de
+    // tamanho clamp pra MAX_RINGS pra ser robusto a configs malformados.
     expect(donutSizeForTabs([group("g1", [group("g2", [leaf("l")])])])).toBe(
-      DONUT_BASE_SIZE + 2 * DONUT_RING_INCREMENT,
+      DONUT_BASE_SIZE + DONUT_RING_INCREMENT,
     );
   });
 });

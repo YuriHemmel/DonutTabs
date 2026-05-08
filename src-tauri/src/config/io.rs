@@ -1,10 +1,35 @@
 use super::migrate::migrate_to_v2;
-use super::schema::Config;
+use super::schema::{Config, Tab};
 use super::v1::ConfigV1;
-use super::validate::validate;
+use super::validate::{validate, MAX_TAB_DEPTH};
 use crate::errors::AppResult;
 use std::io::Write;
 use std::path::Path;
+
+/// Issue #39 — quando `MAX_TAB_DEPTH` foi reduzido de 3 pra 2, configs
+/// existentes com grupos de 2 sub-níveis passaram a falhar no validate
+/// (`tab_too_deep`) no startup. Aqui trimamos children que estão fora do
+/// novo limite **antes** de validar, em memória. Sem reescrever o disco —
+/// igual ao path v1→v2 — pra preservar a possibilidade de rollback se o
+/// usuário voltar pra uma versão anterior do app. Próxima mutação grava
+/// a árvore já trimada.
+pub(crate) fn clamp_tab_depth(tab: &mut Tab, depth: usize) {
+    if depth >= MAX_TAB_DEPTH {
+        tab.children.clear();
+        return;
+    }
+    for child in tab.children.iter_mut() {
+        clamp_tab_depth(child, depth + 1);
+    }
+}
+
+fn clamp_config_depth(config: &mut Config) {
+    for profile in config.profiles.iter_mut() {
+        for tab in profile.tabs.iter_mut() {
+            clamp_tab_depth(tab, 1);
+        }
+    }
+}
 
 /// Lê a config do caminho dado. Se o arquivo não existe, retorna `Config::default()`.
 /// Se existe e tem `version: 1` (ou qualquer valor que não seja 2), trata como
@@ -17,12 +42,13 @@ pub fn load_from_path(path: &Path) -> AppResult<Config> {
     let raw = std::fs::read_to_string(path)?;
     let value: serde_json::Value = serde_json::from_str(&raw)?;
     let version = value.get("version").and_then(|v| v.as_u64()).unwrap_or(1);
-    let config = if version >= 2 {
+    let mut config = if version >= 2 {
         serde_json::from_str::<Config>(&raw)?
     } else {
         let v1: ConfigV1 = serde_json::from_str(&raw)?;
         migrate_to_v2(v1)
     };
+    clamp_config_depth(&mut config);
     validate(&config)?;
     Ok(config)
 }
@@ -241,5 +267,83 @@ mod tests {
         assert_eq!(p.tabs.len(), 1);
         assert_eq!(p.tabs[0].name.as_deref(), Some("T"));
         assert_eq!(cfg.active_profile_id, p.id);
+    }
+
+    #[test]
+    fn loads_legacy_3_level_config_and_clamps_to_max_depth() {
+        // Issue #39 — configs Plano-16 antigos com 2 sub-níveis
+        // (depth=3) precisam carregar limpos depois que MAX_TAB_DEPTH
+        // virou 2. Migration trima children no nível MAX, sem reescrever
+        // o disco.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let raw = r#"{
+            "version": 2,
+            "activeProfileId": "11111111-1111-1111-1111-111111111111",
+            "profiles": [{
+                "id": "11111111-1111-1111-1111-111111111111",
+                "name": "P",
+                "icon": null,
+                "shortcut": "CommandOrControl+Shift+Space",
+                "theme": "dark",
+                "allowScripts": false,
+                "tabs": [{
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "name": "Outer",
+                    "icon": null,
+                    "order": 0,
+                    "openMode": "reuseOrNewWindow",
+                    "items": [],
+                    "kind": "group",
+                    "children": [{
+                        "id": "33333333-3333-3333-3333-333333333333",
+                        "name": "Inner",
+                        "icon": null,
+                        "order": 0,
+                        "openMode": "reuseOrNewWindow",
+                        "items": [],
+                        "kind": "group",
+                        "children": [{
+                            "id": "44444444-4444-4444-4444-444444444444",
+                            "name": "Deep",
+                            "icon": null,
+                            "order": 0,
+                            "openMode": "reuseOrNewWindow",
+                            "items": [{"kind":"url","value":"https://x.test"}],
+                            "kind": "leaf",
+                            "children": []
+                        }]
+                    }]
+                }]
+            }],
+            "appearance": {"language": "auto"},
+            "interaction": {"spawnPosition": "cursor", "selectionMode": "clickOrRelease", "hoverHoldMs": 800, "searchShortcut": "CommandOrControl+F", "sliceGapEnabled": true},
+            "pagination": {"itemsPerPage": 6, "wheelDirection": "standard"},
+            "system": {"autostart": false, "autoCheckUpdates": true, "scriptHistoryEnabled": true}
+        }"#;
+        std::fs::write(&path, raw).unwrap();
+        let cfg = load_from_path(&path).unwrap();
+        let outer = &cfg.profiles[0].tabs[0];
+        assert_eq!(outer.children.len(), 1);
+        let inner = &outer.children[0];
+        assert_eq!(inner.name.as_deref(), Some("Inner"));
+        // children do "Inner" foram trimados — Inner virou um group vazio
+        // (válido, draft state).
+        assert!(inner.children.is_empty());
+
+        // Disco não foi reescrito — preservação pra rollback.
+        let after = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(after, raw);
+    }
+
+    #[test]
+    fn load_clamp_does_not_touch_within_limit_configs() {
+        // Sanity: configs que já estão dentro do limite passam intactos.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.json");
+        let cfg_in = Config::default();
+        std::fs::write(&path, serde_json::to_string(&cfg_in).unwrap()).unwrap();
+        let loaded = load_from_path(&path).unwrap();
+        assert_eq!(loaded, cfg_in);
     }
 }

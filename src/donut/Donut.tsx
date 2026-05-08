@@ -148,11 +148,11 @@ export interface DonutProps {
 
 const PLUS_KEY = "__plus__";
 const DEFAULT_TOKENS: ThemeTokens = resolvePresetTokens("dark");
-/** Plano 23 — raios do ring root são derivados de uma base fixa (não do
- *  `size` da janela), pra que sub-anéis caibam dentro do viewBox quando a
- *  janela cresce: 420 → 560 → 700 conforme `MAX_TAB_DEPTH`. Com base 420
- *  e ratios default (0.20/0.40), bandWidth=84; ring outermost no max
- *  depth termina a 336 do centro — bem dentro de 700/2 = 350. */
+/** Plano 23 / Issue #39 — raios do ring root derivam de uma base fixa
+ *  (não do `size` da janela), pra que sub-anéis caibam dentro do viewBox.
+ *  Janela cresce: 420 → 560 conforme `MAX_TAB_DEPTH = 2`. Com base 420 e
+ *  ratios default (0.20/0.40), bandWidth=84; ring 1 (outermost permitido)
+ *  termina a 252 do centro — dentro de 560/2 = 280. */
 const RING_BASE_SIZE = 420;
 
 interface RingPage {

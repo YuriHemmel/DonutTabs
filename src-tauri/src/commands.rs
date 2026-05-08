@@ -478,12 +478,10 @@ pub fn set_active_profile<R: tauri::Runtime>(
         cfg.clone()
     };
 
+    // Issue #39 — janela do donut tem tamanho fixo (`DONUT_WINDOW_SIZE`),
+    // independente do perfil. Trocar perfil ativo só repinta o SVG dentro
+    // da janela já correta — sem resize OS = sem flick.
     let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
-    // Issue #39 — donut pode estar visível (switcher acionou esta call).
-    // O novo perfil pode ter outra profundidade de grupos, então o SVG
-    // muda de tamanho; sem resync da janela OS, o anel externo fica
-    // clipado. Best-effort: erro de resync não desfaz a troca de perfil.
-    let _ = crate::donut_window::resync_size(&app);
     Ok(snapshot)
 }
 
