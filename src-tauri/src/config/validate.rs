@@ -159,10 +159,11 @@ fn validate_theme_overrides(profile: &Profile, overrides: &ThemeOverrides) -> Ap
     Ok(())
 }
 
-/// Plano 16 — profundidade máxima do sub-donut. 1 = só root (sem grupos),
-/// 3 = root + 2 sub-níveis (limite definido no plano). Trocar exige
-/// migração se houver configs no campo com profundidade maior.
-pub(crate) const MAX_TAB_DEPTH: usize = 3;
+/// Plano 16 / Issue #39 — profundidade máxima do sub-donut. 1 = só root
+/// (sem grupos), 2 = root + 1 sub-nível. Reduzido de 3 pra 2 pra encolher
+/// a janela do donut (700→560), menos área transparente cobrindo a tela.
+/// Trocar exige migração se houver configs no campo com profundidade maior.
+pub(crate) const MAX_TAB_DEPTH: usize = 2;
 
 fn validate_profile_tabs(profile: &Profile) -> AppResult<()> {
     let mut seen = std::collections::HashSet::new();
@@ -1190,30 +1191,28 @@ mod tests {
     }
 
     #[test]
-    fn three_levels_validate() {
-        // root group -> mid group -> leaf
+    fn two_levels_validate() {
+        // Issue #39 — MAX_TAB_DEPTH = 2: root group + leaf é OK.
         let mut cfg = base_config();
         let leaf = url_leaf("L");
-        let mid = group_with(Some("M"), None, vec![leaf]);
-        let root = group_with(Some("R"), None, vec![mid]);
+        let root = group_with(Some("R"), None, vec![leaf]);
         cfg.profiles[0].tabs.push(root);
         assert!(validate(&cfg).is_ok());
     }
 
     #[test]
-    fn four_levels_reject() {
-        // root (1) -> g2 (2) -> g3 (3) -> leaf (4) — leaf at depth 4 > MAX 3.
+    fn three_levels_reject() {
+        // root (1) -> mid (2) -> leaf (3) — leaf at depth 3 > MAX 2.
         let mut cfg = base_config();
         let leaf = url_leaf("L");
-        let g3 = group_with(Some("g3"), None, vec![leaf]);
-        let g2 = group_with(Some("g2"), None, vec![g3]);
-        let root = group_with(Some("root"), None, vec![g2]);
+        let mid = group_with(Some("M"), None, vec![leaf]);
+        let root = group_with(Some("R"), None, vec![mid]);
         cfg.profiles[0].tabs.push(root);
         match validate(&cfg).unwrap_err() {
             AppError::Config { code, context } => {
                 assert_eq!(code, "tab_too_deep");
-                assert_eq!(context.get("depth").map(String::as_str), Some("4"));
-                assert_eq!(context.get("maxDepth").map(String::as_str), Some("3"));
+                assert_eq!(context.get("depth").map(String::as_str), Some("3"));
+                assert_eq!(context.get("maxDepth").map(String::as_str), Some("2"));
             }
             other => panic!("expected Config tab_too_deep, got {other:?}"),
         }

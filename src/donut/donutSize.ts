@@ -4,9 +4,9 @@ import type { Tab } from "../core/types/Tab";
 export const DONUT_BASE_SIZE = 420;
 /** Plano 23 — espelha `RING_SIZE_INCREMENT` em `donut_window/mod.rs`. */
 export const DONUT_RING_INCREMENT = 140;
-/** Plano 23 — espelha `MAX_DONUT_RINGS` em `donut_window/mod.rs` e
- *  `MAX_TAB_DEPTH = 3` no `validate.rs`. */
-export const DONUT_MAX_RINGS = 3;
+/** Plano 23 / Issue #39 — espelha `MAX_TAB_DEPTH = 2` no `validate.rs`.
+ *  Reduzido de 3 pra encolher a janela do donut. */
+export const DONUT_MAX_RINGS = 2;
 
 /** Plano 23 — descobre a profundidade máxima de grupos aninhados. Pure
  *  pra teste; espelha `max_group_depth` em `donut_window/mod.rs`. Retorna

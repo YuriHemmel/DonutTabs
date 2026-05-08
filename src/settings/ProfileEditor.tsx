@@ -20,6 +20,10 @@ export interface ProfileEditorProps {
   initial: Profile | null;
   onSubmit: (payload: ProfileEditorSubmit) => Promise<void> | void;
   onCancel: () => void;
+  /** Disponibilizado quando mode=edit e o perfil sob edição não é o ativo. */
+  onSetActive?: () => void;
+  /** Disponibilizado quando mode=edit e há mais de um perfil. */
+  onDelete?: () => void;
 }
 
 interface FormState {
@@ -37,6 +41,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   initial,
   onSubmit,
   onCancel,
+  onSetActive,
+  onDelete,
 }) => {
   const { t } = useTranslation();
   const [state, setState] = useState<FormState>(() => fromProfile(initial));
@@ -106,15 +112,15 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
     <section
       data-testid="profile-editor"
       style={{
-        padding: 16,
+        flex: 1,
+        padding: 24,
         display: "flex",
         flexDirection: "column",
-        gap: 12,
-        borderBottom: "1px solid var(--border)",
-        background: "var(--panel)",
+        gap: 16,
+        overflow: "auto",
       }}
     >
-      <h2 style={{ margin: 0, fontSize: 16 }}>{title}</h2>
+      <h2 style={{ margin: 0 }}>{title}</h2>
 
       <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span>{t("settings.profile.nameLabel")}</span>
@@ -184,7 +190,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
         </div>
       )}
 
-      <footer style={{ display: "flex", gap: 8 }}>
+      <footer style={{ display: "flex", gap: 8, marginTop: "auto", flexWrap: "wrap" }}>
         <button
           type="button"
           disabled={saving}
@@ -214,6 +220,41 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
         >
           {t("settings.editor.cancel")}
         </button>
+        {mode === "edit" && onSetActive && (
+          <button
+            type="button"
+            data-testid="profile-editor-set-active"
+            onClick={onSetActive}
+            style={{
+              background: "transparent",
+              color: "var(--fg)",
+              border: "1px solid var(--ghost-border)",
+              borderRadius: 4,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            {t("settings.profile.activate")}
+          </button>
+        )}
+        {mode === "edit" && onDelete && (
+          <button
+            type="button"
+            data-testid="profile-editor-delete"
+            onClick={onDelete}
+            style={{
+              marginLeft: "auto",
+              background: "transparent",
+              color: "var(--danger-fg)",
+              border: "1px solid var(--danger-border)",
+              borderRadius: 4,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            {t("settings.profile.delete")}
+          </button>
+        )}
       </footer>
     </section>
   );

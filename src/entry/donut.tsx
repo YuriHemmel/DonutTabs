@@ -158,7 +158,18 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   }, [config]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) void ipc.hideDonut();
+    // Issue #39 — fecha donut quando click cai em área "vazia" da janela:
+    //   1) Backdrop transparente em volta do SVG (target = outerDiv).
+    //   2) Dead zone interna (dentro do innerR mas fora do CenterCircle
+    //      pintado) e gaps angulares entre slices/rings — SVG default é
+    //      `pointer-events: visiblePainted`, então click fora de path
+    //      pintado tem `target = <svg>` (não captura nas slices/circles).
+    // Slices/CenterCircle param o evento via seu próprio onClick (target
+    // vira o path/circle/rect), então click neles não chega aqui.
+    const target = e.target as Element;
+    if (target === e.currentTarget || target.tagName.toLowerCase() === "svg") {
+      void ipc.hideDonut();
+    }
   };
 
   const handleSelect = async (tabId: string) => {

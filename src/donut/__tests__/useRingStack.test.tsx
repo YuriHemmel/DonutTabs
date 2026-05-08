@@ -47,13 +47,13 @@ describe("useRingStack", () => {
     expect(result.current.rings[1].tabs.map((t) => t.id)).toEqual(["g1", "g2"]);
   });
 
-  it("toggle at depth 0 with same id collapses ring 1 (and outer rings)", () => {
-    const tabs = [group("g", [group("g1", [leaf("l")])])];
+  it("toggle at depth 0 with same id collapses ring 1", () => {
+    // Issue #39 — MAX_RINGS = 2 (root + 1 sub). Não há ring 2 pra esse
+    // teste exercitar; cobre só o toggle off do ring 1.
+    const tabs = [group("g", [leaf("l")])];
     const { result } = renderHook(() => useRingStack(tabs));
     act(() => result.current.toggle("g", 0));
-    act(() => result.current.toggle("g1", 1));
-    expect(result.current.rings).toHaveLength(3);
-    // Toggle off ring 1 → collapses ring 2 também.
+    expect(result.current.rings).toHaveLength(2);
     act(() => result.current.toggle("g", 0));
     expect(result.current.expandedGroupIds).toEqual([]);
     expect(result.current.rings).toHaveLength(1);
@@ -72,32 +72,21 @@ describe("useRingStack", () => {
     expect(result.current.rings[1].tabs[0].id).toBe("b1");
   });
 
-  it("toggle at depth 1 expands ring 2 (3 rings total)", () => {
-    const tabs = [group("g1", [group("g2", [leaf("leaf")])])];
-    const { result } = renderHook(() => useRingStack(tabs));
-    act(() => result.current.toggle("g1", 0));
-    act(() => result.current.toggle("g2", 1));
-    expect(result.current.expandedGroupIds).toEqual(["g1", "g2"]);
-    expect(result.current.rings).toHaveLength(3);
-    expect(result.current.rings[2].tabs[0].id).toBe("leaf");
-  });
-
   it("toggle at outermost depth (MAX-1) is no-op (no expansion possible)", () => {
-    const tabs = [group("g1", [group("g2", [group("g3", [leaf("l")])])])];
-    const { result } = renderHook(() => useRingStack(tabs));
-    act(() => result.current.toggle("g1", 0));
-    act(() => result.current.toggle("g2", 1));
-    // depth 2 = ring outermost. Group g3 click é no-op (não há ring 3).
-    act(() => result.current.toggle("g3", 2));
-    expect(result.current.expandedGroupIds).toEqual(["g1", "g2"]);
-    expect(result.current.rings).toHaveLength(3);
-  });
-
-  it("collapseAll resets to root only", () => {
+    // Issue #39 — MAX_RINGS = 2; ring outermost = depth 1. Click em group
+    // a partir do ring 1 é no-op pois não há ring 2.
     const tabs = [group("g1", [group("g2", [leaf("l")])])];
     const { result } = renderHook(() => useRingStack(tabs));
     act(() => result.current.toggle("g1", 0));
     act(() => result.current.toggle("g2", 1));
+    expect(result.current.expandedGroupIds).toEqual(["g1"]);
+    expect(result.current.rings).toHaveLength(2);
+  });
+
+  it("collapseAll resets to root only", () => {
+    const tabs = [group("g1", [leaf("l")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.toggle("g1", 0));
     act(() => result.current.collapseAll());
     expect(result.current.expandedGroupIds).toEqual([]);
     expect(result.current.rings).toHaveLength(1);

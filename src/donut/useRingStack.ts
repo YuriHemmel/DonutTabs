@@ -13,7 +13,8 @@ export interface RingDescriptor {
 
 export interface UseRingStack {
   /** Ids dos grupos expandidos, mais externo primeiro. Length 0 = só root.
-   *  Length 1 = root + 1 sub-anel. Max length 2 (3 anéis totais). */
+   *  Length 1 = root + 1 sub-anel (max — issue #39 reduziu de 2 sub-níveis
+   *  pra 1 pra encolher a janela do donut). */
   expandedGroupIds: string[];
   /** Anéis renderizáveis em ordem (innermost first). Sempre tem pelo menos
    *  o ring 0 (root); cada item subsequente é um sub-anel expandido. */
@@ -26,9 +27,10 @@ export interface UseRingStack {
   collapseAll: () => void;
 }
 
-/** Plano 23 — máximo de anéis concêntricos (root + 2 sub-níveis). Espelha
- *  `MAX_TAB_DEPTH = 3` no backend. */
-export const MAX_RINGS = 3;
+/** Plano 23 / Issue #39 — máximo de anéis concêntricos (root + 1 sub-nível).
+ *  Espelha `MAX_TAB_DEPTH = 2` no backend. Reduzido de 3 pra encolher a
+ *  janela do donut e diminuir área transparente sobre a tela. */
+export const MAX_RINGS = 2;
 
 /**
  * Plano 23 — gerencia a stack de grupos expandidos e resolve cada um deles

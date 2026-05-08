@@ -13,8 +13,9 @@ import type { TabKind as SchemaTabKind } from "../core/types/TabKind";
 const LUCIDE_PREFIX = "lucide:";
 const isLucideToken = (s: string) => s.startsWith(LUCIDE_PREFIX);
 
-/** Plano 16: alinhado com `MAX_TAB_DEPTH` em `validate.rs`. */
-export const MAX_TAB_DEPTH = 3;
+/** Plano 16 / Issue #39: alinhado com `MAX_TAB_DEPTH` em `validate.rs`.
+ *  Reduzido de 3 pra 2 pra encolher a janela do donut. */
+export const MAX_TAB_DEPTH = 2;
 
 type Mode = "new" | "edit";
 type TabKind = SchemaTabKind;

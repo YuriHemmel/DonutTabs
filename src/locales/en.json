@@ -106,6 +106,7 @@
     "title": "Settings",
     "sections": {
       "tabs": "Tabs",
+      "profiles": "Profiles",
       "appearance": "Appearance",
       "shortcut": "Shortcut",
       "system": "System",
@@ -118,6 +119,10 @@
       "delete": "Delete profile",
       "activate": "Set as active profile",
       "activeMarker": "(active)",
+      "activeBadge": "Active",
+      "sectionTitle": "Profiles",
+      "addProfile": "Add profile",
+      "selectPrompt": "Select a profile to edit or click \"+ Add profile\".",
       "confirmDelete": "Delete profile \"{{name}}\"? Its tabs and settings will be lost.",
       "newTitle": "New profile",
       "editTitle": "Edit profile",

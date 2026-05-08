@@ -148,11 +148,11 @@ export interface DonutProps {
 
 const PLUS_KEY = "__plus__";
 const DEFAULT_TOKENS: ThemeTokens = resolvePresetTokens("dark");
-/** Plano 23 — raios do ring root são derivados de uma base fixa (não do
- *  `size` da janela), pra que sub-anéis caibam dentro do viewBox quando a
- *  janela cresce: 420 → 560 → 700 conforme `MAX_TAB_DEPTH`. Com base 420
- *  e ratios default (0.20/0.40), bandWidth=84; ring outermost no max
- *  depth termina a 336 do centro — bem dentro de 700/2 = 350. */
+/** Plano 23 / Issue #39 — raios do ring root derivam de uma base fixa
+ *  (não do `size` da janela), pra que sub-anéis caibam dentro do viewBox.
+ *  Janela cresce: 420 → 560 conforme `MAX_TAB_DEPTH = 2`. Com base 420 e
+ *  ratios default (0.20/0.40), bandWidth=84; ring 1 (outermost permitido)
+ *  termina a 252 do centro — dentro de 560/2 = 280. */
 const RING_BASE_SIZE = 420;
 
 interface RingPage {
@@ -204,9 +204,9 @@ export const Donut: React.FC<DonutProps> = ({
   const [searchOpen, setSearchOpen] = useState(false);
 
   const ringStack = useRingStack(tabs);
-  // Plano 23 — outermost ring é o último em `rings`. Limita anéis a
-  // `MAX_RINGS` (3); useRingStack já garante isso, este `slice` é
-  // defesa adicional contra states inconsistentes.
+  // Plano 23 / Issue #39 — outermost ring é o último em `rings`. Limita
+  // anéis a `MAX_RINGS` (2); useRingStack já garante isso, este `slice`
+  // é defesa adicional contra states inconsistentes.
   const visibleRings = useMemo(
     () => ringStack.rings.slice(0, MAX_RINGS),
     [ringStack.rings],
