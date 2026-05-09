@@ -18,9 +18,6 @@ export interface SystemSectionProps {
   /** Plano 18: toggle global do check de update no startup. */
   autoCheckUpdates?: boolean;
   onAutoCheckUpdatesChange?: (enabled: boolean) => void;
-  /** Plano 19: toggle global da captura de output de scripts. */
-  scriptHistoryEnabled?: boolean;
-  onScriptHistoryEnabledChange?: (enabled: boolean) => void;
   /** Plano 22: re-armar tutorial de boas-vindas na próxima manual launch.
    *  Quando ausente, o botão não renderiza. */
   onResetOnboarding?: () => void;
@@ -37,8 +34,6 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
   onAllowScriptsChange,
   autoCheckUpdates,
   onAutoCheckUpdatesChange,
-  scriptHistoryEnabled,
-  onScriptHistoryEnabledChange,
   onResetOnboarding,
 }) => {
   const { t } = useTranslation();
@@ -119,25 +114,6 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
           autoCheckUpdates={autoCheckUpdates}
           onAutoCheckUpdatesChange={onAutoCheckUpdatesChange}
         />
-      )}
-
-      {scriptHistoryEnabled !== undefined && onScriptHistoryEnabledChange && (
-        <div>
-          <label
-            style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
-          >
-            <input
-              type="checkbox"
-              data-testid="script-history-toggle"
-              checked={scriptHistoryEnabled}
-              onChange={(e) => onScriptHistoryEnabledChange(e.target.checked)}
-            />
-            {t("settings.system.scriptHistoryLabel")}
-          </label>
-          <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
-            {t("settings.system.scriptHistoryHint")}
-          </small>
-        </div>
       )}
 
       {onResetOnboarding && (

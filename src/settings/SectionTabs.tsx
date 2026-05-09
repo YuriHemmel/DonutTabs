@@ -6,8 +6,7 @@ export type Section =
   | "profiles"
   | "appearance"
   | "shortcut"
-  | "system"
-  | "history";
+  | "system";
 
 const SECTIONS: Section[] = [
   "tabs",
@@ -15,7 +14,6 @@ const SECTIONS: Section[] = [
   "appearance",
   "shortcut",
   "system",
-  "history",
 ];
 
 export interface SectionTabsProps {

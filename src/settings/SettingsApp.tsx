@@ -6,7 +6,6 @@ import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
 import { SystemSection } from "./SystemSection";
-import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
 import { ProfilesSection, type ProfilesEditorMode } from "./ProfilesSection";
@@ -124,7 +123,6 @@ export const SettingsApp: React.FC = () => {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
-    setScriptHistoryEnabled,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -484,10 +482,6 @@ export const SettingsApp: React.FC = () => {
           onAutoCheckUpdatesChange={(enabled) => {
             void setAutoCheckUpdates(enabled);
           }}
-          scriptHistoryEnabled={config.system.scriptHistoryEnabled}
-          onScriptHistoryEnabledChange={(enabled) => {
-            void setScriptHistoryEnabled(enabled);
-          }}
           onResetOnboarding={() => {
             // Plano 22 — re-arma o overlay de boas-vindas pra próxima
             // launch manual. Falha silenciosa: user vê erro via toast
@@ -512,9 +506,6 @@ export const SettingsApp: React.FC = () => {
         />
       )}
 
-      {section === "history" && (
-        <HistorySection enabled={config.system.scriptHistoryEnabled} />
-      )}
     </div>
   );
 };

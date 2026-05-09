@@ -17,8 +17,6 @@ async function renderSection(overrides: Partial<{
   onAllowScriptsChange: (a: boolean) => void;
   autoCheckUpdates: boolean;
   onAutoCheckUpdatesChange: (e: boolean) => void;
-  scriptHistoryEnabled: boolean;
-  onScriptHistoryEnabledChange: (e: boolean) => void;
 }> = {}) {
   const i18n = await createI18n("pt-BR");
   const props = {

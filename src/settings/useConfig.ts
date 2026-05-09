@@ -48,7 +48,6 @@ export interface UseConfig {
     overrides: ThemeOverrides | null,
   ) => Promise<Config>;
   setAutoCheckUpdates: (enabled: boolean) => Promise<Config>;
-  setScriptHistoryEnabled: (enabled: boolean) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -220,12 +219,6 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
-  const setScriptHistoryEnabled = useCallback(async (enabled: boolean) => {
-    const next = await ipc.setScriptHistoryEnabled(enabled);
-    setConfig(next);
-    return next;
-  }, []);
-
   return {
     config,
     loadError,
@@ -246,6 +239,5 @@ export function useConfig(): UseConfig {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
-    setScriptHistoryEnabled,
   };
 }
