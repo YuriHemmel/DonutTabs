@@ -205,6 +205,27 @@ describe("ItemListEditor", () => {
     ]);
   });
 
+  it("openWith dropdown filters to browsers only on URL rows", async () => {
+    // Mock global retorna Firefox + VSCode. URL row deve mostrar só Firefox
+    // (browser); VSCode some.
+    await renderEditor([{ kind: "url", value: "https://a", openWith: "" }]);
+    await screen.findByRole("option", { name: "Firefox" });
+    const select = screen.getByTestId("item-open-with-0") as HTMLSelectElement;
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toContain("Firefox");
+    expect(labels.some((l) => l && l.includes("VSCode"))).toBe(false);
+  });
+
+  it("openWith dropdown keeps non-browser apps on file/folder rows", async () => {
+    // file/folder podem ser abertos por qualquer app — filtro só vale pra URL.
+    await renderEditor([{ kind: "file", value: "/tmp/x", openWith: "" }]);
+    await screen.findByRole("option", { name: "VSCode" });
+    const select = screen.getByTestId("item-open-with-0") as HTMLSelectElement;
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toContain("Firefox");
+    expect(labels).toContain("VSCode");
+  });
+
   it("renders the existing openWith value (custom value preserved as synthetic option)", async () => {
     await renderEditor([
       { kind: "url", value: "https://w", openWith: "edge" },

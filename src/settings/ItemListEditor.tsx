@@ -64,7 +64,36 @@ const selectStyle: React.CSSProperties = {
 };
 const openWithStyle: React.CSSProperties = {
   ...inputStyle,
-  flex: "0 0 180px",
+  flex: "0 0 150px",
+};
+
+/** Issue — "Abrir com" para `kind: "url"` deve listar só navegadores. Match
+ *  case-insensitive contra `name`/`value`/`path` do `InstalledApp`. Cobre
+ *  rótulos localizados (ex. "Google Chrome") e binários nus (ex. `chrome.exe`,
+ *  `/usr/bin/firefox`). */
+const BROWSER_KEYWORDS = [
+  "chrome",
+  "chromium",
+  "firefox",
+  "edge",
+  "msedge",
+  "brave",
+  "opera",
+  "safari",
+  "vivaldi",
+  "arc",
+  "tor browser",
+  "torbrowser",
+  "librewolf",
+  "waterfox",
+  "yandex",
+  "duckduckgo",
+  "zen browser",
+];
+
+const isBrowser = (app: InstalledApp): boolean => {
+  const haystack = `${app.name}\n${app.value}\n${app.path}`.toLowerCase();
+  return BROWSER_KEYWORDS.some((kw) => haystack.includes(kw));
 };
 const monitorSelectStyle: React.CSSProperties = {
   ...inputStyle,
@@ -267,34 +296,35 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                 {t("settings.editor.appPickerButton")}
               </button>
             )}
-            {usesOpenWith(it.kind) && (
-              <select
-                aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
-                data-testid={`item-open-with-${i}`}
-                value={it.openWith}
-                onChange={(e) => updateAt(i, { openWith: e.target.value })}
-                title={t("settings.editor.openWithHint")}
-                style={openWithStyle}
-              >
-                <option value="">
-                  {t("settings.editor.openWithDefault")}
-                </option>
-                {(installedApps ?? []).map((app) => (
-                  <option
-                    key={`${app.value}-${app.path}`}
-                    value={app.value}
-                  >
-                    {app.name}
+            {usesOpenWith(it.kind) && (() => {
+              const pool = installedApps ?? [];
+              const filtered = it.kind === "url" ? pool.filter(isBrowser) : pool;
+              return (
+                <select
+                  aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
+                  data-testid={`item-open-with-${i}`}
+                  value={it.openWith}
+                  onChange={(e) => updateAt(i, { openWith: e.target.value })}
+                  title={t("settings.editor.openWithHint")}
+                  style={openWithStyle}
+                >
+                  <option value="">
+                    {t("settings.editor.openWithDefault")}
                   </option>
-                ))}
-                {it.openWith !== "" &&
-                  !(installedApps ?? []).some((a) => a.value === it.openWith) && (
-                    <option value={it.openWith}>
-                      {t("settings.editor.openWithCustom", { value: it.openWith })}
+                  {filtered.map((app) => (
+                    <option key={`${app.value}-${app.path}`} value={app.value}>
+                      {app.name}
                     </option>
-                  )}
-              </select>
-            )}
+                  ))}
+                  {it.openWith !== "" &&
+                    !filtered.some((a) => a.value === it.openWith) && (
+                      <option value={it.openWith}>
+                        {t("settings.editor.openWithCustom", { value: it.openWith })}
+                      </option>
+                    )}
+                </select>
+              );
+            })()}
             {showMonitorSelect && monitors && (
               <select
                 aria-label={`${t("settings.editor.monitorLabel")} ${i + 1}`}
