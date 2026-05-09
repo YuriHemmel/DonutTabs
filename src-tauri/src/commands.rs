@@ -834,6 +834,29 @@ pub struct MonitorInfo {
     pub primary: bool,
 }
 
+/// Issue #46 — strip caracteres não alfanuméricos do nome reportado pelo SO
+/// (Windows tipicamente reporta `\\.\DISPLAY1`, macOS `Display 1`). Mantém
+/// letras, dígitos e espaços; colapsa whitespace; cai em `Tela {N}` quando
+/// nada sobra. Helper puro pra teste.
+pub(crate) fn sanitize_monitor_name(raw: &str, idx: usize) -> String {
+    let cleaned: String = raw
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c.is_whitespace() {
+                c
+            } else {
+                ' '
+            }
+        })
+        .collect();
+    let collapsed = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+    if collapsed.is_empty() {
+        format!("Tela {}", idx + 1)
+    } else {
+        collapsed
+    }
+}
+
 #[tauri::command]
 pub fn list_monitors<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -849,11 +872,7 @@ pub fn list_monitors<R: tauri::Runtime>(
             let pos = m.position();
             let size = m.size();
             let raw_name = m.name().cloned().unwrap_or_default();
-            let name = if raw_name.trim().is_empty() {
-                format!("Tela {}", idx + 1)
-            } else {
-                raw_name
-            };
+            let name = sanitize_monitor_name(&raw_name, idx);
             let is_primary = primary
                 .as_ref()
                 .map(|p| p.position() == m.position() && p.size() == m.size())
@@ -1553,6 +1572,37 @@ mod tests {
             kind: TabKind::Leaf,
             children: vec![],
         }
+    }
+
+    // ---------- Issue #46: monitor name sanitizer ----------
+
+    #[test]
+    fn sanitize_monitor_name_strips_windows_device_prefix() {
+        assert_eq!(sanitize_monitor_name(r"\\.\DISPLAY1", 0), "DISPLAY1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_strips_punctuation_keeps_spaces() {
+        assert_eq!(
+            sanitize_monitor_name("Tela.Principal_2", 0),
+            "Tela Principal 2"
+        );
+    }
+
+    #[test]
+    fn sanitize_monitor_name_collapses_runs_of_whitespace() {
+        assert_eq!(sanitize_monitor_name("Display   1", 0), "Display 1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_preserves_alphanumeric() {
+        assert_eq!(sanitize_monitor_name("Display 1", 0), "Display 1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_falls_back_to_index_when_empty() {
+        assert_eq!(sanitize_monitor_name("", 0), "Tela 1");
+        assert_eq!(sanitize_monitor_name(r"\\.\", 2), "Tela 3");
     }
 
     // ---------- Plano 16: nested operations via parent_path ----------
