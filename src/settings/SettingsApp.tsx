@@ -6,6 +6,7 @@ import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
 import { SystemSection } from "./SystemSection";
+import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
 import { ProfilesSection, type ProfilesEditorMode } from "./ProfilesSection";
@@ -123,6 +124,7 @@ export const SettingsApp: React.FC = () => {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
+    setScriptHistoryEnabled,
     setSpawnPosition,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
@@ -209,6 +211,16 @@ export const SettingsApp: React.FC = () => {
     );
     if (!exists) setProfileEditorMode(null);
   }, [config, profileEditorMode]);
+
+  // Issue #54 (rev) — quando o toggle de histórico desliga (aqui ou em
+  // outra janela via CONFIG_CHANGED_EVENT), tira o usuário da aba caso
+  // ele esteja nela; evita ficar numa aba que sumiu do nav.
+  useEffect(() => {
+    if (!config) return;
+    if (!config.system.scriptHistoryEnabled && section === "history") {
+      setSection("system");
+    }
+  }, [config, section]);
 
   // Computado mesmo com `config` nulo para manter os hooks abaixo na ordem
   // estável (não pode haver early-return acima de `useCallback`).
@@ -338,7 +350,11 @@ export const SettingsApp: React.FC = () => {
           setSection("tabs");
         }}
       />
-      <SectionTabs active={section} onChange={setSection} />
+      <SectionTabs
+        active={section}
+        onChange={setSection}
+        showHistory={config.system.scriptHistoryEnabled}
+      />
 
       {section === "tabs" && (
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -483,6 +499,10 @@ export const SettingsApp: React.FC = () => {
           onAutoCheckUpdatesChange={(enabled) => {
             void setAutoCheckUpdates(enabled);
           }}
+          scriptHistoryEnabled={config.system.scriptHistoryEnabled}
+          onScriptHistoryEnabledChange={(enabled) => {
+            void setScriptHistoryEnabled(enabled);
+          }}
           spawnPosition={config.interaction.spawnPosition}
           onSpawnPositionChange={(position) => {
             void setSpawnPosition(position);
@@ -511,6 +531,9 @@ export const SettingsApp: React.FC = () => {
         />
       )}
 
+      {section === "history" && config.system.scriptHistoryEnabled && (
+        <HistorySection enabled={config.system.scriptHistoryEnabled} />
+      )}
     </div>
   );
 };

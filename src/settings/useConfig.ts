@@ -49,6 +49,7 @@ export interface UseConfig {
     overrides: ThemeOverrides | null,
   ) => Promise<Config>;
   setAutoCheckUpdates: (enabled: boolean) => Promise<Config>;
+  setScriptHistoryEnabled: (enabled: boolean) => Promise<Config>;
   setSpawnPosition: (position: SpawnPosition) => Promise<Config>;
 }
 
@@ -221,6 +222,12 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setScriptHistoryEnabled = useCallback(async (enabled: boolean) => {
+    const next = await ipc.setScriptHistoryEnabled(enabled);
+    setConfig(next);
+    return next;
+  }, []);
+
   const setSpawnPosition = useCallback(async (position: SpawnPosition) => {
     const next = await ipc.setSpawnPosition(position);
     setConfig(next);
@@ -247,6 +254,7 @@ export function useConfig(): UseConfig {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
+    setScriptHistoryEnabled,
     setSpawnPosition,
   };
 }

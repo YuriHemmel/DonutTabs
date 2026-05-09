@@ -109,7 +109,8 @@
       "profiles": "Perfis",
       "appearance": "Aparência",
       "shortcut": "Atalho",
-      "system": "Sistema"
+      "system": "Sistema",
+      "history": "Histórico"
     },
     "profile": {
       "label": "Perfil:",
@@ -142,8 +143,17 @@
       "importButton": "Importar configuração…",
       "exportImportHint": "Backup / restauração do config.json para sincronizar entre máquinas.",
       "exportSuccess": "Configuração exportada para {{path}}.",
+      "groups": {
+        "general": "Geral",
+        "donut": "Donut",
+        "scripts": "Scripts",
+        "updates": "Atualizações",
+        "backupAndTutorial": "Backup e tutorial"
+      },
       "allowScriptsLabel": "Permitir scripts neste perfil",
       "allowScriptsHint": "Scripts shell sempre pedem confirmação na primeira execução. Desabilite pra bloquear todos os scripts deste perfil.",
+      "scriptHistoryLabel": "Habilitar tela de histórico de scripts",
+      "scriptHistoryHint": "Quando ligado, a aba 'Histórico' aparece no Settings e a saída (stdout/stderr) de cada script executado fica acessível ali (in-memory; some ao fechar o app). Quando desligado, scripts continuam rodando mas sem captura.",
       "spawnPositionLegend": "Onde o donut aparece",
       "spawnPositionCursor": "Na posição do mouse",
       "spawnPositionCenter": "No centro do monitor ativo",
@@ -166,6 +176,34 @@
         "installing": "Instalando… {{progress}}%",
         "downloading": "Baixando… {{progress}}%",
         "dismissedHint": "Você já foi avisado desta versão. O aviso não será exibido de novo até a próxima atualização."
+      }
+    },
+    "history": {
+      "heading": "Execuções recentes",
+      "empty": "Nenhum script executado ainda.",
+      "disabled": "Captura de output desativada nas Preferências do sistema.",
+      "clearAll": "Limpar tudo",
+      "clearConfirm": "Apagar todas as {{count}} execuções? Output não pode ser recuperado depois.",
+      "status": {
+        "running": "Em execução",
+        "succeeded": "Sucesso",
+        "failed": "Falhou",
+        "interrupted": "Interrompido",
+        "cancelled": "Cancelado"
+      },
+      "detail": {
+        "metadata": "Metadados",
+        "profile": "Perfil",
+        "tab": "Aba",
+        "exitCode": "Exit code",
+        "startedAt": "Iniciado em",
+        "finishedAt": "Finalizado em",
+        "duration": "Duração",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "Output truncado (limite atingido). Para ver tudo, redirecione o output do script para um arquivo.",
+        "cancel": "Cancelar execução",
+        "copy": "Copiar"
       }
     },
     "icon": {
