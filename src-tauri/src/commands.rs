@@ -860,21 +860,23 @@ pub struct MonitorInfo {
     pub primary: bool,
 }
 
-/// Issue #46 — strip caracteres não alfanuméricos do nome reportado pelo SO
+/// Issue #46 — strip caracteres não amigáveis do nome reportado pelo SO
 /// (Windows tipicamente reporta `\\.\DISPLAY1`, macOS `Display 1`). Mantém
-/// letras, dígitos e espaços; colapsa whitespace; cai em `Tela {N}` quando
-/// nada sobra. Helper puro pra teste.
+/// letras, dígitos, espaços, hífens e underscores (preserva nomes Linux
+/// estilo `eDP-1`/`HDMI-A-1`); o resto vira espaço, runs de whitespace
+/// colapsam, e cai em `Tela {N}` quando nada sobra. Helper puro pra teste.
 pub(crate) fn sanitize_monitor_name(raw: &str, idx: usize) -> String {
     let cleaned: String = raw
         .chars()
         .map(|c| {
-            if c.is_alphanumeric() || c.is_whitespace() {
+            if c.is_alphanumeric() || c.is_whitespace() || c == '-' || c == '_' {
                 c
             } else {
                 ' '
             }
         })
         .collect();
+    // Trim em cada token preservando hífens/underscores internos.
     let collapsed = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
     if collapsed.is_empty() {
         format!("Tela {}", idx + 1)
@@ -1609,10 +1611,18 @@ mod tests {
 
     #[test]
     fn sanitize_monitor_name_strips_punctuation_keeps_spaces() {
+        // Ponto vira espaço; underscore preservado.
         assert_eq!(
             sanitize_monitor_name("Tela.Principal_2", 0),
-            "Tela Principal 2"
+            "Tela Principal_2"
         );
+    }
+
+    #[test]
+    fn sanitize_monitor_name_preserves_hyphen_in_linux_names() {
+        // Nomes randr/Wayland comuns: `eDP-1`, `HDMI-A-1`, `DP-2`.
+        assert_eq!(sanitize_monitor_name("eDP-1", 0), "eDP-1");
+        assert_eq!(sanitize_monitor_name("HDMI-A-1", 0), "HDMI-A-1");
     }
 
     #[test]
