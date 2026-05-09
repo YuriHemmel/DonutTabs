@@ -144,14 +144,16 @@ fn position_at_active_monitor_center<R: Runtime>(
         return Ok(());
     };
 
-    let scale = window.scale_factor().map_err(|e| {
-        AppError::window("window_scale_factor_failed", &[("reason", e.to_string())])
-    })?;
+    // Issue #52 — usar `monitor.scale_factor()` (não `window.scale_factor()`).
+    // Em multi-monitor com DPIs diferentes, `window.scale_factor()` reporta
+    // o scale do monitor onde a janela está agora (potencialmente o anterior),
+    // o que descentraliza o donut quando o cursor mudou de monitor.
+    let scale = monitor.scale_factor();
     let pos = monitor.position();
     let s = monitor.size();
     let half = ((size / 2.0) * scale).round() as i32;
-    let center_x = pos.x + (s.width / 2) as i32;
-    let center_y = pos.y + (s.height / 2) as i32;
+    let center_x = pos.x + (s.width as i32) / 2;
+    let center_y = pos.y + (s.height as i32) / 2;
     let x = center_x - half;
     let y = center_y - half;
 
