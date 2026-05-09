@@ -1,6 +1,8 @@
 use crate::apps_picker::{self, InstalledApp};
 use crate::config::io::{load_from_path, save_atomic};
-use crate::config::schema::{Config, Item, Language, Profile, Tab, Theme, ThemeOverrides};
+use crate::config::schema::{
+    Config, Item, Language, Profile, SpawnPosition, Tab, Theme, ThemeOverrides,
+};
 use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, ScriptCaptureExecutor, TauriOpener};
@@ -710,6 +712,30 @@ pub(crate) fn apply_set_slice_gap_enabled(cfg: &mut Config, enabled: bool) {
     cfg.interaction.slice_gap_enabled = enabled;
 }
 
+/// Issue #52 — toggle entre `Cursor` (donut nasce na posição do mouse) e
+/// `Center` (centro do monitor onde o cursor está). Persiste + emite
+/// `CONFIG_CHANGED_EVENT`. A próxima abertura do donut respeita o novo
+/// modo; janelas já visíveis não são re-posicionadas.
+#[tauri::command]
+pub fn set_spawn_position<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    position: SpawnPosition,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_spawn_position(&mut cfg, position);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+pub(crate) fn apply_set_spawn_position(cfg: &mut Config, position: SpawnPosition) {
+    cfg.interaction.spawn_position = position;
+}
+
 /// Plano 14 — marca um item Script de uma aba como confiável (ou desfaz a
 /// confiança). Trust persistido evita que o `<ScriptConfirmModal>` apareça
 /// nas próximas execuções. Identificação por `(profile_id, tab_id, item_index)`;
@@ -834,6 +860,31 @@ pub struct MonitorInfo {
     pub primary: bool,
 }
 
+/// Issue #46 — strip caracteres não amigáveis do nome reportado pelo SO
+/// (Windows tipicamente reporta `\\.\DISPLAY1`, macOS `Display 1`). Mantém
+/// letras, dígitos, espaços, hífens e underscores (preserva nomes Linux
+/// estilo `eDP-1`/`HDMI-A-1`); o resto vira espaço, runs de whitespace
+/// colapsam, e cai em `Tela {N}` quando nada sobra. Helper puro pra teste.
+pub(crate) fn sanitize_monitor_name(raw: &str, idx: usize) -> String {
+    let cleaned: String = raw
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c.is_whitespace() || c == '-' || c == '_' {
+                c
+            } else {
+                ' '
+            }
+        })
+        .collect();
+    // Trim em cada token preservando hífens/underscores internos.
+    let collapsed = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+    if collapsed.is_empty() {
+        format!("Tela {}", idx + 1)
+    } else {
+        collapsed
+    }
+}
+
 #[tauri::command]
 pub fn list_monitors<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -849,11 +900,7 @@ pub fn list_monitors<R: tauri::Runtime>(
             let pos = m.position();
             let size = m.size();
             let raw_name = m.name().cloned().unwrap_or_default();
-            let name = if raw_name.trim().is_empty() {
-                format!("Tela {}", idx + 1)
-            } else {
-                raw_name
-            };
+            let name = sanitize_monitor_name(&raw_name, idx);
             let is_primary = primary
                 .as_ref()
                 .map(|p| p.position() == m.position() && p.size() == m.size())
@@ -1553,6 +1600,45 @@ mod tests {
             kind: TabKind::Leaf,
             children: vec![],
         }
+    }
+
+    // ---------- Issue #46: monitor name sanitizer ----------
+
+    #[test]
+    fn sanitize_monitor_name_strips_windows_device_prefix() {
+        assert_eq!(sanitize_monitor_name(r"\\.\DISPLAY1", 0), "DISPLAY1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_strips_punctuation_keeps_spaces() {
+        // Ponto vira espaço; underscore preservado.
+        assert_eq!(
+            sanitize_monitor_name("Tela.Principal_2", 0),
+            "Tela Principal_2"
+        );
+    }
+
+    #[test]
+    fn sanitize_monitor_name_preserves_hyphen_in_linux_names() {
+        // Nomes randr/Wayland comuns: `eDP-1`, `HDMI-A-1`, `DP-2`.
+        assert_eq!(sanitize_monitor_name("eDP-1", 0), "eDP-1");
+        assert_eq!(sanitize_monitor_name("HDMI-A-1", 0), "HDMI-A-1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_collapses_runs_of_whitespace() {
+        assert_eq!(sanitize_monitor_name("Display   1", 0), "Display 1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_preserves_alphanumeric() {
+        assert_eq!(sanitize_monitor_name("Display 1", 0), "Display 1");
+    }
+
+    #[test]
+    fn sanitize_monitor_name_falls_back_to_index_when_empty() {
+        assert_eq!(sanitize_monitor_name("", 0), "Tela 1");
+        assert_eq!(sanitize_monitor_name(r"\\.\", 2), "Tela 3");
     }
 
     // ---------- Plano 16: nested operations via parent_path ----------
@@ -2695,5 +2781,16 @@ mod tests {
         assert!(!cfg.interaction.slice_gap_enabled);
         apply_set_slice_gap_enabled(&mut cfg, true);
         assert!(cfg.interaction.slice_gap_enabled);
+    }
+
+    #[test]
+    fn apply_set_spawn_position_toggles_field() {
+        let mut cfg = Config::default();
+        // Default = cursor.
+        assert_eq!(cfg.interaction.spawn_position, SpawnPosition::Cursor);
+        apply_set_spawn_position(&mut cfg, SpawnPosition::Center);
+        assert_eq!(cfg.interaction.spawn_position, SpawnPosition::Center);
+        apply_set_spawn_position(&mut cfg, SpawnPosition::Cursor);
+        assert_eq!(cfg.interaction.spawn_position, SpawnPosition::Cursor);
     }
 }

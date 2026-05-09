@@ -178,25 +178,39 @@ describe("ItemListEditor", () => {
     expect(screen.getByTestId("item-open-with-2")).toBeTruthy();
   });
 
-  it("typing in openWith emits onChange with the new openWith value", async () => {
-    const user = userEvent.setup();
+  it("Issue #45 — selecting an installed app from openWith dropdown emits onChange", async () => {
     const { onChange } = await renderEditor([
       { kind: "url", value: "https://a", openWith: "" },
     ]);
-    const input = screen.getByTestId("item-open-with-0");
-    await user.type(input, "f");
+    // Aguarda o fetch dos apps instalados (mock async via ipc.listInstalledApps).
+    await screen.findByRole("option", { name: "Firefox" });
+    fireEvent.change(screen.getByTestId("item-open-with-0"), {
+      target: { value: "Firefox" },
+    });
     expect(onChange).toHaveBeenLastCalledWith([
-      { kind: "url", value: "https://a", openWith: "f" },
+      { kind: "url", value: "https://a", openWith: "Firefox" },
     ]);
   });
 
-  it("renders the existing openWith value", async () => {
+  it("Issue #45 — picking the default option clears openWith to empty string", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "url", value: "https://a", openWith: "Firefox" },
+    ]);
+    await screen.findByRole("option", { name: "Firefox" });
+    fireEvent.change(screen.getByTestId("item-open-with-0"), {
+      target: { value: "" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "" },
+    ]);
+  });
+
+  it("renders the existing openWith value (custom value preserved as synthetic option)", async () => {
     await renderEditor([
       { kind: "url", value: "https://w", openWith: "edge" },
     ]);
-    expect(
-      (screen.getByTestId("item-open-with-0") as HTMLInputElement).value,
-    ).toBe("edge");
+    const select = screen.getByTestId("item-open-with-0") as HTMLSelectElement;
+    expect(select.value).toBe("edge");
   });
 
   it("hides browse + openWith for app rows; uses input not textarea", async () => {

@@ -55,8 +55,10 @@ function normalizeKey(e: {
  * Regras:
  *   - Modificador sozinho (ex: só Ctrl) → `{ combo: null, error: null }` (ainda compondo).
  *   - Tecla reservada (Enter/Tab/Esc) → `error: "reservedKey"`.
- *   - Tecla sem modificador → `error: "noModifier"`.
- *   - Combo válida → `{ combo: "CommandOrControl+Shift+Space" }`.
+ *   - Letra/dígito sem modificador → `error: "noModifier"` (footgun: gravar
+ *     `A` como atalho global captura a letra em qualquer app). F-keys,
+ *     Space, setas, Home/End/etc. seguem aceitos sem modificador.
+ *   - Combo válida → `{ combo: "F12" | "CommandOrControl+Shift+Space" }`.
  */
 export function buildCombo(e: {
   ctrlKey: boolean;
@@ -74,14 +76,15 @@ export function buildCombo(e: {
     return { combo: null, error: "reservedKey", context: { key: normalized.value } };
   }
 
+  const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
+  if (!hasModifier && /^[A-Z0-9]$/.test(normalized.value)) {
+    return { combo: null, error: "noModifier", context: { key: normalized.value } };
+  }
+
   const parts: string[] = [];
   if (e.ctrlKey || e.metaKey) parts.push("CommandOrControl");
   if (e.altKey) parts.push("Alt");
   if (e.shiftKey) parts.push("Shift");
-
-  if (parts.length === 0) {
-    return { combo: null, error: "noModifier" };
-  }
 
   parts.push(normalized.value);
   return { combo: parts.join("+"), error: null };

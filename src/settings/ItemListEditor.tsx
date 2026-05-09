@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dialog, ipc } from "../core/ipc";
 import { AppPicker } from "./AppPicker";
+import type { InstalledApp } from "../core/types/InstalledApp";
 import type { MonitorInfo } from "../core/types/MonitorInfo";
 
 export type ItemKind = "url" | "file" | "folder" | "app" | "script";
@@ -27,6 +28,9 @@ export interface ItemListEditorProps {
   /** Plano 21 — injectable pra testes. Quando ausente, hook chama
    *  `ipc.listMonitors()` no mount. */
   monitorsOverride?: MonitorInfo[];
+  /** Issue #45 — injectable pra testes do dropdown "Abrir com". Quando
+   *  ausente, hook chama `ipc.listInstalledApps()` no mount. */
+  installedAppsOverride?: InstalledApp[];
 }
 
 const KIND_OPTIONS: ReadonlyArray<ItemKind> = [
@@ -60,7 +64,7 @@ const selectStyle: React.CSSProperties = {
 };
 const openWithStyle: React.CSSProperties = {
   ...inputStyle,
-  flex: "0 0 140px",
+  flex: "0 0 180px",
 };
 const monitorSelectStyle: React.CSSProperties = {
   ...inputStyle,
@@ -102,6 +106,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   values,
   onChange,
   monitorsOverride,
+  installedAppsOverride,
 }) => {
   const { t } = useTranslation();
   /** Plano 17 — index do row de `kind: "app"` aberto no `<AppPicker>`,
@@ -111,6 +116,12 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
    *  carregando (esconde a coluna até saber a contagem real). */
   const [monitors, setMonitors] = useState<MonitorInfo[] | null>(
     monitorsOverride ?? null,
+  );
+  /** Issue #45 — apps instalados pra popular o dropdown "Abrir com". `null`
+   *  enquanto carregando: cai pra "Padrão" + valor custom corrente até a
+   *  lista chegar. */
+  const [installedApps, setInstalledApps] = useState<InstalledApp[] | null>(
+    installedAppsOverride ?? null,
   );
 
   useEffect(() => {
@@ -133,6 +144,26 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
       cancelled = true;
     };
   }, [monitorsOverride]);
+
+  useEffect(() => {
+    if (installedAppsOverride !== undefined) {
+      setInstalledApps(installedAppsOverride);
+      return;
+    }
+    let cancelled = false;
+    ipc
+      .listInstalledApps()
+      .then((list) => {
+        if (!cancelled) setInstalledApps(list);
+      })
+      .catch(() => {
+        // Falha não bloqueia: dropdown fica com "Padrão" + valor corrente.
+        if (!cancelled) setInstalledApps([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [installedAppsOverride]);
 
   const showMonitorSelect = monitors !== null && monitors.length > 1;
 
@@ -237,15 +268,32 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
               </button>
             )}
             {usesOpenWith(it.kind) && (
-              <input
+              <select
                 aria-label={`${t("settings.editor.openWithLabel")} ${i + 1}`}
                 data-testid={`item-open-with-${i}`}
                 value={it.openWith}
                 onChange={(e) => updateAt(i, { openWith: e.target.value })}
-                placeholder={t("settings.editor.openWithPlaceholder")}
                 title={t("settings.editor.openWithHint")}
                 style={openWithStyle}
-              />
+              >
+                <option value="">
+                  {t("settings.editor.openWithDefault")}
+                </option>
+                {(installedApps ?? []).map((app) => (
+                  <option
+                    key={`${app.value}-${app.path}`}
+                    value={app.value}
+                  >
+                    {app.name}
+                  </option>
+                ))}
+                {it.openWith !== "" &&
+                  !(installedApps ?? []).some((a) => a.value === it.openWith) && (
+                    <option value={it.openWith}>
+                      {t("settings.editor.openWithCustom", { value: it.openWith })}
+                    </option>
+                  )}
+              </select>
             )}
             {showMonitorSelect && monitors && (
               <select

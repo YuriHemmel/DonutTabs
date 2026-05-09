@@ -34,7 +34,7 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
         return;
       }
       if (r.error === "noModifier") {
-        setError(t("settings.shortcut.noModifier"));
+        setError(t("settings.shortcut.noModifier", { key: r.context?.key ?? e.key }));
         return;
       }
       if (r.combo) {

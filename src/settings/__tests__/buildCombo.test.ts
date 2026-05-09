@@ -47,10 +47,47 @@ describe("buildCombo", () => {
     ).toMatchObject({ combo: "CommandOrControl+Alt+Shift+F5", error: null });
   });
 
-  it("only a letter — no modifier", () => {
+  it("plain letter without modifier is rejected (footgun)", () => {
     expect(buildCombo(fake({ key: "a" }))).toMatchObject({
       combo: null,
       error: "noModifier",
+      context: { key: "A" },
+    });
+  });
+
+  it("plain digit without modifier is rejected (footgun)", () => {
+    expect(buildCombo(fake({ key: "5" }))).toMatchObject({
+      combo: null,
+      error: "noModifier",
+      context: { key: "5" },
+    });
+  });
+
+  it("plain F-key without modifier is allowed", () => {
+    expect(buildCombo(fake({ key: "F12" }))).toMatchObject({
+      combo: "F12",
+      error: null,
+    });
+  });
+
+  it("plain Space without modifier is allowed", () => {
+    expect(buildCombo(fake({ key: " " }))).toMatchObject({
+      combo: "Space",
+      error: null,
+    });
+  });
+
+  it("plain ArrowUp without modifier is allowed", () => {
+    expect(buildCombo(fake({ key: "ArrowUp" }))).toMatchObject({
+      combo: "Up",
+      error: null,
+    });
+  });
+
+  it("Shift+A is allowed (any modifier unblocks alphanumeric)", () => {
+    expect(buildCombo(fake({ shiftKey: true, key: "a" }))).toMatchObject({
+      combo: "Shift+A",
+      error: null,
     });
   });
 

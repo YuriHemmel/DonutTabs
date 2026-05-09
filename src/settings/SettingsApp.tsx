@@ -125,6 +125,7 @@ export const SettingsApp: React.FC = () => {
     setProfileThemeOverrides,
     setAutoCheckUpdates,
     setScriptHistoryEnabled,
+    setSpawnPosition,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -210,6 +211,16 @@ export const SettingsApp: React.FC = () => {
     );
     if (!exists) setProfileEditorMode(null);
   }, [config, profileEditorMode]);
+
+  // Issue #54 (rev) — quando o toggle de histórico desliga (aqui ou em
+  // outra janela via CONFIG_CHANGED_EVENT), tira o usuário da aba caso
+  // ele esteja nela; evita ficar numa aba que sumiu do nav.
+  useEffect(() => {
+    if (!config) return;
+    if (!config.system.scriptHistoryEnabled && section === "history") {
+      setSection("system");
+    }
+  }, [config, section]);
 
   // Computado mesmo com `config` nulo para manter os hooks abaixo na ordem
   // estável (não pode haver early-return acima de `useCallback`).
@@ -332,8 +343,18 @@ export const SettingsApp: React.FC = () => {
           setSelection({ mode: "empty" });
         }}
         onReorder={handleReorderProfiles}
+        onActivate={(id) => {
+          // Issue #51 — duplo-clique: seleciona perfil e abre direto a seção Abas.
+          setSelectedProfileId(id);
+          setSelection({ mode: "empty" });
+          setSection("tabs");
+        }}
       />
-      <SectionTabs active={section} onChange={setSection} />
+      <SectionTabs
+        active={section}
+        onChange={setSection}
+        showHistory={config.system.scriptHistoryEnabled}
+      />
 
       {section === "tabs" && (
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -482,6 +503,10 @@ export const SettingsApp: React.FC = () => {
           onScriptHistoryEnabledChange={(enabled) => {
             void setScriptHistoryEnabled(enabled);
           }}
+          spawnPosition={config.interaction.spawnPosition}
+          onSpawnPositionChange={(position) => {
+            void setSpawnPosition(position);
+          }}
           onResetOnboarding={() => {
             // Plano 22 — re-arma o overlay de boas-vindas pra próxima
             // launch manual. Falha silenciosa: user vê erro via toast
@@ -506,7 +531,7 @@ export const SettingsApp: React.FC = () => {
         />
       )}
 
-      {section === "history" && (
+      {section === "history" && config.system.scriptHistoryEnabled && (
         <HistorySection enabled={config.system.scriptHistoryEnabled} />
       )}
     </div>

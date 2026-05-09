@@ -86,4 +86,28 @@ describe("SystemSection", () => {
     await user.click(btn);
     expect(onImportConfig).toHaveBeenCalledTimes(1);
   });
+
+  it("Issue #54 (rev) — script-history toggle reflects current value", async () => {
+    await renderSection({
+      scriptHistoryEnabled: true,
+      onScriptHistoryEnabledChange: vi.fn(),
+    });
+    const cb = screen.getByTestId("script-history-toggle") as HTMLInputElement;
+    expect(cb.checked).toBe(true);
+  });
+
+  it("Issue #54 (rev) — toggling the script-history checkbox calls the handler", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderSection({
+      scriptHistoryEnabled: false,
+      onScriptHistoryEnabledChange: vi.fn(),
+    });
+    await user.click(screen.getByTestId("script-history-toggle"));
+    expect(props.onScriptHistoryEnabledChange).toHaveBeenCalledWith(true);
+  });
+
+  it("Issue #54 (rev) — does not render the script-history toggle when prop missing", async () => {
+    await renderSection();
+    expect(screen.queryByTestId("script-history-toggle")).toBeNull();
+  });
 });

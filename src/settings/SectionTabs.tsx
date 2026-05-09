@@ -9,7 +9,7 @@ export type Section =
   | "system"
   | "history";
 
-const SECTIONS: Section[] = [
+const ALL_SECTIONS: Section[] = [
   "tabs",
   "profiles",
   "appearance",
@@ -21,10 +21,20 @@ const SECTIONS: Section[] = [
 export interface SectionTabsProps {
   active: Section;
   onChange: (section: Section) => void;
+  /** Issue #54 (rev) — quando `false`, esconde a aba "Histórico" da nav.
+   *  Default `true` mantém compatibilidade com testes que não passam o flag. */
+  showHistory?: boolean;
 }
 
-export const SectionTabs: React.FC<SectionTabsProps> = ({ active, onChange }) => {
+export const SectionTabs: React.FC<SectionTabsProps> = ({
+  active,
+  onChange,
+  showHistory = true,
+}) => {
   const { t } = useTranslation();
+  const sections = showHistory
+    ? ALL_SECTIONS
+    : ALL_SECTIONS.filter((s) => s !== "history");
   return (
     <nav
       role="tablist"
@@ -36,7 +46,7 @@ export const SectionTabs: React.FC<SectionTabsProps> = ({ active, onChange }) =>
         background: "var(--panel)",
       }}
     >
-      {SECTIONS.map((s) => {
+      {sections.map((s) => {
         const selected = active === s;
         return (
           <button

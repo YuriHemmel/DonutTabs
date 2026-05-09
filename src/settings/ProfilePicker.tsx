@@ -9,6 +9,8 @@ export interface ProfilePickerProps {
   activeId: string;
   onSelect: (profileId: string) => void;
   onReorder: (orderedIds: string[]) => void;
+  /** Issue #51 — duplo-clique seleciona perfil e pula para a seção "Abas". */
+  onActivate?: (profileId: string) => void;
 }
 
 /**
@@ -25,6 +27,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   activeId,
   onSelect,
   onReorder,
+  onActivate,
 }) => {
   const { t } = useTranslation();
   return (
@@ -47,6 +50,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           activeId={activeId}
           onSelect={onSelect}
           onReorder={onReorder}
+          onActivate={onActivate}
         />
       </div>
     </div>
