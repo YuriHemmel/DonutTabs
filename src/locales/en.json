@@ -249,6 +249,8 @@
       "openWithLabel": "Open with",
       "openWithPlaceholder": "e.g. firefox, code",
       "openWithHint": "OS program/handler. Empty = system default.",
+      "openWithDefault": "System default",
+      "openWithCustom": "Custom: {{value}}",
       "removeItem": "Remove item",
       "save": "Save",
       "saving": "Saving…",

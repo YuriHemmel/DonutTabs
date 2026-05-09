@@ -249,6 +249,8 @@
       "openWithLabel": "Abrir com",
       "openWithPlaceholder": "ex.: firefox, code",
       "openWithHint": "Programa/handler do SO. Vazio = padrão do sistema.",
+      "openWithDefault": "Padrão do sistema",
+      "openWithCustom": "Personalizado: {{value}}",
       "removeItem": "Remover item",
       "save": "Salvar",
       "saving": "Salvando…",

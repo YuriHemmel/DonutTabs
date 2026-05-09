@@ -230,16 +230,17 @@ describe("TabEditor", () => {
     ]);
   });
 
-  it("saves openWith trimmed and forwards as string when present", async () => {
+  it("Issue #45 — round-trips a pre-filled openWith via the dropdown's synthetic option", async () => {
+    // Synthetic "Personalizado" option mantém o valor existente selecionável
+    // mesmo sem o fetch dos installed apps (não roda sem mock no jsdom).
+    const tabWithOpenWith: Tab = {
+      ...existing,
+      items: [
+        { kind: "url", value: "https://work.test", openWith: "firefox", monitor: null },
+      ],
+    };
     const user = userEvent.setup();
-    const { props } = await renderEditor();
-    await user.type(screen.getByLabelText(/nome/i), "Work");
-    fireEvent.change(screen.getByTestId("item-value-0"), {
-      target: { value: "https://work.test" },
-    });
-    fireEvent.change(screen.getByTestId("item-open-with-0"), {
-      target: { value: "  firefox  " },
-    });
+    const { props } = await renderEditor({ mode: "edit", initial: tabWithOpenWith });
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
@@ -247,15 +248,17 @@ describe("TabEditor", () => {
     ]);
   });
 
-  it("saves openWith as null when empty/whitespace", async () => {
+  it("saves openWith as null when set back to default", async () => {
+    const tabWithOpenWith: Tab = {
+      ...existing,
+      items: [
+        { kind: "url", value: "https://x.test", openWith: "firefox", monitor: null },
+      ],
+    };
     const user = userEvent.setup();
-    const { props } = await renderEditor();
-    await user.type(screen.getByLabelText(/nome/i), "X");
-    fireEvent.change(screen.getByTestId("item-value-0"), {
-      target: { value: "https://x.test" },
-    });
+    const { props } = await renderEditor({ mode: "edit", initial: tabWithOpenWith });
     fireEvent.change(screen.getByTestId("item-open-with-0"), {
-      target: { value: "   " },
+      target: { value: "" },
     });
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
