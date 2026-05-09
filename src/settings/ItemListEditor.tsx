@@ -51,6 +51,12 @@ const KIND_SUFFIX: Record<ItemKind, string> = {
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
+  // `<input>`/`<textarea>` carregam min-width intrínseca (~size attr) que
+  // impede flex-shrink. Sem isto, em telas estreitas o value input não
+  // encolhe enquanto o header `<div flex:1>` sim — desalinha colunas
+  // subsequentes. selectStyle/openWithStyle/monitorSelectStyle sobrescrevem
+  // `flex` com basis fixa, então a min-width não afeta quem não cresce.
+  minWidth: 0,
   background: "var(--input-bg)",
   color: "var(--fg)",
   border: "1px solid var(--input-border)",
@@ -58,13 +64,18 @@ const inputStyle: React.CSSProperties = {
   padding: "6px 8px",
   font: "inherit",
 };
+/** Min-width do campo "Valor" — impede que o input fique impraticavelmente
+ *  estreito ao encolher a janela. Header valor cell usa o mesmo `minWidth`
+ *  pra alinhar colunas subsequentes (openWith/monitor/remove) em todas as
+ *  larguras. */
+const VALUE_MIN_WIDTH = 200;
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
   flex: "0 0 110px",
 };
 const openWithStyle: React.CSSProperties = {
   ...inputStyle,
-  flex: "0 0 150px",
+  flex: "0 0 200px",
 };
 
 /** Issue — "Abrir com" para `kind: "url"` deve listar só navegadores. Match
@@ -95,6 +106,12 @@ const isBrowser = (app: InstalledApp): boolean => {
   const haystack = `${app.name}\n${app.value}\n${app.path}`.toLowerCase();
   return BROWSER_KEYWORDS.some((kw) => haystack.includes(kw));
 };
+
+/** Title Case por palavra. "google chrome" → "Google Chrome",
+ *  "MICROSOFT EDGE" → "Microsoft Edge", "firefox" → "Firefox". Preserva
+ *  separadores (espaço, hífen, etc.) usando `\b\p{L}`. */
+const titleCase = (s: string): string =>
+  s.toLocaleLowerCase().replace(/\b\p{L}/gu, (c) => c.toLocaleUpperCase());
 const monitorSelectStyle: React.CSSProperties = {
   ...inputStyle,
   flex: "0 0 140px",
@@ -107,6 +124,21 @@ const ghostBtn: React.CSSProperties = {
   padding: "4px 10px",
   cursor: "pointer",
   font: "inherit",
+};
+/** Slot fixo ocupado pelo botão "Procurar…" (file/folder) ou "📋 Procurar app"
+ *  (app). Header reserva o mesmo width quando qualquer row precisa do slot,
+ *  pra que `openWith`/`monitor`/`remove` fiquem alinhados em ambos. */
+const actionSlotStyle: React.CSSProperties = {
+  flex: "0 0 130px",
+  display: "flex",
+};
+const actionBtnStyle: React.CSSProperties = {
+  ...ghostBtn,
+  flex: 1,
+  textAlign: "center",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 const removeBtn: React.CSSProperties = {
   background: "transparent",
@@ -226,8 +258,58 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   const labelFor = (kind: ItemKind) =>
     t(`settings.editor.itemKind${KIND_SUFFIX[kind]}`);
 
+  const anyUsesOpenWith = values.some((v) => usesOpenWith(v.kind));
+  const usesActionSlot = (k: ItemKind) => usesBrowse(k) || isApp(k);
+  const anyUsesActionSlot = values.some((v) => usesActionSlot(v.kind));
+
+  const headerCellStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    letterSpacing: 0.4,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {values.length > 0 && (
+        <div
+          data-testid="item-header-row"
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            paddingBottom: 4,
+            borderBottom: "1px solid var(--input-border)",
+          }}
+        >
+          <div style={{ ...headerCellStyle, flex: "0 0 110px" }}>
+            {t("settings.editor.kindLabel")}
+          </div>
+          <div style={{ ...headerCellStyle, flex: 1, minWidth: VALUE_MIN_WIDTH }}>
+            {t("settings.editor.headerValue")}
+          </div>
+          {anyUsesActionSlot && (
+            <div style={actionSlotStyle} aria-hidden="true" />
+          )}
+          {anyUsesOpenWith && (
+            <div style={{ ...headerCellStyle, flex: "0 0 200px" }}>
+              {t("settings.editor.openWithLabel")}
+            </div>
+          )}
+          {showMonitorSelect && (
+            <div style={{ ...headerCellStyle, flex: "0 0 140px" }}>
+              {t("settings.editor.monitorLabel")}
+            </div>
+          )}
+          {/* spacer alinhando com o botão remover (✕) */}
+          <div style={{ flex: "0 0 36px" }} aria-hidden="true" />
+        </div>
+      )}
       {values.map((it, i) => (
         <div
           key={i}
@@ -260,6 +342,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                 rows={3}
                 style={{
                   ...inputStyle,
+                  minWidth: VALUE_MIN_WIDTH,
                   fontFamily: "ui-monospace, Menlo, Consolas, monospace",
                   fontSize: 12,
                   resize: "vertical",
@@ -272,29 +355,33 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                 value={it.value}
                 onChange={(e) => updateAt(i, { value: e.target.value })}
                 placeholder={placeholderFor(it.kind)}
-                style={inputStyle}
+                style={{ ...inputStyle, minWidth: VALUE_MIN_WIDTH }}
               />
             )}
-            {usesBrowse(it.kind) && (
-              <button
-                type="button"
-                data-testid={`item-browse-${i}`}
-                onClick={() => browse(i, it.kind)}
-                style={ghostBtn}
-              >
-                {t("settings.editor.browse")}
-              </button>
-            )}
-            {isApp(it.kind) && (
-              <button
-                type="button"
-                data-testid={`item-app-picker-${i}`}
-                title={t("settings.editor.appPickerHint")}
-                onClick={() => setAppPickerIndex(i)}
-                style={ghostBtn}
-              >
-                {t("settings.editor.appPickerButton")}
-              </button>
+            {anyUsesActionSlot && (
+              <div style={actionSlotStyle}>
+                {usesBrowse(it.kind) && (
+                  <button
+                    type="button"
+                    data-testid={`item-browse-${i}`}
+                    onClick={() => browse(i, it.kind)}
+                    style={actionBtnStyle}
+                  >
+                    {t("settings.editor.browse")}
+                  </button>
+                )}
+                {isApp(it.kind) && (
+                  <button
+                    type="button"
+                    data-testid={`item-app-picker-${i}`}
+                    title={t("settings.editor.appPickerHint")}
+                    onClick={() => setAppPickerIndex(i)}
+                    style={actionBtnStyle}
+                  >
+                    {t("settings.editor.appPickerButton")}
+                  </button>
+                )}
+              </div>
             )}
             {usesOpenWith(it.kind) && (() => {
               const pool = installedApps ?? [];
@@ -313,7 +400,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                   </option>
                   {filtered.map((app) => (
                     <option key={`${app.value}-${app.path}`} value={app.value}>
-                      {app.name}
+                      {it.kind === "url" ? titleCase(app.name) : app.name}
                     </option>
                   ))}
                   {it.openWith !== "" &&

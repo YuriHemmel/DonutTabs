@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { ProfileEditor } from "./ProfileEditor";
+import { IconDisplay } from "./IconDisplay";
 import type { Profile } from "../core/types/Profile";
 
 export type ProfilesEditorMode =
@@ -119,8 +120,15 @@ export const ProfilesSection: React.FC<ProfilesSectionProps> = ({
                     gap: 8,
                   }}
                 >
-                  <span style={{ width: 20, textAlign: "center" }}>
-                    {profile.icon ?? "•"}
+                  <span
+                    style={{
+                      width: 20,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <IconDisplay icon={profile.icon} fallback="•" size={16} />
                   </span>
                   <span
                     style={{

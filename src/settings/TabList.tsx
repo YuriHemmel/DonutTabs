@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Tab } from "../core/types/Tab";
 import { useDragReorder } from "./useDragReorder";
+import { IconDisplay } from "./IconDisplay";
 
 export interface TabListProps {
   tabs: Tab[];
@@ -126,8 +127,15 @@ export const TabList: React.FC<TabListProps> = ({
                     gap: 8,
                   }}
                 >
-                  <span style={{ width: 20, textAlign: "center" }}>
-                    {tab.icon ?? "•"}
+                  <span
+                    style={{
+                      width: 20,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <IconDisplay icon={tab.icon} fallback="•" size={16} />
                   </span>
                   <span
                     style={{

@@ -5,6 +5,7 @@ import { GroupChildrenEditor } from "./GroupChildrenEditor";
 import { translateAppError } from "../core/errors";
 import { stripLetters, graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
+import { IconDisplay } from "./IconDisplay";
 import type { Tab } from "../core/types/Tab";
 import type { Item } from "../core/types/Item";
 import type { OpenMode } from "../core/types/OpenMode";
@@ -297,6 +298,23 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span>{t("settings.editor.icon")}</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span
+              data-testid="tab-icon-preview"
+              aria-hidden="true"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 28,
+                height: 28,
+                borderRadius: 4,
+                border: "1px solid var(--input-border)",
+                background: "var(--input-bg)",
+                color: "var(--fg)",
+              }}
+            >
+              <IconDisplay icon={state.icon} fallback="?" size={18} />
+            </span>
             <input
               value={state.icon}
               onChange={(e) => {

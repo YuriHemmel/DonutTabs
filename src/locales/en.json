@@ -309,6 +309,7 @@
       "tabKindLeaf": "Tab (links)",
       "tabKindGroup": "Group (sub-donut)",
       "kindLabel": "Type",
+      "headerValue": "Value",
       "groupChildrenLabel": "Group contents",
       "groupChildrenEmpty": "No items yet. Add tabs or subgroups.",
       "addChildTab": "+ Add tab",

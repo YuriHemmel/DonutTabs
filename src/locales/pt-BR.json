@@ -309,6 +309,7 @@
       "tabKindLeaf": "Aba (links)",
       "tabKindGroup": "Grupo (sub-donut)",
       "kindLabel": "Tipo",
+      "headerValue": "Valor",
       "groupChildrenLabel": "Conteúdo do grupo",
       "groupChildrenEmpty": "Nenhum item ainda. Adicione abas ou subgrupos.",
       "addChildTab": "+ Adicionar aba",
