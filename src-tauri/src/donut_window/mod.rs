@@ -1,3 +1,5 @@
+use crate::commands::AppState;
+use crate::config::schema::SpawnPosition;
 use crate::errors::{AppError, AppResult};
 use mouse_position::mouse_position::Mouse;
 use tauri::{
@@ -31,7 +33,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
         window.set_size(LogicalSize::new(size, size)).map_err(|e| {
             AppError::window("window_set_size_failed", &[("reason", e.to_string())])
         })?;
-        position_at_cursor(&window, size)?;
+        position_window(app, &window, size)?;
         window
             .show()
             .map_err(|e| AppError::window("window_show_failed", &[("reason", e.to_string())]))?;
@@ -54,7 +56,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
         .build()
         .map_err(|e| AppError::window("window_build_failed", &[("reason", e.to_string())]))?;
 
-    position_at_cursor(&window, size)?;
+    position_window(app, &window, size)?;
     window
         .show()
         .map_err(|e| AppError::window("window_show_failed", &[("reason", e.to_string())]))?;
@@ -62,6 +64,24 @@ pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
         .set_focus()
         .map_err(|e| AppError::window("window_set_focus_failed", &[("reason", e.to_string())]))?;
     Ok(())
+}
+
+/// Issue #52 — escolhe entre cursor e centro do monitor ativo, conforme
+/// `cfg.interaction.spawn_position`. AppState pode não estar disponível
+/// durante o pré-aquecimento (raro, mas possível); cai pro modo cursor.
+fn position_window<R: Runtime>(
+    app: &AppHandle<R>,
+    window: &tauri::WebviewWindow<R>,
+    size: f64,
+) -> AppResult<()> {
+    let mode = app
+        .try_state::<AppState>()
+        .map(|s| s.config.read().unwrap().interaction.spawn_position)
+        .unwrap_or(SpawnPosition::Cursor);
+    match mode {
+        SpawnPosition::Cursor => position_at_cursor(window, size),
+        SpawnPosition::Center => position_at_active_monitor_center(app, window, size),
+    }
 }
 
 fn position_at_cursor<R: Runtime>(window: &tauri::WebviewWindow<R>, size: f64) -> AppResult<()> {
@@ -76,6 +96,64 @@ fn position_at_cursor<R: Runtime>(window: &tauri::WebviewWindow<R>, size: f64) -
     let half = (size / 2.0) * scale;
     let x = (pos.0 - half).round() as i32;
     let y = (pos.1 - half).round() as i32;
+
+    window
+        .set_position(PhysicalPosition::new(x, y))
+        .map_err(|e| {
+            AppError::window("window_set_position_failed", &[("reason", e.to_string())])
+        })?;
+    Ok(())
+}
+
+/// Issue #52 — posiciona no centro do monitor onde o cursor está. Fallback
+/// pra primary_monitor() quando nenhum monitor contém o cursor (raro). Sem
+/// monitor disponível, retorna `Ok(())` sem mover (mesma postura
+/// fail-soft do `position_at_cursor` quando o mouse query falha).
+fn position_at_active_monitor_center<R: Runtime>(
+    app: &AppHandle<R>,
+    window: &tauri::WebviewWindow<R>,
+    size: f64,
+) -> AppResult<()> {
+    let cursor = match Mouse::get_mouse_position() {
+        Mouse::Position { x, y } => Some((x, y)),
+        Mouse::Error => None,
+    };
+
+    let monitors = app.available_monitors().map_err(|e| {
+        AppError::window(
+            "window_available_monitors_failed",
+            &[("reason", e.to_string())],
+        )
+    })?;
+
+    let monitor = cursor
+        .and_then(|(cx, cy)| {
+            monitors.iter().find(|m| {
+                let p = m.position();
+                let s = m.size();
+                let right = p.x + s.width as i32;
+                let bottom = p.y + s.height as i32;
+                cx >= p.x && cx < right && cy >= p.y && cy < bottom
+            })
+        })
+        .cloned()
+        .or_else(|| app.primary_monitor().ok().flatten())
+        .or_else(|| monitors.into_iter().next());
+
+    let Some(monitor) = monitor else {
+        return Ok(());
+    };
+
+    let scale = window.scale_factor().map_err(|e| {
+        AppError::window("window_scale_factor_failed", &[("reason", e.to_string())])
+    })?;
+    let pos = monitor.position();
+    let s = monitor.size();
+    let half = ((size / 2.0) * scale).round() as i32;
+    let center_x = pos.x + (s.width / 2) as i32;
+    let center_y = pos.y + (s.height / 2) as i32;
+    let x = center_x - half;
+    let y = center_y - half;
 
     window
         .set_position(PhysicalPosition::new(x, y))

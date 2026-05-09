@@ -13,6 +13,7 @@ import type { ScriptRun } from "./types/ScriptRun";
 import type { ScriptRunSummary } from "./types/ScriptRunSummary";
 import type { ScriptStream } from "./types/ScriptStream";
 import type { MonitorInfo } from "./types/MonitorInfo";
+import type { SpawnPosition } from "./types/SpawnPosition";
 
 export type SettingsIntent =
   | "new-tab"
@@ -88,6 +89,10 @@ export const ipc = {
    *  Mora em `interaction.sliceGapEnabled` (global, não per-perfil). */
   setSliceGapEnabled: (enabled: boolean) =>
     invoke<Config>("set_slice_gap_enabled", { enabled }),
+  /** Issue #52 — alterna onde o donut nasce ao abrir: na posição do mouse
+   *  (`cursor`) ou no centro do monitor ativo (`center`). */
+  setSpawnPosition: (position: SpawnPosition) =>
+    invoke<Config>("set_spawn_position", { position }),
   /** `expectedCommand`: comando que o user viu no modal. Backend rejeita com
    *  `script_command_mismatch` se o item foi editado por outra janela entre
    *  o modal abrir e o user confirmar — evita autorizar comando que o user

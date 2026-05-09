@@ -1,6 +1,8 @@
 use crate::apps_picker::{self, InstalledApp};
 use crate::config::io::{load_from_path, save_atomic};
-use crate::config::schema::{Config, Item, Language, Profile, Tab, Theme, ThemeOverrides};
+use crate::config::schema::{
+    Config, Item, Language, Profile, SpawnPosition, Tab, Theme, ThemeOverrides,
+};
 use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
 use crate::launcher::{launch_tab, ScriptCaptureExecutor, TauriOpener};
@@ -708,6 +710,30 @@ pub fn set_slice_gap_enabled<R: tauri::Runtime>(
 /// Cobertura via teste; comando wrapper persiste + emite evento.
 pub(crate) fn apply_set_slice_gap_enabled(cfg: &mut Config, enabled: bool) {
     cfg.interaction.slice_gap_enabled = enabled;
+}
+
+/// Issue #52 — toggle entre `Cursor` (donut nasce na posição do mouse) e
+/// `Center` (centro do monitor onde o cursor está). Persiste + emite
+/// `CONFIG_CHANGED_EVENT`. A próxima abertura do donut respeita o novo
+/// modo; janelas já visíveis não são re-posicionadas.
+#[tauri::command]
+pub fn set_spawn_position<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    position: SpawnPosition,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_spawn_position(&mut cfg, position);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+pub(crate) fn apply_set_spawn_position(cfg: &mut Config, position: SpawnPosition) {
+    cfg.interaction.spawn_position = position;
 }
 
 /// Plano 14 — marca um item Script de uma aba como confiável (ou desfaz a
@@ -2745,5 +2771,16 @@ mod tests {
         assert!(!cfg.interaction.slice_gap_enabled);
         apply_set_slice_gap_enabled(&mut cfg, true);
         assert!(cfg.interaction.slice_gap_enabled);
+    }
+
+    #[test]
+    fn apply_set_spawn_position_toggles_field() {
+        let mut cfg = Config::default();
+        // Default = cursor.
+        assert_eq!(cfg.interaction.spawn_position, SpawnPosition::Cursor);
+        apply_set_spawn_position(&mut cfg, SpawnPosition::Center);
+        assert_eq!(cfg.interaction.spawn_position, SpawnPosition::Center);
+        apply_set_spawn_position(&mut cfg, SpawnPosition::Cursor);
+        assert_eq!(cfg.interaction.spawn_position, SpawnPosition::Cursor);
     }
 }

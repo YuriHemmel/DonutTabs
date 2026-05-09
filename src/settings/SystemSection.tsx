@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Language } from "../core/types/Language";
+import type { SpawnPosition } from "../core/types/SpawnPosition";
 import { UpdateCard } from "./UpdateCard";
 
 export interface SystemSectionProps {
@@ -18,6 +19,9 @@ export interface SystemSectionProps {
   /** Plano 18: toggle global do check de update no startup. */
   autoCheckUpdates?: boolean;
   onAutoCheckUpdatesChange?: (enabled: boolean) => void;
+  /** Issue #52: posição inicial do donut quando aberto pelo atalho. */
+  spawnPosition?: SpawnPosition;
+  onSpawnPositionChange?: (position: SpawnPosition) => void;
   /** Plano 22: re-armar tutorial de boas-vindas na próxima manual launch.
    *  Quando ausente, o botão não renderiza. */
   onResetOnboarding?: () => void;
@@ -34,6 +38,8 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
   onAllowScriptsChange,
   autoCheckUpdates,
   onAutoCheckUpdatesChange,
+  spawnPosition,
+  onSpawnPositionChange,
   onResetOnboarding,
 }) => {
   const { t } = useTranslation();
@@ -114,6 +120,43 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
           autoCheckUpdates={autoCheckUpdates}
           onAutoCheckUpdatesChange={onAutoCheckUpdatesChange}
         />
+      )}
+
+      {spawnPosition !== undefined && onSpawnPositionChange && (
+        <fieldset
+          style={{ border: "1px solid var(--input-border)", borderRadius: 4, padding: 12 }}
+        >
+          <legend style={{ padding: "0 6px" }}>
+            {t("settings.system.spawnPositionLegend")}
+          </legend>
+          <label
+            style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+          >
+            <input
+              type="radio"
+              name="spawn-position"
+              data-testid="spawn-position-cursor"
+              checked={spawnPosition === "cursor"}
+              onChange={() => onSpawnPositionChange("cursor")}
+            />
+            {t("settings.system.spawnPositionCursor")}
+          </label>
+          <label
+            style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+          >
+            <input
+              type="radio"
+              name="spawn-position"
+              data-testid="spawn-position-center"
+              checked={spawnPosition === "center"}
+              onChange={() => onSpawnPositionChange("center")}
+            />
+            {t("settings.system.spawnPositionCenter")}
+          </label>
+          <small style={{ color: "var(--muted)", display: "block", paddingTop: 4 }}>
+            {t("settings.system.spawnPositionHint")}
+          </small>
+        </fieldset>
       )}
 
       {onResetOnboarding && (

@@ -123,6 +123,7 @@ export const SettingsApp: React.FC = () => {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
+    setSpawnPosition,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -481,6 +482,10 @@ export const SettingsApp: React.FC = () => {
           autoCheckUpdates={config.system.autoCheckUpdates}
           onAutoCheckUpdatesChange={(enabled) => {
             void setAutoCheckUpdates(enabled);
+          }}
+          spawnPosition={config.interaction.spawnPosition}
+          onSpawnPositionChange={(position) => {
+            void setSpawnPosition(position);
           }}
           onResetOnboarding={() => {
             // Plano 22 — re-arma o overlay de boas-vindas pra próxima

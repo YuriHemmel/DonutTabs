@@ -5,6 +5,7 @@ import type { Config } from "../core/types/Config";
 import type { Tab } from "../core/types/Tab";
 import type { Theme } from "../core/types/Theme";
 import type { Language } from "../core/types/Language";
+import type { SpawnPosition } from "../core/types/SpawnPosition";
 import type { ThemeOverrides } from "../core/types/ThemeOverrides";
 
 export interface UseConfig {
@@ -48,6 +49,7 @@ export interface UseConfig {
     overrides: ThemeOverrides | null,
   ) => Promise<Config>;
   setAutoCheckUpdates: (enabled: boolean) => Promise<Config>;
+  setSpawnPosition: (position: SpawnPosition) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -219,6 +221,12 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setSpawnPosition = useCallback(async (position: SpawnPosition) => {
+    const next = await ipc.setSpawnPosition(position);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -239,5 +247,6 @@ export function useConfig(): UseConfig {
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
+    setSpawnPosition,
   };
 }
