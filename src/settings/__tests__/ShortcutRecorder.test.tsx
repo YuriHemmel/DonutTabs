@@ -75,14 +75,13 @@ describe("ShortcutRecorder", () => {
     expect(screen.getByText(/pressione a combinação/i)).toBeTruthy();
   });
 
-  it("shows noModifier error for a plain letter", async () => {
+  it("captures a single key without modifier (F12)", async () => {
     const user = userEvent.setup();
     const { props } = await renderRecorder();
     await user.click(screen.getByRole("button", { name: /gravar novo atalho/i }));
 
-    fireEvent.keyDown(window, { key: "a" });
-    expect(screen.getByText(/inclua um modificador/i)).toBeTruthy();
-    expect(props.onCapture).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, { key: "F12" });
+    expect(props.onCapture).toHaveBeenCalledWith("F12");
   });
 
   it("swallowing a modifier-only keydown keeps recording without error", async () => {

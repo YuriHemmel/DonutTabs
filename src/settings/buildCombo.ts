@@ -2,7 +2,7 @@ export interface ComboBuildResult {
   /** Combo finalizada (no formato aceito por `tauri-plugin-global-shortcut`). */
   combo: string | null;
   /** Erro de validação — componente mostra mensagem correspondente. */
-  error: "reservedKey" | "noModifier" | null;
+  error: "reservedKey" | null;
   /** Contexto opcional do erro (ex: qual tecla foi rejeitada). */
   context?: Record<string, string>;
 }
@@ -55,8 +55,7 @@ function normalizeKey(e: {
  * Regras:
  *   - Modificador sozinho (ex: só Ctrl) → `{ combo: null, error: null }` (ainda compondo).
  *   - Tecla reservada (Enter/Tab/Esc) → `error: "reservedKey"`.
- *   - Tecla sem modificador → `error: "noModifier"`.
- *   - Combo válida → `{ combo: "CommandOrControl+Shift+Space" }`.
+ *   - Combo válida (com ou sem modificador) → `{ combo: "F12" | "CommandOrControl+Shift+Space" }`.
  */
 export function buildCombo(e: {
   ctrlKey: boolean;
@@ -78,10 +77,6 @@ export function buildCombo(e: {
   if (e.ctrlKey || e.metaKey) parts.push("CommandOrControl");
   if (e.altKey) parts.push("Alt");
   if (e.shiftKey) parts.push("Shift");
-
-  if (parts.length === 0) {
-    return { combo: null, error: "noModifier" };
-  }
 
   parts.push(normalized.value);
   return { combo: parts.join("+"), error: null };

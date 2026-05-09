@@ -233,9 +233,8 @@
       "record": "Gravar novo atalho",
       "recording": "Pressione a combinação…",
       "cancel": "Cancelar",
-      "hint": "Combinação precisa conter Ctrl, Alt, Shift ou Super + uma tecla não reservada (Enter/Esc/Tab são rejeitadas).",
+      "hint": "Pressione qualquer tecla ou combinação (Enter/Esc/Tab são rejeitadas).",
       "reservedKey": "Tecla reservada: {{key}}",
-      "noModifier": "Inclua um modificador (Ctrl/Alt/Shift/Super).",
       "searchSectionTitle": "Atalho de busca",
       "searchHint": "Atalho dentro do donut que abre a busca rápida de abas. Padrão: Ctrl+F."
     },

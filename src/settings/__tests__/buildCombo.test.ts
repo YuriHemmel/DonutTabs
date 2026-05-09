@@ -47,10 +47,17 @@ describe("buildCombo", () => {
     ).toMatchObject({ combo: "CommandOrControl+Alt+Shift+F5", error: null });
   });
 
-  it("only a letter — no modifier", () => {
+  it("plain letter without modifier is allowed", () => {
     expect(buildCombo(fake({ key: "a" }))).toMatchObject({
-      combo: null,
-      error: "noModifier",
+      combo: "A",
+      error: null,
+    });
+  });
+
+  it("plain F-key without modifier is allowed", () => {
+    expect(buildCombo(fake({ key: "F12" }))).toMatchObject({
+      combo: "F12",
+      error: null,
     });
   });
 
