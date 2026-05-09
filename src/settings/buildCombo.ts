@@ -2,7 +2,7 @@ export interface ComboBuildResult {
   /** Combo finalizada (no formato aceito por `tauri-plugin-global-shortcut`). */
   combo: string | null;
   /** Erro de validação — componente mostra mensagem correspondente. */
-  error: "reservedKey" | null;
+  error: "reservedKey" | "noModifier" | null;
   /** Contexto opcional do erro (ex: qual tecla foi rejeitada). */
   context?: Record<string, string>;
 }
@@ -55,7 +55,10 @@ function normalizeKey(e: {
  * Regras:
  *   - Modificador sozinho (ex: só Ctrl) → `{ combo: null, error: null }` (ainda compondo).
  *   - Tecla reservada (Enter/Tab/Esc) → `error: "reservedKey"`.
- *   - Combo válida (com ou sem modificador) → `{ combo: "F12" | "CommandOrControl+Shift+Space" }`.
+ *   - Letra/dígito sem modificador → `error: "noModifier"` (footgun: gravar
+ *     `A` como atalho global captura a letra em qualquer app). F-keys,
+ *     Space, setas, Home/End/etc. seguem aceitos sem modificador.
+ *   - Combo válida → `{ combo: "F12" | "CommandOrControl+Shift+Space" }`.
  */
 export function buildCombo(e: {
   ctrlKey: boolean;
@@ -71,6 +74,11 @@ export function buildCombo(e: {
   }
   if (normalized.kind === "reserved") {
     return { combo: null, error: "reservedKey", context: { key: normalized.value } };
+  }
+
+  const hasModifier = e.ctrlKey || e.metaKey || e.altKey || e.shiftKey;
+  if (!hasModifier && /^[A-Z0-9]$/.test(normalized.value)) {
+    return { combo: null, error: "noModifier", context: { key: normalized.value } };
   }
 
   const parts: string[] = [];

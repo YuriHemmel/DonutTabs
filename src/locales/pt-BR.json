@@ -206,8 +206,9 @@
       "record": "Gravar novo atalho",
       "recording": "Pressione a combinação…",
       "cancel": "Cancelar",
-      "hint": "Pressione qualquer tecla ou combinação (Enter/Esc/Tab são rejeitadas).",
+      "hint": "Pressione uma combinação com Ctrl/Alt/Shift/Super, ou uma tecla isolada como F12, Space ou setas (Enter/Esc/Tab são rejeitadas).",
       "reservedKey": "Tecla reservada: {{key}}",
+      "noModifier": "Letra ou dígito sozinho ({{key}}) bloqueia a tecla em qualquer app. Adicione Ctrl/Alt/Shift/Super, ou use F1–F12.",
       "searchSectionTitle": "Atalho de busca",
       "searchHint": "Atalho dentro do donut que abre a busca rápida de abas. Padrão: Ctrl+F."
     },

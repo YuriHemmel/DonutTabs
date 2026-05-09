@@ -206,8 +206,9 @@
       "record": "Record new shortcut",
       "recording": "Press the key combination…",
       "cancel": "Cancel",
-      "hint": "Press any key or combination (Enter/Esc/Tab are rejected).",
+      "hint": "Press a combination with Ctrl/Alt/Shift/Super, or a standalone key like F12, Space or arrows (Enter/Esc/Tab are rejected).",
       "reservedKey": "Reserved key: {{key}}",
+      "noModifier": "A standalone letter or digit ({{key}}) would hijack the key in every app. Add Ctrl/Alt/Shift/Super, or use F1–F12.",
       "searchSectionTitle": "Search shortcut",
       "searchHint": "Window-level shortcut that opens the quick tab search inside the donut. Default: Ctrl+F."
     },
