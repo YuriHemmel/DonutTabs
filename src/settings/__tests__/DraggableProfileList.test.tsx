@@ -25,6 +25,7 @@ async function renderList(
     activeId: string;
     onSelect: (id: string) => void;
     onReorder: (ids: string[]) => void;
+    onActivate: (id: string) => void;
   }> = {},
 ) {
   const i18n = await createI18n("pt-BR");
@@ -194,5 +195,19 @@ describe("DraggableProfileList", () => {
     });
     const chip = screen.getByTestId("profile-chip-p1");
     expect(chip.textContent).toMatch(/💼/);
+  });
+
+  it("Issue #51 — double-clicking a chip calls onActivate", async () => {
+    const user = userEvent.setup();
+    const onActivate = vi.fn();
+    await renderList({
+      profiles: [
+        profile({ id: "p1" }),
+        profile({ id: "p2", name: "Estudo" }),
+      ],
+      onActivate,
+    });
+    await user.dblClick(screen.getByTestId("profile-chip-p2"));
+    expect(onActivate).toHaveBeenCalledWith("p2");
   });
 });

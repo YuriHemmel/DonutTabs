@@ -332,6 +332,12 @@ export const SettingsApp: React.FC = () => {
           setSelection({ mode: "empty" });
         }}
         onReorder={handleReorderProfiles}
+        onActivate={(id) => {
+          // Issue #51 — duplo-clique: seleciona perfil e abre direto a seção Abas.
+          setSelectedProfileId(id);
+          setSelection({ mode: "empty" });
+          setSection("tabs");
+        }}
       />
       <SectionTabs active={section} onChange={setSection} />
 

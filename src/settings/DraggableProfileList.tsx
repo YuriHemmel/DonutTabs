@@ -9,6 +9,9 @@ export interface DraggableProfileListProps {
   activeId: string;
   onSelect: (profileId: string) => void;
   onReorder: (orderedIds: string[]) => void;
+  /** Issue #51 — duplo-clique no chip: seleciona o perfil e pula direto pra
+   *  seção "Abas". Quando ausente, double-click se comporta como single. */
+  onActivate?: (profileId: string) => void;
 }
 
 /**
@@ -21,6 +24,7 @@ export const DraggableProfileList: React.FC<DraggableProfileListProps> = ({
   activeId,
   onSelect,
   onReorder,
+  onActivate,
 }) => {
   const { t } = useTranslation();
   const { getItemProps } = useDragReorder({
@@ -64,6 +68,7 @@ export const DraggableProfileList: React.FC<DraggableProfileListProps> = ({
             onDrop={dnd.onDrop}
             onDragEnd={dnd.onDragEnd}
             onClick={() => onSelect(p.id)}
+            onDoubleClick={() => onActivate?.(p.id)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
