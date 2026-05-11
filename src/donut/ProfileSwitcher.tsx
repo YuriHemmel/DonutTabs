@@ -1,6 +1,7 @@
 import React from "react";
 import type { Profile } from "../core/types/Profile";
 import { Slice } from "./Slice";
+import { IconRenderer } from "./IconRenderer";
 import { sliceAngleRange } from "./geometry";
 import { useSliceHighlight } from "./useSliceHighlight";
 
@@ -56,7 +57,6 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
         const label = profile.name;
         const fallbackInitial =
           profile.name.trim().charAt(0).toUpperCase() || "?";
-        const icon = profile.icon ?? fallbackInitial;
         const isActive = profile.id === activeProfileId;
         return (
           <g key={profile.id}>
@@ -68,7 +68,12 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
               startAngle={start}
               endAngle={end}
               label={label}
-              icon={icon}
+              iconNode={
+                <IconRenderer
+                  icon={profile.icon}
+                  fallback={fallbackInitial}
+                />
+              }
               highlighted={highlighted === i}
               onClick={() => onSelect(profile.id)}
             />
