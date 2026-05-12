@@ -27,6 +27,7 @@ use ts_rs::TS;
 // Plano 17 — submódulos sempre compilam (helpers puros são
 // platform-independent e podem ser testados em qualquer SO no CI). A
 // façade `list_installed_apps` decide qual ramo invocar via `cfg(target_os)`.
+pub mod cache;
 pub mod linux;
 pub mod macos;
 pub mod windows;
@@ -52,26 +53,55 @@ pub struct InstalledApp {
 
 /// Façade — delega ao ramo do SO correspondente. Todo erro de IO/registry
 /// vira `AppError::io("apps_list_failed", { reason })` no nível do command.
-pub fn list_installed_apps() -> AppResult<Vec<InstalledApp>> {
-    #[cfg(target_os = "macos")]
-    {
-        macos::list_macos_apps()
+///
+/// Issue #48 — quando `cache_path` é `Some`, usa cache em disco com TTL de
+/// 7 dias (`cache::CACHE_TTL_SECONDS`). `force=true` ignora cache existente
+/// e re-escaneia (botão "Atualizar lista"). Quando `cache_path` é `None`
+/// (testes), faz scan direto sem persistir.
+pub fn list_installed_apps(
+    cache_path: Option<&std::path::Path>,
+    force: bool,
+) -> AppResult<Vec<InstalledApp>> {
+    let scan = || -> AppResult<Vec<InstalledApp>> {
+        #[cfg(target_os = "macos")]
+        {
+            macos::list_macos_apps()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            linux::list_linux_apps()
+        }
+        #[cfg(target_os = "windows")]
+        {
+            windows::list_windows_apps_combined()
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            Err(AppError::io(
+                "apps_list_failed",
+                &[("reason", "unsupported os".to_string())],
+            ))
+        }
+    };
+
+    let Some(cache_path) = cache_path else {
+        return scan();
+    };
+    // Bridge entre `cache::load_or_refresh` (Fn-style sem Result) e `scan()`
+    // (devolve `AppResult`). Falha de scan → erro propagado direto, cache
+    // não é tocado. Sucesso → load_or_refresh grava + retorna.
+    let mut scan_err: Option<crate::errors::AppError> = None;
+    let apps = cache::load_or_refresh(cache_path, force, || match scan() {
+        Ok(apps) => apps,
+        Err(e) => {
+            scan_err = Some(e);
+            Vec::new()
+        }
+    });
+    if let Some(e) = scan_err {
+        return Err(e);
     }
-    #[cfg(target_os = "linux")]
-    {
-        linux::list_linux_apps()
-    }
-    #[cfg(target_os = "windows")]
-    {
-        windows::list_windows_apps_combined()
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    {
-        Err(AppError::io(
-            "apps_list_failed",
-            &[("reason", "unsupported os".to_string())],
-        ))
-    }
+    Ok(apps)
 }
 
 /// Helper compartilhado: dedupe por `name` case-insensitive (preserva primeiro

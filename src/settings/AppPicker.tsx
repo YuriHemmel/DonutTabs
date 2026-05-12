@@ -35,20 +35,24 @@ export const AppPicker: React.FC<AppPickerProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const load = useCallback(async () => {
-    setState({ status: "loading" });
-    try {
-      const apps = await (fetcher ? fetcher() : ipc.listInstalledApps());
-      setState({ status: "loaded", apps });
-    } catch (err) {
-      setState({
-        status: "error",
-        message: t("settings.appPicker.errorFetch", {
-          reason: translateAppError(err, t),
-        }),
-      });
-    }
-  }, [fetcher, t]);
+  const load = useCallback(
+    async (force = false) => {
+      setState({ status: "loading" });
+      try {
+        // Issue #48 — `force=true` (botão Atualizar) ignora cache e re-escaneia.
+        const apps = await (fetcher ? fetcher() : ipc.listInstalledApps(force));
+        setState({ status: "loaded", apps });
+      } catch (err) {
+        setState({
+          status: "error",
+          message: t("settings.appPicker.errorFetch", {
+            reason: translateAppError(err, t),
+          }),
+        });
+      }
+    },
+    [fetcher, t],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -152,7 +156,7 @@ export const AppPicker: React.FC<AppPickerProps> = ({
           <button
             type="button"
             data-testid="app-picker-refresh"
-            onClick={() => void load()}
+            onClick={() => void load(true)}
             style={{
               background: "transparent",
               color: "var(--fg)",
