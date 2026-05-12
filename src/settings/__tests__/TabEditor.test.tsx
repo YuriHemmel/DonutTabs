@@ -71,7 +71,10 @@ describe("TabEditor", () => {
   it("saves a valid new tab with only-icon", async () => {
     const user = userEvent.setup();
     const { props } = await renderEditor();
-    await user.type(screen.getByLabelText(/ícone/i), "📝");
+    // Empty state mostra input; depois do change, IconField alterna pra chip.
+    fireEvent.change(screen.getByTestId("tab-icon"), {
+      target: { value: "📝" },
+    });
     await user.type(screen.getByLabelText(/url 1/i), "https://a.test");
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     expect(props.onSave).toHaveBeenCalledTimes(1);
@@ -84,7 +87,10 @@ describe("TabEditor", () => {
   it("prefills fields when editing an existing tab", async () => {
     await renderEditor({ mode: "edit", initial: existing });
     expect((screen.getByLabelText(/nome/i) as HTMLInputElement).value).toBe("Trabalho");
-    expect((screen.getByLabelText(/ícone/i) as HTMLInputElement).value).toBe("💼");
+    // Icon prefilled → chip mode (input não renderiza).
+    expect(screen.queryByTestId("tab-icon")).toBeNull();
+    const chip = screen.getByTestId("tab-icon-chip");
+    expect(chip.textContent).toContain("💼");
     expect((screen.getByLabelText(/url 1/i) as HTMLInputElement).value).toBe(
       "https://example.com",
     );
@@ -152,9 +158,13 @@ describe("TabEditor", () => {
 
   it("strips letters but keeps emoji when the value is set from a paste", async () => {
     await renderEditor();
-    const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
+    const iconInput = screen.getByTestId("tab-icon") as HTMLInputElement;
     fireEvent.change(iconInput, { target: { value: "💼Work" } });
-    expect(iconInput.value).toBe("💼");
+    // stripLetters preserva o emoji; resultante non-empty → IconField vira chip.
+    expect(screen.queryByTestId("tab-icon")).toBeNull();
+    const chip = screen.getByTestId("tab-icon-chip");
+    expect(chip.textContent).toContain("💼");
+    expect(chip.textContent).not.toContain("Work");
   });
 
   it("keeps non-letter symbols like '★' and '→'", async () => {

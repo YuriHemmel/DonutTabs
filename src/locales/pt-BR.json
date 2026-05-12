@@ -211,7 +211,9 @@
       "pickButton": "🎨 Escolher",
       "tabEmoji": "Emoji",
       "tabLucide": "Lucide",
-      "searchPlaceholder": "Buscar ícone…"
+      "searchPlaceholder": "Buscar ícone…",
+      "clear": "Limpar ícone",
+      "changeChip": "Trocar ícone"
     },
     "appearance": {
       "sectionTitle": "Aparência",

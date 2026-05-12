@@ -65,5 +65,12 @@ export const IconDisplay: React.FC<IconDisplayProps> = ({
     );
   }
 
-  return <span aria-hidden="true">{icon && icon.length > 0 ? icon : fallback}</span>;
+  return (
+    <span
+      aria-hidden="true"
+      style={{ fontSize: size, lineHeight: 1, display: "inline-flex" }}
+    >
+      {icon && icon.length > 0 ? icon : fallback}
+    </span>
+  );
 };

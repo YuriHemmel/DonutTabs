@@ -211,7 +211,9 @@
       "pickButton": "🎨 Pick",
       "tabEmoji": "Emoji",
       "tabLucide": "Lucide",
-      "searchPlaceholder": "Search icon…"
+      "searchPlaceholder": "Search icon…",
+      "clear": "Clear icon",
+      "changeChip": "Change icon"
     },
     "appearance": {
       "sectionTitle": "Appearance",

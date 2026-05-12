@@ -58,7 +58,11 @@ describe("ProfileEditor", () => {
     const user = userEvent.setup();
     const { props } = await renderEditor();
     await user.type(screen.getByLabelText(/nome/i), "Trabalho");
-    await user.type(screen.getByLabelText(/ícone/i), "📚");
+    // Empty state shows input; após change vira chip — usar fireEvent pra
+    // setar emoji surrogate-pair em single shot.
+    fireEvent.change(screen.getByTestId("profile-icon"), {
+      target: { value: "📚" },
+    });
     await user.click(screen.getByRole("button", { name: /^criar$/i }));
     expect(props.onSubmit).toHaveBeenCalledWith({
       name: "Trabalho",
@@ -91,7 +95,10 @@ describe("ProfileEditor", () => {
     expect((screen.getByLabelText(/nome/i) as HTMLInputElement).value).toBe(
       "Trabalho",
     );
-    expect((screen.getByLabelText(/ícone/i) as HTMLInputElement).value).toBe("💼");
+    // Icon prefilled → chip mode (input não renderiza).
+    expect(screen.queryByTestId("profile-icon")).toBeNull();
+    const chip = screen.getByTestId("profile-icon-chip");
+    expect(chip.textContent).toContain("💼");
     expect(screen.getByRole("button", { name: /^salvar$/i })).toBeTruthy();
   });
 
@@ -105,8 +112,8 @@ describe("ProfileEditor", () => {
   it("clears icon to null when edit mode wipes the field", async () => {
     const user = userEvent.setup();
     const { props } = await renderEditor({ mode: "edit", initial: existing });
-    const iconInput = screen.getByLabelText(/ícone/i) as HTMLInputElement;
-    await user.clear(iconInput);
+    // Chip mode (icon "💼" prefilled). Clear via X button.
+    fireEvent.click(screen.getByTestId("profile-icon-chip-clear"));
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     expect(props.onSubmit).toHaveBeenCalledWith({
       name: "Trabalho",
@@ -206,8 +213,8 @@ describe("ProfileEditor", () => {
     expect(
       (screen.getByLabelText(/nome/i) as HTMLInputElement).value,
     ).toBe("Estudo");
-    expect(
-      (screen.getByLabelText(/ícone/i) as HTMLInputElement).value,
-    ).toBe("📚");
+    // Icon "📚" prefilled após troca → chip mode.
+    expect(screen.queryByTestId("profile-icon")).toBeNull();
+    expect(screen.getByTestId("profile-icon-chip").textContent).toContain("📚");
   });
 });
