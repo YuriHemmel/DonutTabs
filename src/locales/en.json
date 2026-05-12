@@ -163,7 +163,6 @@
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
       "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings.",
       "update": {
-        "heading": "Updates",
         "currentVersion": "Current version: v{{version}}",
         "autoCheckLabel": "Check for updates automatically at launch",
         "autoCheckHint": "When enabled, the app checks once on launch and notifies you of new versions.",

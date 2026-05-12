@@ -163,7 +163,6 @@
       "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
       "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações.",
       "update": {
-        "heading": "Atualizações",
         "currentVersion": "Versão atual: v{{version}}",
         "autoCheckLabel": "Verificar atualizações automaticamente no início",
         "autoCheckHint": "Quando ligado, o app verifica uma vez ao abrir e avisa se houver versão nova.",
