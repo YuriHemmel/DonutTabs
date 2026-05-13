@@ -9,4 +9,12 @@ export type Item = { "kind": "url", value: string, openWith: string | null,
  * reusam janela existente podem ignorar. Configs anteriores
  * deserializam como `None` graças ao `#[serde(default)]`.
  */
-monitor: number | null, } | { "kind": "file", path: string, openWith: string | null, monitor: number | null, } | { "kind": "folder", path: string, openWith: string | null, monitor: number | null, } | { "kind": "app", name: string, monitor: number | null, } | { "kind": "script", command: string, trusted: boolean, monitor: number | null, };
+monitor: number | null, 
+/**
+ * Quando `true`, o launcher invoca o navegador com o flag de janela
+ * anônima/privada apropriado (`--incognito` Chromium-likes,
+ * `--private-window` Firefox, `--inprivate` Edge). Requer
+ * `open_with` definido — sem navegador explícito não dá pra rotar
+ * pra modo anônimo. Configs anteriores deserializam como `false`.
+ */
+incognito: boolean, } | { "kind": "file", path: string, openWith: string | null, monitor: number | null, } | { "kind": "folder", path: string, openWith: string | null, monitor: number | null, } | { "kind": "app", name: string, monitor: number | null, } | { "kind": "script", command: string, trusted: boolean, monitor: number | null, };

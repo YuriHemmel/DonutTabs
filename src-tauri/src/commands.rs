@@ -1617,6 +1617,7 @@ mod tests {
                 monitor: None,
                 value: "https://example.com".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: TabKind::Leaf,
             children: vec![],
@@ -1846,6 +1847,7 @@ mod tests {
                 monitor: None,
                 value: "https://r".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
@@ -1860,6 +1862,7 @@ mod tests {
                 monitor: None,
                 value: "https://a1".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
@@ -1874,6 +1877,7 @@ mod tests {
                 monitor: None,
                 value: "https://b1".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
@@ -2459,6 +2463,7 @@ mod tests {
             monitor: None,
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         }]);
         let p = profile_with(false, vec![]);
         assert!(check_script_gating(&p, &tab, None).is_none());
@@ -2580,6 +2585,7 @@ mod tests {
                 monitor: None,
                 value: "https://x".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::Script {
                 monitor: None,
@@ -2605,6 +2611,7 @@ mod tests {
             monitor: None,
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         }]);
         let tid = tab.id;
         cfg.profiles[0].tabs.push(tab);

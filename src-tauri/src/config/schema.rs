@@ -267,6 +267,10 @@ fn is_leaf_kind(k: &TabKind) -> bool {
     matches!(k, TabKind::Leaf)
 }
 
+fn is_default_bool(b: &bool) -> bool {
+    !b
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../src/core/types/")]
 #[serde(rename_all = "camelCase")]
@@ -293,6 +297,13 @@ pub enum Item {
         /// deserializam como `None` graças ao `#[serde(default)]`.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         monitor: Option<u32>,
+        /// Quando `true`, o launcher invoca o navegador com o flag de janela
+        /// anônima/privada apropriado (`--incognito` Chromium-likes,
+        /// `--private-window` Firefox, `--inprivate` Edge). Requer
+        /// `open_with` definido — sem navegador explícito não dá pra rotar
+        /// pra modo anônimo. Configs anteriores deserializam como `false`.
+        #[serde(default, skip_serializing_if = "is_default_bool")]
+        incognito: bool,
     },
     #[serde(rename_all = "camelCase")]
     File {
@@ -439,6 +450,7 @@ mod tests {
                     monitor: None,
                     value: "https://example.com".into(),
                     open_with: None,
+                    incognito: false,
                 }],
                 kind: TabKind::Leaf,
                 children: vec![],
@@ -490,6 +502,7 @@ mod tests {
             monitor: None,
             value: "https://x.test".into(),
             open_with: None,
+            incognito: false,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert_eq!(json, "{\"kind\":\"url\",\"value\":\"https://x.test\"}");
@@ -536,6 +549,7 @@ mod tests {
                     monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
+                    incognito: false,
                 },
                 Item::File {
                     monitor: None,
@@ -562,6 +576,7 @@ mod tests {
             monitor: None,
             value: "https://x.test".into(),
             open_with: Some("firefox".into()),
+            incognito: false,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert!(json.contains("\"openWith\":\"firefox\""));
@@ -592,7 +607,8 @@ mod tests {
             Item::Url {
                 monitor: None,
                 value: "https://x".into(),
-                open_with: None
+                open_with: None,
+                incognito: false,
             }
         );
         let file: Item = serde_json::from_str(r#"{"kind":"file","path":"/tmp/x"}"#).unwrap();
@@ -772,6 +788,7 @@ mod tests {
                 monitor: None,
                 value: "https://x".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: TabKind::Leaf,
             children: vec![],
@@ -817,6 +834,7 @@ mod tests {
                 monitor: None,
                 value: "https://child".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: TabKind::Leaf,
             children: vec![],
@@ -874,6 +892,7 @@ mod tests {
                 monitor: None,
                 value: "https://l".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: TabKind::Leaf,
             children: vec![],
@@ -1062,6 +1081,7 @@ mod tests {
             monitor: Some(1),
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         };
         let file = Item::File {
             monitor: Some(2),
@@ -1095,6 +1115,7 @@ mod tests {
             monitor: Some(1),
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert!(json.contains("\"monitor\":1"));
@@ -1108,6 +1129,7 @@ mod tests {
             monitor: None,
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert!(

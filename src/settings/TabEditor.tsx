@@ -62,6 +62,7 @@ function itemToDraft(it: Item): ItemDraft {
       value: it.value,
       openWith: it.openWith ?? "",
       monitor: it.monitor ?? null,
+      incognito: it.incognito,
     };
   }
   if (it.kind === "file" || it.kind === "folder") {
@@ -101,6 +102,9 @@ function draftToItem(d: ItemDraft): Item {
       value: d.value,
       openWith: ow.length > 0 ? ow : null,
       monitor,
+      // Incognito preservado mesmo sem openWith — launcher detecta o
+      // navegador padrão do SO em runtime quando necessário.
+      incognito: !!d.incognito,
     };
   }
   if (d.kind === "file" || d.kind === "folder") {
@@ -199,6 +203,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           openWith: it.openWith.trim(),
           trusted: it.trusted,
           monitor: it.monitor ?? null,
+          incognito: it.incognito,
         }))
         .filter((it) => it.value.length > 0);
       if (trimmed.length === 0) {

@@ -256,6 +256,47 @@ describe("ItemListEditor", () => {
     expect(header.textContent).toMatch(/tela/i);
   });
 
+  // ---- Issue: incognito toggle ----
+
+  it("incognito toggle renders for URL rows only", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://a", openWith: "Firefox" },
+      { kind: "file", value: "/tmp/x", openWith: "" },
+      { kind: "app", value: "firefox", openWith: "" },
+    ]);
+    expect(screen.getByTestId("item-incognito-0")).toBeTruthy();
+    expect(screen.queryByTestId("item-incognito-1")).toBeNull();
+    expect(screen.queryByTestId("item-incognito-2")).toBeNull();
+  });
+
+  it("incognito checkbox enabled regardless of openWith (detection at launch)", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://a", openWith: "" },
+    ]);
+    const cb = screen.getByTestId("item-incognito-0") as HTMLInputElement;
+    expect(cb.disabled).toBe(false);
+  });
+
+  it("toggling incognito emits onChange with the new flag (no openWith)", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "url", value: "https://a", openWith: "" },
+    ]);
+    fireEvent.click(screen.getByTestId("item-incognito-0"));
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "", incognito: true },
+    ]);
+  });
+
+  it("toggling incognito emits onChange with the new flag (with openWith)", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "url", value: "https://a", openWith: "Firefox" },
+    ]);
+    fireEvent.click(screen.getByTestId("item-incognito-0"));
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "Firefox", incognito: true },
+    ]);
+  });
+
   it("openWith dropdown title-cases option labels on URL rows only", async () => {
     const i18n = await createI18n("pt-BR");
     const apps = [

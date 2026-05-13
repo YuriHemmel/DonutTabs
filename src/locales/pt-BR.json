@@ -286,6 +286,8 @@
       "addItemApp": "Adicionar app",
       "addItemScript": "Adicionar script",
       "scriptTrustedLabel": "Confiar (executa sem confirmação)",
+      "incognitoLabel": "Anônima",
+      "incognitoHint": "Abre em modo anônimo/privado. Usa o navegador escolhido em \"Abrir com\"; se for \"Padrão do sistema\", o app detecta o navegador padrão do SO.",
       "openWithLabel": "Abrir com",
       "openWithPlaceholder": "ex.: firefox, code",
       "openWithHint": "Programa/handler do SO. Vazio = padrão do sistema.",

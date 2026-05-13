@@ -2,6 +2,7 @@ mod apps_picker;
 mod commands;
 mod config;
 mod cursor_warp;
+mod default_browser;
 mod donut_window;
 mod errors;
 mod favicon;

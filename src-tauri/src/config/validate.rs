@@ -272,6 +272,8 @@ fn validate_item(profile: &Profile, tab: &Tab, item: &Item) -> AppResult<()> {
                     ],
                 )
             })?;
+            // Incognito sem open_with é OK — launcher detecta o navegador
+            // padrão do SO em runtime via `default_browser::detect()`.
         }
         Item::File { path, .. } | Item::Folder { path, .. } => {
             if path.trim().is_empty() {
@@ -443,6 +445,7 @@ mod tests {
                 monitor: None,
                 value: "not a url".into(),
                 open_with: None,
+                incognito: false,
             }],
         ));
         match validate(&cfg).unwrap_err() {
@@ -465,6 +468,7 @@ mod tests {
                 monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
+                incognito: false,
             }]
         };
         let mut t1 = tab_with(Some("A"), None, url_item());
@@ -566,6 +570,7 @@ mod tests {
                     monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
+                    incognito: false,
                 },
                 Item::File {
                     monitor: None,
@@ -593,6 +598,7 @@ mod tests {
                 monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
+                incognito: false,
             }]
         };
         let mut t1 = tab_with(Some("A"), None, url_item());
@@ -627,6 +633,7 @@ mod tests {
                 monitor: None,
                 value: "https://work.test".into(),
                 open_with: Some("firefox".into()),
+                incognito: false,
             }],
         ));
         assert!(validate(&cfg).is_ok());
@@ -642,6 +649,7 @@ mod tests {
                 monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
+                incognito: false,
             }],
         ));
         assert!(validate(&cfg).is_ok());
@@ -657,6 +665,7 @@ mod tests {
                 monitor: None,
                 value: "https://x.test".into(),
                 open_with: Some("".into()),
+                incognito: false,
             }],
         ));
         match validate(&cfg).unwrap_err() {
@@ -690,6 +699,56 @@ mod tests {
     }
 
     #[test]
+    fn incognito_without_open_with_is_valid() {
+        // Detecção runtime: launcher resolve via `default_browser::detect()`.
+        // Validação não força user a escolher navegador explícito.
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Anon"),
+            None,
+            vec![Item::Url {
+                monitor: None,
+                value: "https://example.com".into(),
+                open_with: None,
+                incognito: true,
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn incognito_with_open_with_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Anon"),
+            None,
+            vec![Item::Url {
+                monitor: None,
+                value: "https://example.com".into(),
+                open_with: Some("Firefox".into()),
+                incognito: true,
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
+    fn incognito_false_without_open_with_is_valid() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("Normal"),
+            None,
+            vec![Item::Url {
+                monitor: None,
+                value: "https://example.com".into(),
+                open_with: None,
+                incognito: false,
+            }],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    #[test]
     fn mixed_open_with_some_and_none_validates() {
         let mut cfg = base_config();
         cfg.profiles[0].tabs.push(tab_with(
@@ -700,11 +759,13 @@ mod tests {
                     monitor: None,
                     value: "https://work.test".into(),
                     open_with: Some("edge".into()),
+                    incognito: false,
                 },
                 Item::Url {
                     monitor: None,
                     value: "https://personal.test".into(),
                     open_with: None,
+                    incognito: false,
                 },
                 Item::File {
                     monitor: None,
@@ -1134,6 +1195,7 @@ mod tests {
                 monitor: None,
                 value: "https://x.test".into(),
                 open_with: None,
+                incognito: false,
             }],
         )
     }
@@ -1176,6 +1238,7 @@ mod tests {
             monitor: None,
             value: "https://x.test".into(),
             open_with: None,
+            incognito: false,
         }];
         cfg.profiles[0].tabs.push(bad);
         assert_config_code(validate(&cfg).unwrap_err(), "tab_group_has_items");
@@ -1243,6 +1306,7 @@ mod tests {
                 monitor: None,
                 value: "not a url".into(),
                 open_with: None,
+                incognito: false,
             }],
         );
         let group = group_with(Some("g"), None, vec![bad_leaf]);
@@ -1270,6 +1334,7 @@ mod tests {
                     monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
+                    incognito: false,
                 },
                 Item::File {
                     monitor: None,

@@ -286,6 +286,8 @@
       "addItemApp": "Add app",
       "addItemScript": "Add script",
       "scriptTrustedLabel": "Trust (run without confirmation)",
+      "incognitoLabel": "Private",
+      "incognitoHint": "Opens in private/incognito mode. Uses the browser chosen in \"Open with\"; with \"System default\", the app detects the OS default browser.",
       "openWithLabel": "Open with",
       "openWithPlaceholder": "e.g. firefox, code",
       "openWithHint": "OS program/handler. Empty = system default.",

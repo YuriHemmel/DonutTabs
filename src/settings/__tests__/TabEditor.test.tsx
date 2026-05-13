@@ -33,7 +33,7 @@ const existing: Tab = {
   icon: "💼",
   order: 0,
   openMode: "reuseOrNewWindow",
-  items: [{ kind: "url", value: "https://example.com", openWith: null, monitor: null }],
+  items: [{ kind: "url", value: "https://example.com", openWith: null, monitor: null , incognito: false}],
   kind: "leaf",
   children: [],
 };
@@ -198,7 +198,7 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://a.test", openWith: null, monitor: null },
+      { kind: "url", value: "https://a.test", openWith: null, monitor: null , incognito: false},
       { kind: "file", path: "C:/x.txt", openWith: null, monitor: null },
       { kind: "folder", path: "/tmp", openWith: null, monitor: null },
     ]);
@@ -236,7 +236,7 @@ describe("TabEditor", () => {
     expect(props.onSave).toHaveBeenCalledTimes(1);
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://kept.test", openWith: null, monitor: null },
+      { kind: "url", value: "https://kept.test", openWith: null, monitor: null , incognito: false},
     ]);
   });
 
@@ -246,7 +246,7 @@ describe("TabEditor", () => {
     const tabWithOpenWith: Tab = {
       ...existing,
       items: [
-        { kind: "url", value: "https://work.test", openWith: "firefox", monitor: null },
+        { kind: "url", value: "https://work.test", openWith: "firefox", monitor: null , incognito: false},
       ],
     };
     const user = userEvent.setup();
@@ -254,15 +254,64 @@ describe("TabEditor", () => {
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "url", value: "https://work.test", openWith: "firefox", monitor: null },
+      { kind: "url", value: "https://work.test", openWith: "firefox", monitor: null , incognito: false},
     ]);
+  });
+
+  it("preserves incognito flag through save round-trip", async () => {
+    // Regressão: handleSubmit rebuilds drafts antes de draftToItem; campo
+    // `incognito` precisa ser carregado nessa rebuild senão o flag some.
+    const tab: Tab = {
+      ...existing,
+      items: [
+        {
+          kind: "url",
+          value: "https://x.test",
+          openWith: "Firefox",
+          monitor: null,
+          incognito: false,
+        },
+      ],
+    };
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "edit", initial: tab });
+    fireEvent.click(screen.getByTestId("item-incognito-0"));
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    const first = payload.items[0];
+    if (first.kind !== "url") throw new Error("expected url item");
+    expect(first.incognito).toBe(true);
+  });
+
+  it("preserves incognito flag when openWith is empty (default browser path)", async () => {
+    const tab: Tab = {
+      ...existing,
+      items: [
+        {
+          kind: "url",
+          value: "https://x.test",
+          openWith: null,
+          monitor: null,
+          incognito: false,
+        },
+      ],
+    };
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "edit", initial: tab });
+    fireEvent.click(screen.getByTestId("item-incognito-0"));
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    const first = payload.items[0];
+    if (first.kind !== "url") throw new Error("expected url item");
+    expect(first.incognito).toBe(true);
+    expect(first.openWith).toBeNull();
   });
 
   it("saves openWith as null when set back to default", async () => {
     const tabWithOpenWith: Tab = {
       ...existing,
       items: [
-        { kind: "url", value: "https://x.test", openWith: "firefox", monitor: null },
+        { kind: "url", value: "https://x.test", openWith: "firefox", monitor: null , incognito: false},
       ],
     };
     const user = userEvent.setup();
@@ -281,7 +330,7 @@ describe("TabEditor", () => {
     const tabWithOpenWith: Tab = {
       ...existing,
       items: [
-        { kind: "url", value: "https://a.test", openWith: "edge", monitor: null },
+        { kind: "url", value: "https://a.test", openWith: "edge", monitor: null , incognito: false},
       ],
     };
     await renderEditor({ mode: "edit", initial: tabWithOpenWith });

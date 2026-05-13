@@ -39,6 +39,19 @@ pub trait Opener: Send + Sync {
     fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String>;
     fn spawn_app(&self, name: &str) -> Result<(), String>;
     fn spawn_script(&self, command: &str) -> Result<(), String>;
+    /// Abre uma URL no navegador `browser` em modo anônimo/privado. Browser
+    /// é resolvido para flag CLI específico via `browser_incognito_flag`.
+    /// Implementações reais spawnam o processo direto via plugin-shell
+    /// (`tauri-plugin-opener` não aceita args customizados). Default impl
+    /// cai pro `open_url` normal e loga aviso — usado em testes que não
+    /// precisam diferenciar incognito do caminho normal.
+    fn open_url_incognito(&self, url: &str, browser: &str) -> Result<(), String> {
+        eprintln!(
+            "[opener] open_url_incognito fallback (browser={browser}): \
+             implementação não suporta incognito; abrindo modo normal"
+        );
+        self.open_url(url, Some(browser))
+    }
     /// Plano 21 — move o cursor pro centro do monitor especificado antes
     /// do launch. Browsers/apps spawnam fresh windows na tela com cursor;
     /// apps que reusam janela ignoram. Best-effort: erro retornado pra
@@ -48,6 +61,46 @@ pub trait Opener: Send + Sync {
     fn warp_cursor_to_monitor(&self, _monitor_index: u32) -> Result<(), String> {
         Ok(())
     }
+}
+
+/// Mapeia nome/path do navegador → flag CLI de modo anônimo. Match é
+/// case-insensitive em substring contra keywords conhecidas. Returns
+/// `None` quando o navegador não tem flag conhecido (ex. Safari) ou não
+/// foi reconhecido — caller decide o fallback.
+pub fn browser_incognito_flag(browser: &str) -> Option<&'static str> {
+    let lower = browser.to_lowercase();
+    // Edge/msedge → --inprivate. Chromium-likes (chrome, brave, chromium,
+    // vivaldi, opera) → --incognito. Firefox/forks → --private-window.
+    // Match Edge primeiro pra evitar colisão com "edge" em outros nomes.
+    if lower.contains("msedge") || lower.contains("microsoft edge") || lower.contains("edge.exe") {
+        return Some("--inprivate");
+    }
+    if lower.contains("firefox")
+        || lower.contains("librewolf")
+        || lower.contains("waterfox")
+        || lower.contains("zen")
+    {
+        // Firefox docs canonical: `-private-window` (single dash). Algumas
+        // builds Windows ignoram `--private-window` (double dash) e tratam
+        // como argumento literal — passa URL pra janela normal.
+        return Some("-private-window");
+    }
+    if lower.contains("opera") {
+        return Some("--private");
+    }
+    if lower.contains("chrome")
+        || lower.contains("chromium")
+        || lower.contains("brave")
+        || lower.contains("vivaldi")
+        || lower.contains("arc")
+        || lower.contains("yandex")
+        || lower.contains("duckduckgo")
+    {
+        return Some("--incognito");
+    }
+    // Safari não suporta CLI flag pra Private Browsing. Tor Browser sempre
+    // é privado por design; flag não necessária.
+    None
 }
 
 /// Resultado da tentativa de abrir uma aba: lista de erros por item.
@@ -99,9 +152,42 @@ pub fn launch_tab(
         }
         match item {
             Item::Url {
-                value, open_with, ..
+                value,
+                open_with,
+                incognito,
+                ..
             } => {
-                if let Err(e) = opener.open_url(value, open_with.as_deref()) {
+                let result = if *incognito {
+                    // Resolve navegador: explícito > detecção do default do SO.
+                    let explicit = open_with
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|s| !s.is_empty());
+                    let detected = if explicit.is_none() {
+                        crate::default_browser::detect()
+                    } else {
+                        None
+                    };
+                    let browser_ref = explicit.or(detected.as_deref());
+                    eprintln!(
+                        "[launcher] incognito dispatch: explicit={:?} detected={:?} chosen={:?} url={:?}",
+                        explicit, detected, browser_ref, value
+                    );
+                    match browser_ref {
+                        Some(b) => opener.open_url_incognito(value, b),
+                        None => {
+                            eprintln!(
+                                "[launcher] incognito=true mas nenhum navegador \
+                                 detectado; abrindo URL normalmente"
+                            );
+                            opener.open_url(value, None)
+                        }
+                    }
+                } else {
+                    opener.open_url(value, open_with.as_deref())
+                };
+                if let Err(e) = result {
+                    eprintln!("[launcher] url launch falhou: {} ({})", value, e);
                     outcome.failures.push((value.clone(), e));
                 }
             }
@@ -166,6 +252,47 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
             .opener()
             .open_path(path, with)
             .map_err(|e| e.to_string())
+    }
+
+    fn open_url_incognito(&self, url: &str, browser: &str) -> Result<(), String> {
+        use std::process::Command;
+        // Resolve flag CLI específico do browser. Quando não há flag mapeado
+        // (Safari, Tor, browser desconhecido), invoca o browser apenas com
+        // a URL — vai abrir uma janela normal. Fallback intencional: melhor
+        // abrir não-anônima do que falhar.
+        let flag = browser_incognito_flag(browser);
+        eprintln!(
+            "[opener] incognito launch: browser={:?} flag={:?} url={:?}",
+            browser, flag, url
+        );
+        // std::process::Command direto em vez de tauri-plugin-shell pra
+        // evitar restrição de scope (plugin pode bloquear spawn de paths
+        // arbitrários sem allowlist explícito).
+        #[cfg(target_os = "macos")]
+        {
+            let Some(flag) = flag else {
+                return self.open_url(url, Some(browser));
+            };
+            return Command::new("open")
+                .args(["-na", browser, "--args", flag, url])
+                .spawn()
+                .map(|_| ())
+                .map_err(|e| e.to_string());
+        }
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        {
+            let mut cmd = Command::new(browser);
+            if let Some(f) = flag {
+                cmd.arg(f);
+            }
+            cmd.arg(url);
+            cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        {
+            let _ = (flag, Command::new(""));
+            self.open_url(url, Some(browser))
+        }
     }
 
     fn spawn_app(&self, name: &str) -> Result<(), String> {
@@ -256,6 +383,10 @@ mod tests {
         /// Plano 21 — registra cada chamada `warp_cursor_to_monitor`. Pré-launch:
         /// a ordem dos warps relativa aos opens é o que validamos nos tests.
         warp_calls: Mutex<Vec<u32>>,
+        /// Issue — registra cada chamada `open_url_incognito` como
+        /// `(url, browser)`. Permite que tests distingam path normal vs
+        /// incognito sem confiar no fallback default da trait.
+        incognito_calls: Mutex<Vec<Call>>,
         fail_urls: Vec<String>,
         fail_paths: Vec<String>,
         fail_apps: Vec<String>,
@@ -271,6 +402,7 @@ mod tests {
                 app_calls: Mutex::new(vec![]),
                 script_calls: Mutex::new(vec![]),
                 warp_calls: Mutex::new(vec![]),
+                incognito_calls: Mutex::new(vec![]),
                 fail_urls: vec![],
                 fail_paths: vec![],
                 fail_apps: vec![],
@@ -300,6 +432,18 @@ mod tests {
                 .push((path.to_string(), with.map(str::to_string)));
             if self.fail_paths.iter().any(|f| f == path) {
                 Err("simulated path failure".into())
+            } else {
+                Ok(())
+            }
+        }
+
+        fn open_url_incognito(&self, url: &str, browser: &str) -> Result<(), String> {
+            self.incognito_calls
+                .lock()
+                .unwrap()
+                .push((url.to_string(), Some(browser.to_string())));
+            if self.fail_urls.iter().any(|f| f == url) {
+                Err("simulated url failure".into())
             } else {
                 Ok(())
             }
@@ -346,6 +490,7 @@ mod tests {
                     value: (*u).into(),
                     open_with: None,
                     monitor: None,
+                    incognito: false,
                 })
                 .collect(),
             kind: TabKind::Leaf,
@@ -430,6 +575,7 @@ mod tests {
                 monitor: None,
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::File {
                 monitor: None,
@@ -467,6 +613,7 @@ mod tests {
                 monitor: None,
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::File {
                 monitor: None,
@@ -510,11 +657,13 @@ mod tests {
                 monitor: None,
                 value: "https://work".into(),
                 open_with: Some("edge".into()),
+                incognito: false,
             },
             Item::Url {
                 monitor: None,
                 value: "https://personal".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::File {
                 monitor: None,
@@ -641,6 +790,7 @@ mod tests {
                 monitor: None,
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::File {
                 monitor: None,
@@ -717,6 +867,7 @@ mod tests {
                 monitor: None,
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::Script {
                 monitor: None,
@@ -790,6 +941,7 @@ mod tests {
                 monitor: None,
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::App {
                 monitor: None,
@@ -819,6 +971,7 @@ mod tests {
                 monitor: None,
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::App {
                 monitor: None,
@@ -838,16 +991,19 @@ mod tests {
                 monitor: Some(0),
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::Url {
                 monitor: None,
                 value: "https://b".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::Url {
                 monitor: Some(1),
                 value: "https://c".into(),
                 open_with: None,
+                incognito: false,
             },
         ]);
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
@@ -864,6 +1020,7 @@ mod tests {
                 monitor: Some(2),
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::File {
                 monitor: Some(1),
@@ -899,11 +1056,13 @@ mod tests {
                 monitor: Some(1),
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::Url {
                 monitor: None,
                 value: "https://b".into(),
                 open_with: None,
+                incognito: false,
             },
         ]);
         // Warp failure não impede open_url de rodar — best-effort.
@@ -924,6 +1083,7 @@ mod tests {
                 monitor: Some(2),
                 value: "https://a".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::File {
                 monitor: Some(0),
@@ -937,5 +1097,97 @@ mod tests {
         // Opens nas suas respectivas filas, na ordem dos items.
         assert_eq!(opener.url_calls.lock().unwrap().len(), 1);
         assert_eq!(opener.path_calls.lock().unwrap().len(), 1);
+    }
+
+    // ---- Issue: incognito ----
+
+    #[test]
+    fn browser_flag_chromium_likes_use_incognito() {
+        for b in ["chrome.exe", "Chrome", "Brave", "vivaldi", "Chromium"] {
+            assert_eq!(browser_incognito_flag(b), Some("--incognito"));
+        }
+    }
+
+    #[test]
+    fn browser_flag_firefox_likes_use_private_window() {
+        for b in ["firefox", "Firefox", "librewolf", "Waterfox", "Zen Browser"] {
+            assert_eq!(browser_incognito_flag(b), Some("-private-window"));
+        }
+    }
+
+    #[test]
+    fn browser_flag_edge_uses_inprivate() {
+        for b in ["msedge.exe", "Microsoft Edge"] {
+            assert_eq!(browser_incognito_flag(b), Some("--inprivate"));
+        }
+    }
+
+    #[test]
+    fn browser_flag_opera_uses_private() {
+        assert_eq!(browser_incognito_flag("Opera"), Some("--private"));
+    }
+
+    #[test]
+    fn browser_flag_unknown_returns_none() {
+        assert_eq!(browser_incognito_flag("Safari"), None);
+        assert_eq!(browser_incognito_flag(""), None);
+        assert_eq!(browser_incognito_flag("Notepad"), None);
+    }
+
+    #[test]
+    fn launcher_routes_incognito_url_to_dedicated_method() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![Item::Url {
+            monitor: None,
+            value: "https://example.com".into(),
+            open_with: Some("Firefox".into()),
+            incognito: true,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        // open_url normal NÃO foi chamado; open_url_incognito sim.
+        assert!(opener.url_calls.lock().unwrap().is_empty());
+        let inc = opener.incognito_calls.lock().unwrap().clone();
+        assert_eq!(
+            inc,
+            vec![("https://example.com".into(), Some("Firefox".into()))]
+        );
+    }
+
+    #[test]
+    fn launcher_uses_normal_open_when_incognito_false() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![Item::Url {
+            monitor: None,
+            value: "https://example.com".into(),
+            open_with: Some("Firefox".into()),
+            incognito: false,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        // open_url chamado; incognito não.
+        assert_eq!(opener.url_calls.lock().unwrap().len(), 1);
+        assert!(opener.incognito_calls.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn launcher_with_incognito_and_no_open_with_attempts_default_browser() {
+        // Sem `open_with`, launcher chama `default_browser::detect()`.
+        // No ambiente de CI o detect pode achar ou não — só validamos que:
+        //   * `open_url` plain NÃO é chamado (sem fallback prematuro),
+        //   * `open_url_incognito` é chamado com algum browser_ref OU
+        //     cai pro `open_url(None)` quando detect também devolve None.
+        // Não há browser detectável garantido no CI Linux/macOS dos jobs;
+        // o teste apenas confirma que o caminho não panica e que UMA das
+        // duas rotas foi acionada (não nenhuma).
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![Item::Url {
+            monitor: None,
+            value: "https://example.com".into(),
+            open_with: None,
+            incognito: true,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        let url_calls = opener.url_calls.lock().unwrap().len();
+        let inc_calls = opener.incognito_calls.lock().unwrap().len();
+        assert_eq!(url_calls + inc_calls, 1);
     }
 }

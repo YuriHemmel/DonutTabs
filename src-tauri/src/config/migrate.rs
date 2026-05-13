@@ -92,6 +92,7 @@ mod tests {
                     monitor: None,
                     value: "https://a.test".into(),
                     open_with: None,
+                    incognito: false,
                 }],
             }],
         }

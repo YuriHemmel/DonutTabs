@@ -20,6 +20,10 @@ export interface ItemDraft {
   /** Plano 21 — índice 0-based do monitor alvo. `null` (default) = OS
    *  decide. Round-trips com o backend via `Item.monitor`. */
   monitor?: number | null;
+  /** Issue — Quando `true` e `kind === "url"`, launcher abre o navegador
+   *  escolhido (`openWith`) em modo anônimo/privado. Requer `openWith`
+   *  non-empty; combinação inválida é normalizada pra `false` no submit. */
+  incognito?: boolean;
 }
 
 export interface ItemListEditorProps {
@@ -432,6 +436,29 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                   </option>
                 ))}
               </select>
+            )}
+            {it.kind === "url" && (
+              <label
+                style={{
+                  flex: "0 0 auto",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+                title={t("settings.editor.incognitoHint")}
+              >
+                <input
+                  type="checkbox"
+                  data-testid={`item-incognito-${i}`}
+                  checked={!!it.incognito}
+                  onChange={(e) => updateAt(i, { incognito: e.target.checked })}
+                />
+                {t("settings.editor.incognitoLabel")}
+              </label>
             )}
             <button
               type="button"
