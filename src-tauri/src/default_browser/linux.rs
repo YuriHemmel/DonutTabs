@@ -21,7 +21,7 @@ pub fn detect() -> Option<String> {
         return None;
     }
     eprintln!("[default_browser] xdg-settings → {desktop_filename}");
-    resolve_desktop_exec(desktop_filename)
+    resolve_desktop_exec(desktop_filename, &xdg_application_dirs())
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -30,11 +30,18 @@ pub fn detect() -> Option<String> {
 }
 
 /// Helper puro: dado o filename do `.desktop` (e.g. `firefox.desktop`),
-/// procura o arquivo em paths XDG e retorna o primeiro token executável da
-/// linha `Exec=` (via `apps_picker::linux::parse_desktop_entry`). Fallback:
-/// strip `.desktop` suffix (back-compat com instalações nativas onde stem ==
-/// binary name).
-pub(crate) fn resolve_desktop_exec(desktop_filename: &str) -> Option<String> {
+/// procura o arquivo nos `search_dirs` informados e retorna o primeiro token
+/// executável da linha `Exec=` (via `apps_picker::linux::parse_desktop_entry`).
+/// Fallback: strip `.desktop` suffix (back-compat com instalações nativas
+/// onde stem == binary name).
+///
+/// Dirs são injetadas pelo caller (em prod via `xdg_application_dirs()`,
+/// em testes via tempdir) — evita que testes mutem env global `XDG_DATA_DIRS`
+/// e gerem flakiness sob paralelismo.
+pub(crate) fn resolve_desktop_exec(
+    desktop_filename: &str,
+    search_dirs: &[std::path::PathBuf],
+) -> Option<String> {
     let name = desktop_filename.trim();
     if name.is_empty() {
         return None;
@@ -44,7 +51,7 @@ pub(crate) fn resolve_desktop_exec(desktop_filename: &str) -> Option<String> {
     } else {
         format!("{}.desktop", name)
     };
-    for base in xdg_application_dirs() {
+    for base in search_dirs {
         let full = base.join(&filename);
         if let Ok(content) = std::fs::read_to_string(&full) {
             if let Some(entry) = crate::apps_picker::linux::parse_desktop_entry(&content) {
@@ -88,34 +95,28 @@ fn xdg_application_dirs() -> Vec<std::path::PathBuf> {
     dirs
 }
 
-// Tests usam env vars XDG_DATA_DIRS que são split em `:` — incompatível com
-// paths Windows (`C:\...`). Helpers só fazem sentido logico em Linux.
-#[cfg(all(test, target_os = "linux"))]
+// Tests injetam as search_dirs como parâmetro — sem env mutation. Roda em
+// qualquer SO (helpers são platform-independent agora).
+#[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    fn write_desktop(dir: &std::path::Path, name: &str, contents: &str) {
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::write(dir.join(name), contents).unwrap();
+    }
 
     #[test]
     fn resolves_exec_via_real_desktop_file() {
         let dir = tempdir().unwrap();
         let apps_dir = dir.path().join("applications");
-        std::fs::create_dir_all(&apps_dir).unwrap();
-        let desktop_file = apps_dir.join("firefox.desktop");
-        std::fs::write(
-            &desktop_file,
+        write_desktop(
+            &apps_dir,
+            "firefox.desktop",
             "[Desktop Entry]\nName=Firefox\nExec=/usr/bin/firefox %u\nType=Application\n",
-        )
-        .unwrap();
-
-        // Stub xdg_application_dirs via env (XDG_DATA_DIRS) — funciona porque
-        // resolve_desktop_exec lê env dinamicamente.
-        // Garantir isolamento: limpa HOME pra não vazar pra outros tests
-        // paralelos. (Tests Rust em modules rodam serial dentro do binary
-        // mas paralelizam entre files; aqui basta override do XDG_DATA_DIRS.)
-        std::env::set_var("XDG_DATA_DIRS", dir.path().to_string_lossy().to_string());
-        std::env::remove_var("HOME");
-
-        let exec = resolve_desktop_exec("firefox.desktop").unwrap();
+        );
+        let exec = resolve_desktop_exec("firefox.desktop", &[apps_dir]).unwrap();
         assert_eq!(exec, "/usr/bin/firefox");
     }
 
@@ -123,49 +124,61 @@ mod tests {
     fn resolves_flatpak_exec_first_token() {
         let dir = tempdir().unwrap();
         let apps_dir = dir.path().join("applications");
-        std::fs::create_dir_all(&apps_dir).unwrap();
-        std::fs::write(
-            apps_dir.join("org.mozilla.firefox.desktop"),
+        write_desktop(
+            &apps_dir,
+            "org.mozilla.firefox.desktop",
             "[Desktop Entry]\nName=Firefox\nExec=/usr/bin/flatpak run --branch=stable org.mozilla.firefox %u\nType=Application\n",
-        )
-        .unwrap();
-        std::env::set_var("XDG_DATA_DIRS", dir.path().to_string_lossy().to_string());
-        std::env::remove_var("HOME");
-
-        // Note: real Flatpak Exec = `flatpak run --command=firefox ... org.mozilla.firefox -- %u`.
+        );
+        // Real Flatpak Exec = `flatpak run --command=firefox ... -- %u`.
         // Cobertura aqui: extrai apenas `/usr/bin/flatpak` (first token).
-        let exec = resolve_desktop_exec("org.mozilla.firefox").unwrap();
+        let exec = resolve_desktop_exec("org.mozilla.firefox", &[apps_dir]).unwrap();
         assert_eq!(exec, "/usr/bin/flatpak");
     }
 
     #[test]
     fn falls_back_to_stem_when_file_missing() {
         let dir = tempdir().unwrap();
-        std::env::set_var("XDG_DATA_DIRS", dir.path().to_string_lossy().to_string());
-        std::env::remove_var("HOME");
-        let exec = resolve_desktop_exec("nonexistent.desktop").unwrap();
+        let exec = resolve_desktop_exec("nonexistent.desktop", &[dir.path().to_path_buf()]).unwrap();
         assert_eq!(exec, "nonexistent");
     }
 
     #[test]
     fn rejects_empty_input() {
-        assert!(resolve_desktop_exec("").is_none());
-        assert!(resolve_desktop_exec("   ").is_none());
+        assert!(resolve_desktop_exec("", &[]).is_none());
+        assert!(resolve_desktop_exec("   ", &[]).is_none());
     }
 
     #[test]
     fn handles_filename_without_extension() {
         let dir = tempdir().unwrap();
         let apps_dir = dir.path().join("applications");
-        std::fs::create_dir_all(&apps_dir).unwrap();
-        std::fs::write(
-            apps_dir.join("brave.desktop"),
+        write_desktop(
+            &apps_dir,
+            "brave.desktop",
             "[Desktop Entry]\nName=Brave\nExec=brave-browser %U\nType=Application\n",
-        )
-        .unwrap();
-        std::env::set_var("XDG_DATA_DIRS", dir.path().to_string_lossy().to_string());
-        std::env::remove_var("HOME");
-        let exec = resolve_desktop_exec("brave").unwrap();
+        );
+        let exec = resolve_desktop_exec("brave", &[apps_dir]).unwrap();
         assert_eq!(exec, "brave-browser");
+    }
+
+    #[test]
+    fn first_matching_dir_wins() {
+        // User-level dir antes do system-level. Mesmo filename em ambos:
+        // resolve a versão do primeiro.
+        let dir = tempdir().unwrap();
+        let user = dir.path().join("user/applications");
+        let system = dir.path().join("system/applications");
+        write_desktop(
+            &user,
+            "firefox.desktop",
+            "[Desktop Entry]\nName=Firefox\nExec=/home/me/.local/bin/firefox\nType=Application\n",
+        );
+        write_desktop(
+            &system,
+            "firefox.desktop",
+            "[Desktop Entry]\nName=Firefox\nExec=/usr/bin/firefox\nType=Application\n",
+        );
+        let exec = resolve_desktop_exec("firefox.desktop", &[user, system]).unwrap();
+        assert_eq!(exec, "/home/me/.local/bin/firefox");
     }
 }
