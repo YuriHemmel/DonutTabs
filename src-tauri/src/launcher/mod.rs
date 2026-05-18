@@ -52,6 +52,13 @@ pub trait Opener: Send + Sync {
         );
         self.open_url(url, Some(browser))
     }
+    /// Detecção runtime do navegador padrão do SO. Chamado pelo launcher
+    /// quando `Item::Url.incognito == true && open_with.is_none()`. Default
+    /// impl delega a `default_browser::detect()`; mocks de teste podem
+    /// override pra controlar o ramo "detected" sem depender do ambiente.
+    fn detect_default_browser(&self) -> Option<String> {
+        crate::default_browser::detect()
+    }
     /// Plano 21 — move o cursor pro centro do monitor especificado antes
     /// do launch. Browsers/apps spawnam fresh windows na tela com cursor;
     /// apps que reusam janela ignoram. Best-effort: erro retornado pra
@@ -164,7 +171,7 @@ pub fn launch_tab(
                         .map(str::trim)
                         .filter(|s| !s.is_empty());
                     let detected = if explicit.is_none() {
-                        crate::default_browser::detect()
+                        opener.detect_default_browser()
                     } else {
                         None
                     };
@@ -255,7 +262,6 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
     }
 
     fn open_url_incognito(&self, url: &str, browser: &str) -> Result<(), String> {
-        use std::process::Command;
         // Resolve flag CLI específico do browser. Quando não há flag mapeado
         // (Safari, Tor, browser desconhecido), invoca o browser apenas com
         // a URL — vai abrir uma janela normal. Fallback intencional: melhor
@@ -270,6 +276,7 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
         // arbitrários sem allowlist explícito).
         #[cfg(target_os = "macos")]
         {
+            use std::process::Command;
             let Some(flag) = flag else {
                 return self.open_url(url, Some(browser));
             };
@@ -279,8 +286,26 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
                 .map(|_| ())
                 .map_err(|e| e.to_string());
         }
-        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        #[cfg(target_os = "windows")]
         {
+            // `CREATE_NO_WINDOW = 0x0800_0000` evita o flash de console preto
+            // quando o browser é um `.exe` console-aware. Sem isto, alguns
+            // builds (Firefox Nightly, instaladores antigos) mostram cmd
+            // window por uma fração de segundo antes do GUI surgir.
+            use std::os::windows::process::CommandExt;
+            use std::process::Command;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            let mut cmd = Command::new(browser);
+            cmd.creation_flags(CREATE_NO_WINDOW);
+            if let Some(f) = flag {
+                cmd.arg(f);
+            }
+            cmd.arg(url);
+            cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+        }
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
             let mut cmd = Command::new(browser);
             if let Some(f) = flag {
                 cmd.arg(f);
@@ -290,7 +315,7 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
         }
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         {
-            let _ = (flag, Command::new(""));
+            let _ = flag;
             self.open_url(url, Some(browser))
         }
     }
@@ -387,6 +412,10 @@ mod tests {
         /// `(url, browser)`. Permite que tests distingam path normal vs
         /// incognito sem confiar no fallback default da trait.
         incognito_calls: Mutex<Vec<Call>>,
+        /// Browser que `detect_default_browser` deve devolver. `None`
+        /// simula SO sem default detectável (CI Linux sem xdg-settings).
+        /// `Some(s)` injeta um browser pra exercitar o caminho "detected".
+        detected_browser: Option<String>,
         fail_urls: Vec<String>,
         fail_paths: Vec<String>,
         fail_apps: Vec<String>,
@@ -403,12 +432,18 @@ mod tests {
                 script_calls: Mutex::new(vec![]),
                 warp_calls: Mutex::new(vec![]),
                 incognito_calls: Mutex::new(vec![]),
+                detected_browser: None,
                 fail_urls: vec![],
                 fail_paths: vec![],
                 fail_apps: vec![],
                 fail_scripts: vec![],
                 fail_warps: vec![],
             }
+        }
+
+        fn with_detected(mut self, browser: &str) -> Self {
+            self.detected_browser = Some(browser.to_string());
+            self
         }
     }
 
@@ -474,6 +509,10 @@ mod tests {
             } else {
                 Ok(())
             }
+        }
+
+        fn detect_default_browser(&self) -> Option<String> {
+            self.detected_browser.clone()
         }
     }
 
@@ -1169,15 +1208,30 @@ mod tests {
     }
 
     #[test]
-    fn launcher_with_incognito_and_no_open_with_attempts_default_browser() {
-        // Sem `open_with`, launcher chama `default_browser::detect()`.
-        // No ambiente de CI o detect pode achar ou não — só validamos que:
-        //   * `open_url` plain NÃO é chamado (sem fallback prematuro),
-        //   * `open_url_incognito` é chamado com algum browser_ref OU
-        //     cai pro `open_url(None)` quando detect também devolve None.
-        // Não há browser detectável garantido no CI Linux/macOS dos jobs;
-        // o teste apenas confirma que o caminho não panica e que UMA das
-        // duas rotas foi acionada (não nenhuma).
+    fn incognito_without_open_with_uses_detected_browser() {
+        // Mock injeta "Firefox" como default detectado. Launcher deve rotar
+        // pra `open_url_incognito("...", "Firefox")` sem chamar `open_url`.
+        let opener = MockOpener::new().with_detected("Firefox");
+        let tab = tab_with_items(vec![Item::Url {
+            monitor: None,
+            value: "https://example.com".into(),
+            open_with: None,
+            incognito: true,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(opener.url_calls.lock().unwrap().is_empty());
+        let inc = opener.incognito_calls.lock().unwrap().clone();
+        assert_eq!(
+            inc,
+            vec![("https://example.com".into(), Some("Firefox".into()))]
+        );
+    }
+
+    #[test]
+    fn incognito_without_open_with_falls_back_when_no_default_detected() {
+        // Mock sem `detected_browser`. Launcher cai pro `open_url(None)`
+        // (modo normal) em vez de explodir. `open_url_incognito` não é
+        // chamado quando não há browser pra passar.
         let opener = MockOpener::new();
         let tab = tab_with_items(vec![Item::Url {
             monitor: None,
@@ -1186,8 +1240,29 @@ mod tests {
             incognito: true,
         }]);
         launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
-        let url_calls = opener.url_calls.lock().unwrap().len();
-        let inc_calls = opener.incognito_calls.lock().unwrap().len();
-        assert_eq!(url_calls + inc_calls, 1);
+        assert_eq!(
+            opener.url_calls.lock().unwrap().clone(),
+            vec![("https://example.com".into(), None)]
+        );
+        assert!(opener.incognito_calls.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn incognito_explicit_open_with_skips_default_detection() {
+        // Quando `open_with` é explícito, detected_browser não importa —
+        // o explícito ganha. Detected vazio mesmo com Firefox setado.
+        let opener = MockOpener::new().with_detected("ShouldNotBeUsed");
+        let tab = tab_with_items(vec![Item::Url {
+            monitor: None,
+            value: "https://example.com".into(),
+            open_with: Some("Chrome".into()),
+            incognito: true,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        let inc = opener.incognito_calls.lock().unwrap().clone();
+        assert_eq!(
+            inc,
+            vec![("https://example.com".into(), Some("Chrome".into()))]
+        );
     }
 }

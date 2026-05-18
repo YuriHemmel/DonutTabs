@@ -75,15 +75,23 @@ fn detect_via_launch_services() -> Option<String> {
         return None;
     }
     let app_url = unsafe { CFURL::wrap_under_create_rule(app_url_raw) };
-    let path = app_url.get_string().to_string();
+    // `to_path()` chama `CFURLCopyFileSystemPath` que devolve o caminho
+    // POSIX já decodificado (`Google Chrome.app`, não `Google%20Chrome.app`).
+    // `get_string()` retornaria a URL crua URL-encoded — quebraria bundles
+    // com espaço/acento ao passar pra `open -na`.
+    let path = app_url
+        .to_path()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| app_url.get_string().to_string());
     eprintln!("[default_browser] LaunchServices default = {path}");
     extract_bundle_name(&path)
 }
 
 /// Helper puro: extrai o nome do bundle (`Firefox`) do path/URL de um
-/// `.app`. Aceita ambos `file:///Applications/Firefox.app/` (CFURL string)
-/// e `/Applications/Firefox.app` (POSIX path). Trim trailing `/` + strip
-/// `.app` suffix.
+/// `.app`. Aceita POSIX paths (`/Applications/Firefox.app`), CFURL strings
+/// (`file:///Applications/Firefox.app/`) e — defesa em profundidade — strings
+/// URL-encoded (`file:///Applications/Google%20Chrome.app/`). Trim trailing
+/// `/` + strip `.app` suffix + percent-decode no segmento final.
 pub(crate) fn extract_bundle_name(bundle_path: &str) -> Option<String> {
     let trimmed = bundle_path
         .trim_start_matches("file://")
@@ -91,9 +99,39 @@ pub(crate) fn extract_bundle_name(bundle_path: &str) -> Option<String> {
     let last = trimmed.rsplit('/').next()?;
     let name = last.strip_suffix(".app").unwrap_or(last);
     if name.is_empty() {
-        None
-    } else {
-        Some(name.to_string())
+        return None;
+    }
+    Some(percent_decode_minimal(name))
+}
+
+/// Decoder mínimo de percent-encoding (`%20` → ` `, `%C3%A9` → `é`). Não
+/// requer crate externa — só os escapes que aparecem em nomes de bundle.
+/// Bytes inválidos ou sequências curtas são preservados literais.
+fn percent_decode_minimal(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = &bytes[i + 1..i + 3];
+            if let (Some(h), Some(l)) = (hex_nibble(hex[0]), hex_nibble(hex[1])) {
+                out.push((h << 4) | l);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| s.to_string())
+}
+
+fn hex_nibble(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
     }
 }
 
@@ -153,6 +191,30 @@ mod tests {
     fn extracts_returns_none_for_empty_input() {
         assert!(extract_bundle_name("").is_none());
         assert!(extract_bundle_name("/").is_none());
+    }
+
+    #[test]
+    fn extracts_bundle_name_decodes_percent_encoded_spaces() {
+        // Defesa em profundidade: se Launch Services devolver uma URL crua
+        // (`get_string()` fallback quando `to_path()` falha), o decoder
+        // mínimo cuida do `%20`. Sem isto, `open -na Google%20Chrome` falha.
+        let s = "file:///Applications/Google%20Chrome.app/";
+        assert_eq!(extract_bundle_name(s).unwrap(), "Google Chrome");
+    }
+
+    #[test]
+    fn extracts_bundle_name_decodes_utf8_escapes() {
+        // `%C3%A9` = `é`. Caso real: aplicativos com acento (raro em
+        // bundles, mas robusto pra não quebrar silenciosamente).
+        let s = "file:///Applications/Caf%C3%A9.app";
+        assert_eq!(extract_bundle_name(s).unwrap(), "Café");
+    }
+
+    #[test]
+    fn extracts_bundle_name_preserves_literal_when_encoding_malformed() {
+        // `%ZZ` não é hex — preserva literal.
+        let s = "/Applications/Weird%ZZName.app";
+        assert_eq!(extract_bundle_name(s).unwrap(), "Weird%ZZName");
     }
 
     #[test]
