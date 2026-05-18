@@ -163,7 +163,6 @@
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
       "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings.",
       "update": {
-        "heading": "Updates",
         "currentVersion": "Current version: v{{version}}",
         "autoCheckLabel": "Check for updates automatically at launch",
         "autoCheckHint": "When enabled, the app checks once on launch and notifies you of new versions.",
@@ -211,7 +210,9 @@
       "pickButton": "🎨 Pick",
       "tabEmoji": "Emoji",
       "tabLucide": "Lucide",
-      "searchPlaceholder": "Search icon…"
+      "searchPlaceholder": "Search icon…",
+      "clear": "Clear icon",
+      "changeChip": "Change icon"
     },
     "appearance": {
       "sectionTitle": "Appearance",
@@ -285,6 +286,8 @@
       "addItemApp": "Add app",
       "addItemScript": "Add script",
       "scriptTrustedLabel": "Trust (run without confirmation)",
+      "incognitoLabel": "Private",
+      "incognitoHint": "Opens in private/incognito mode. Uses the browser chosen in \"Open with\"; with \"System default\", the app detects the OS default browser.",
       "openWithLabel": "Open with",
       "openWithPlaceholder": "e.g. firefox, code",
       "openWithHint": "OS program/handler. Empty = system default.",
@@ -309,6 +312,7 @@
       "tabKindLeaf": "Tab (links)",
       "tabKindGroup": "Group (sub-donut)",
       "kindLabel": "Type",
+      "headerValue": "Value",
       "groupChildrenLabel": "Group contents",
       "groupChildrenEmpty": "No items yet. Add tabs or subgroups.",
       "addChildTab": "+ Add tab",

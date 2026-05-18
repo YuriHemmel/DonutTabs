@@ -205,6 +205,153 @@ describe("ItemListEditor", () => {
     ]);
   });
 
+  it("renders a header row with column labels when values is non-empty", async () => {
+    await renderEditor([{ kind: "url", value: "https://a", openWith: "" }]);
+    const header = screen.getByTestId("item-header-row");
+    expect(header).toBeTruthy();
+    expect(header.textContent).toMatch(/tipo/i);
+    expect(header.textContent).toMatch(/valor/i);
+    expect(header.textContent).toMatch(/abrir com/i);
+  });
+
+  it("does not render the header row when values is empty", async () => {
+    await renderEditor([]);
+    expect(screen.queryByTestId("item-header-row")).toBeNull();
+  });
+
+  it("hides 'Abrir com' header when no row uses openWith", async () => {
+    await renderEditor([
+      { kind: "app", value: "firefox", openWith: "" },
+      { kind: "script", value: "ls", openWith: "", trusted: false },
+    ]);
+    const header = screen.getByTestId("item-header-row");
+    expect(header.textContent).not.toMatch(/abrir com/i);
+  });
+
+  it("shows monitor header when 2+ monitors are connected", async () => {
+    await renderEditor(
+      [{ kind: "url", value: "https://a", openWith: "" }],
+      [
+        {
+          name: "Tela 1",
+          index: 0,
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          primary: true,
+        },
+        {
+          name: "Tela 2",
+          index: 1,
+          x: 1920,
+          y: 0,
+          width: 1280,
+          height: 720,
+          primary: false,
+        },
+      ],
+    );
+    const header = screen.getByTestId("item-header-row");
+    expect(header.textContent).toMatch(/tela/i);
+  });
+
+  // ---- Issue: incognito toggle ----
+
+  it("incognito toggle renders for URL rows only", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://a", openWith: "Firefox" },
+      { kind: "file", value: "/tmp/x", openWith: "" },
+      { kind: "app", value: "firefox", openWith: "" },
+    ]);
+    expect(screen.getByTestId("item-incognito-0")).toBeTruthy();
+    expect(screen.queryByTestId("item-incognito-1")).toBeNull();
+    expect(screen.queryByTestId("item-incognito-2")).toBeNull();
+  });
+
+  it("incognito checkbox enabled regardless of openWith (detection at launch)", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://a", openWith: "" },
+    ]);
+    const cb = screen.getByTestId("item-incognito-0") as HTMLInputElement;
+    expect(cb.disabled).toBe(false);
+  });
+
+  it("toggling incognito emits onChange with the new flag (no openWith)", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "url", value: "https://a", openWith: "" },
+    ]);
+    fireEvent.click(screen.getByTestId("item-incognito-0"));
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "", incognito: true },
+    ]);
+  });
+
+  it("toggling incognito emits onChange with the new flag (with openWith)", async () => {
+    const { onChange } = await renderEditor([
+      { kind: "url", value: "https://a", openWith: "Firefox" },
+    ]);
+    fireEvent.click(screen.getByTestId("item-incognito-0"));
+    expect(onChange).toHaveBeenLastCalledWith([
+      { kind: "url", value: "https://a", openWith: "Firefox", incognito: true },
+    ]);
+  });
+
+  it("openWith dropdown title-cases option labels on URL rows only", async () => {
+    const i18n = await createI18n("pt-BR");
+    const apps = [
+      { name: "google chrome", value: "chrome", path: "/usr/bin/chrome" },
+      { name: "FIREFOX", value: "firefox", path: "/usr/bin/firefox" },
+    ];
+    const { rerender } = render(
+      <I18nextProvider i18n={i18n}>
+        <ItemListEditor
+          values={[{ kind: "url", value: "https://a", openWith: "" }]}
+          onChange={vi.fn()}
+          installedAppsOverride={apps}
+        />
+      </I18nextProvider>,
+    );
+    await screen.findByRole("option", { name: "Google Chrome" });
+    expect(screen.getByRole("option", { name: "Firefox" })).toBeTruthy();
+
+    // file row — labels preservam o nome bruto (sem titleCase).
+    rerender(
+      <I18nextProvider i18n={i18n}>
+        <ItemListEditor
+          values={[{ kind: "file", value: "/tmp/x", openWith: "" }]}
+          onChange={vi.fn()}
+          installedAppsOverride={apps}
+        />
+      </I18nextProvider>,
+    );
+    expect(screen.getByRole("option", { name: "google chrome" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "FIREFOX" })).toBeTruthy();
+  });
+
+  it("openWith dropdown filters to browsers only on URL rows", async () => {
+    // Mock global retorna Firefox + VSCode. URL row deve mostrar só Firefox
+    // (browser); VSCode some.
+    await renderEditor([{ kind: "url", value: "https://a", openWith: "" }]);
+    await screen.findByRole("option", { name: "Firefox" });
+    const select = screen.getByTestId("item-open-with-0") as HTMLSelectElement;
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toContain("Firefox");
+    expect(labels.some((l) => l && l.includes("VSCode"))).toBe(false);
+  });
+
+  it("openWith dropdown keeps non-browser apps on file/folder rows", async () => {
+    // file/folder podem ser abertos por qualquer app — filtro só vale pra URL.
+    // titleCase também é só pra URL — nomes nativos preservados aqui (VSCode
+    // mantém caps internos).
+    await renderEditor([{ kind: "file", value: "/tmp/x", openWith: "" }]);
+    await screen.findByRole("option", { name: "VSCode" });
+    const select = screen.getByTestId("item-open-with-0") as HTMLSelectElement;
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toContain("Firefox");
+    expect(labels).toContain("VSCode");
+  });
+
   it("renders the existing openWith value (custom value preserved as synthetic option)", async () => {
     await renderEditor([
       { kind: "url", value: "https://w", openWith: "edge" },

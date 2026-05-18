@@ -163,7 +163,6 @@
       "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
       "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações.",
       "update": {
-        "heading": "Atualizações",
         "currentVersion": "Versão atual: v{{version}}",
         "autoCheckLabel": "Verificar atualizações automaticamente no início",
         "autoCheckHint": "Quando ligado, o app verifica uma vez ao abrir e avisa se houver versão nova.",
@@ -211,7 +210,9 @@
       "pickButton": "🎨 Escolher",
       "tabEmoji": "Emoji",
       "tabLucide": "Lucide",
-      "searchPlaceholder": "Buscar ícone…"
+      "searchPlaceholder": "Buscar ícone…",
+      "clear": "Limpar ícone",
+      "changeChip": "Trocar ícone"
     },
     "appearance": {
       "sectionTitle": "Aparência",
@@ -285,6 +286,8 @@
       "addItemApp": "Adicionar app",
       "addItemScript": "Adicionar script",
       "scriptTrustedLabel": "Confiar (executa sem confirmação)",
+      "incognitoLabel": "Anônima",
+      "incognitoHint": "Abre em modo anônimo/privado. Usa o navegador escolhido em \"Abrir com\"; se for \"Padrão do sistema\", o app detecta o navegador padrão do SO.",
       "openWithLabel": "Abrir com",
       "openWithPlaceholder": "ex.: firefox, code",
       "openWithHint": "Programa/handler do SO. Vazio = padrão do sistema.",
@@ -309,6 +312,7 @@
       "tabKindLeaf": "Aba (links)",
       "tabKindGroup": "Grupo (sub-donut)",
       "kindLabel": "Tipo",
+      "headerValue": "Valor",
       "groupChildrenLabel": "Conteúdo do grupo",
       "groupChildrenEmpty": "Nenhum item ainda. Adicione abas ou subgrupos.",
       "addChildTab": "+ Adicionar aba",

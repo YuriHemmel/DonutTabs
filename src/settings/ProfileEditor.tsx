@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { translateAppError } from "../core/errors";
-import { stripLetters, graphemeCount } from "./textUtils";
+import { graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
+import { IconField } from "./IconField";
 import type { Profile } from "../core/types/Profile";
 
 const LUCIDE_PREFIX = "lucide:";
@@ -137,19 +138,12 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span>{t("settings.profile.iconLabel")}</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
+            <IconField
+              testId="profile-icon"
               value={state.icon}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setState({
-                  ...state,
-                  icon: isLucideToken(raw) ? raw : stripLetters(raw),
-                });
-              }}
+              onChange={(icon) => setState((s) => ({ ...s, icon }))}
+              onRequestPicker={() => setPickerOpen(true)}
               placeholder={t("settings.profile.iconPlaceholder")}
-              maxLength={64}
-              size={4}
-              style={{ ...inputStyle, width: 160 }}
             />
             <button
               type="button"

@@ -39,6 +39,18 @@ regex = "1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
+# Issue #48 — parser de `.lnk` (Microsoft Shell Link) pra extrair o target
+# real do shortcut (caminho do .exe). Sem isto, picker passa o path do .lnk
+# pro launcher e algumas apps falham em rotear via ShellExecute.
+parselnk = "0.1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Bindings tipados pra CoreFoundation (CFString, CFURL). FFI ergonomic pra
+# chamar `LSCopyDefaultApplicationURLForURL` (Launch Services), que retorna
+# o `.app` bundle padrão pra um esquema de URL. Cobre default browser
+# detection real (vs probe baseado em `/Applications/`).
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
 
 [dev-dependencies]
 tempfile = "3"

@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Profile } from "../core/types/Profile";
 import { useDragReorder } from "./useDragReorder";
+import { IconDisplay } from "./IconDisplay";
 
 export interface DraggableProfileListProps {
   profiles: Profile[];
@@ -99,7 +100,7 @@ export const DraggableProfileList: React.FC<DraggableProfileListProps> = ({
               outline: "none",
             }}
           >
-            <span aria-hidden="true">{p.icon ? p.icon : fallbackChar}</span>
+            <IconDisplay icon={p.icon} fallback={fallbackChar} size={16} />
             <span>{p.name}</span>
             {isActive && (
               <span

@@ -122,8 +122,10 @@ export const ipc = {
       overrides,
     }),
   /** Plano 17 — devolve a lista de apps instalados no SO (cross-OS via
-   *  `apps_picker/`). Read-only; não toca config. */
-  listInstalledApps: () => invoke<InstalledApp[]>("list_installed_apps"),
+   *  `apps_picker/`). Read-only; não toca config. Issue #48 — cache em
+   *  disco com TTL 7 dias; `force=true` re-escaneia e regrava. */
+  listInstalledApps: (force = false) =>
+    invoke<InstalledApp[]>("list_installed_apps", { force }),
   /** Plano 18 — verifica disponibilidade de update. `force=true` ignora o
    *  gate `should_notify` (usado pelo botão "Verificar agora"). `force=false`
    *  retorna `null` se a versão remota já foi notificada antes. */

@@ -99,16 +99,11 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
     <div
       data-testid="update-card"
       style={{
-        marginTop: 12,
-        paddingTop: 12,
-        borderTop: "1px solid var(--input-border)",
         display: "flex",
         flexDirection: "column",
         gap: 8,
       }}
     >
-      <strong>{t("settings.system.update.heading")}</strong>
-
       <label
         style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
       >

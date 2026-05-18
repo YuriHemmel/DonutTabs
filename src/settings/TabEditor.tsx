@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { ItemListEditor, type ItemDraft } from "./ItemListEditor";
 import { GroupChildrenEditor } from "./GroupChildrenEditor";
 import { translateAppError } from "../core/errors";
-import { stripLetters, graphemeCount } from "./textUtils";
+import { graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
+import { IconField } from "./IconField";
 import type { Tab } from "../core/types/Tab";
 import type { Item } from "../core/types/Item";
 import type { OpenMode } from "../core/types/OpenMode";
@@ -61,6 +62,7 @@ function itemToDraft(it: Item): ItemDraft {
       value: it.value,
       openWith: it.openWith ?? "",
       monitor: it.monitor ?? null,
+      incognito: it.incognito,
     };
   }
   if (it.kind === "file" || it.kind === "folder") {
@@ -100,6 +102,9 @@ function draftToItem(d: ItemDraft): Item {
       value: d.value,
       openWith: ow.length > 0 ? ow : null,
       monitor,
+      // Incognito preservado mesmo sem openWith — launcher detecta o
+      // navegador padrão do SO em runtime quando necessário.
+      incognito: !!d.incognito,
     };
   }
   if (d.kind === "file" || d.kind === "folder") {
@@ -198,6 +203,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           openWith: it.openWith.trim(),
           trusted: it.trusted,
           monitor: it.monitor ?? null,
+          incognito: it.incognito,
         }))
         .filter((it) => it.value.length > 0);
       if (trimmed.length === 0) {
@@ -297,19 +303,12 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span>{t("settings.editor.icon")}</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
+            <IconField
+              testId="tab-icon"
               value={state.icon}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setState({
-                  ...state,
-                  icon: isLucideToken(raw) ? raw : stripLetters(raw),
-                });
-              }}
+              onChange={(icon) => setState((s) => ({ ...s, icon }))}
+              onRequestPicker={() => setPickerOpen(true)}
               placeholder={t("settings.editor.iconPlaceholder")}
-              maxLength={64}
-              size={4}
-              style={{ ...inputStyle, width: 160 }}
             />
             <button
               type="button"

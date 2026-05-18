@@ -833,11 +833,32 @@ pub fn set_profile_theme_overrides<R: tauri::Runtime>(
 /// erro de digitação. Async + spawn_blocking porque a enumeração faz I/O
 /// pesado (read_dir recursivo em Start Menu, registry HKLM+HKCU); rodar
 /// inline travaria a thread do tauri runtime.
+///
+/// Issue #48 — cache em disco com TTL de 7 dias. `force=true` (botão
+/// "Atualizar lista" no `<AppPicker>`) re-escaneia e regrava.
 #[tauri::command]
-pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, AppError> {
-    tauri::async_runtime::spawn_blocking(apps_picker::list_installed_apps)
-        .await
-        .map_err(|e| AppError::io("apps_list_failed", &[("reason", e.to_string())]))?
+pub async fn list_installed_apps(
+    app: tauri::AppHandle,
+    force: Option<bool>,
+) -> Result<Vec<InstalledApp>, AppError> {
+    let cache_path = apps_cache_path(&app);
+    let force = force.unwrap_or(false);
+    tauri::async_runtime::spawn_blocking(move || {
+        apps_picker::list_installed_apps(cache_path.as_deref(), force)
+    })
+    .await
+    .map_err(|e| AppError::io("apps_list_failed", &[("reason", e.to_string())]))?
+}
+
+/// Resolve o caminho do cache de apps (`<app_config>/apps_cache.json`).
+/// Returns `None` quando o `app_config_dir` não está acessível (ambiente de
+/// teste sem app real, falha de IO) — caller faz scan direto sem cache.
+fn apps_cache_path(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    use tauri::Manager;
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|dir| dir.join("apps_cache.json"))
 }
 
 /// Plano 21 — info do monitor pra picker no Settings. Frontend usa pra
@@ -1596,6 +1617,7 @@ mod tests {
                 monitor: None,
                 value: "https://example.com".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: TabKind::Leaf,
             children: vec![],
@@ -1825,6 +1847,7 @@ mod tests {
                 monitor: None,
                 value: "https://r".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
@@ -1839,6 +1862,7 @@ mod tests {
                 monitor: None,
                 value: "https://a1".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
@@ -1853,6 +1877,7 @@ mod tests {
                 monitor: None,
                 value: "https://b1".into(),
                 open_with: None,
+                incognito: false,
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
@@ -2438,6 +2463,7 @@ mod tests {
             monitor: None,
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         }]);
         let p = profile_with(false, vec![]);
         assert!(check_script_gating(&p, &tab, None).is_none());
@@ -2559,6 +2585,7 @@ mod tests {
                 monitor: None,
                 value: "https://x".into(),
                 open_with: None,
+                incognito: false,
             },
             Item::Script {
                 monitor: None,
@@ -2584,6 +2611,7 @@ mod tests {
             monitor: None,
             value: "https://x".into(),
             open_with: None,
+            incognito: false,
         }]);
         let tid = tab.id;
         cfg.profiles[0].tabs.push(tab);

@@ -28,6 +28,12 @@ import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
 import { useRingStack, MAX_RINGS } from "./useRingStack";
 
+/** Stack de fontes sans-serif do sistema. SVG `<text>` default cai em Times
+ *  serif em vários navegadores — feio dentro do donut. Aplicado na raiz
+ *  `<svg>` pra todos os textos descendentes herdarem. */
+const DONUT_FONT_FAMILY =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif';
+
 function firstTabUrl(tab: Tab): string | null {
   for (const item of tab.items) {
     if (item.kind === "url") return item.value;
@@ -413,7 +419,12 @@ export const Donut: React.FC<DonutProps> = ({
   if (mode === "profiles" && profiles && activeProfileId && onSelectProfile) {
     return (
       <ThemeContext.Provider value={effectiveTokens}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          style={{ fontFamily: DONUT_FONT_FAMILY }}
+        >
           <ProfileSwitcher
             cx={cx}
             cy={cy}
@@ -454,6 +465,7 @@ export const Donut: React.FC<DonutProps> = ({
           width={size}
           height={size}
           viewBox={`0 0 ${size} ${size}`}
+          style={{ fontFamily: DONUT_FONT_FAMILY }}
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
           onWheel={handleWheel}

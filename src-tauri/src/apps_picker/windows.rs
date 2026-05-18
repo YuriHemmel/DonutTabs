@@ -24,7 +24,13 @@ use std::path::PathBuf;
 
 pub fn list_windows_apps_combined() -> AppResult<Vec<InstalledApp>> {
     let mut combined = Vec::new();
+    // Ordem importa: App Paths é a fonte mais autoritativa (path absoluto de
+    // exe registrado). Uninstall vem depois (catch apps GUI que faltam em
+    // App Paths). .lnk fica por último (fonte mais ruidosa — atalhos podem
+    // apontar pra .url, .bat, instaladores etc.). `dedupe_and_sort` mantém
+    // primeira ocorrência por `name` case-insensitive.
     combined.extend(list_app_paths());
+    combined.extend(list_uninstall_entries());
     combined.extend(list_start_menu_lnks());
     Ok(dedupe_and_sort(combined))
 }
@@ -60,6 +66,56 @@ fn list_app_paths() -> Vec<InstalledApp> {
     // Em outros SOs, registry não existe — função não faz nada.
     // Mantida pra mod compilar cross-platform (testes dos parsers puros
     // rodam em qualquer SO no CI).
+    Vec::new()
+}
+
+/// Issue #48 — escaneia o registry `Uninstall` (HKLM + HKCU + WOW6432Node)
+/// pra capturar apps GUI instaladas que não registram entry em `App Paths`.
+/// Cada subkey carrega `DisplayName` (label friendly) + `DisplayIcon` ou
+/// `InstallLocation` (path inferível pro exe). Skip entries marcadas como
+/// `SystemComponent=1` ou com `ParentKeyName` non-empty (componentes
+/// secundários de bundles maiores).
+#[cfg(target_os = "windows")]
+fn list_uninstall_entries() -> Vec<InstalledApp> {
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    use winreg::RegKey;
+
+    let mut apps = Vec::new();
+    let paths = [
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+    ];
+    for hive in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
+        for key_path in &paths {
+            let Ok(root) = RegKey::predef(hive).open_subkey(key_path) else {
+                continue;
+            };
+            for subkey_name in root.enum_keys().flatten() {
+                let Ok(sub) = root.open_subkey(&subkey_name) else {
+                    continue;
+                };
+                let display_name: String = sub.get_value("DisplayName").unwrap_or_default();
+                let system_component: u32 = sub.get_value("SystemComponent").unwrap_or(0);
+                let parent_key: String = sub.get_value("ParentKeyName").unwrap_or_default();
+                let display_icon: String = sub.get_value("DisplayIcon").unwrap_or_default();
+                let install_location: String = sub.get_value("InstallLocation").unwrap_or_default();
+                if let Some(app) = uninstall_entry_to_installed(
+                    &display_name,
+                    system_component,
+                    &parent_key,
+                    &display_icon,
+                    &install_location,
+                ) {
+                    apps.push(app);
+                }
+            }
+        }
+    }
+    apps
+}
+
+#[cfg(not(target_os = "windows"))]
+fn list_uninstall_entries() -> Vec<InstalledApp> {
     Vec::new()
 }
 
@@ -127,11 +183,61 @@ pub(crate) fn app_paths_entry_to_installed(
     })
 }
 
+/// Issue #48 — helper puro pra entries do registry `Uninstall`. Filtra
+/// `SystemComponent=1` e `ParentKeyName` non-empty (componentes secundários
+/// de bundles). Resolve `value` priorizando `DisplayIcon` (path do exe
+/// usado pelo Add/Remove Programs) e caindo em `InstallLocation\\app.exe`
+/// quando DisplayIcon não é um path utilizável. Returns `None` quando não
+/// for possível derivar path.
+pub(crate) fn uninstall_entry_to_installed(
+    display_name: &str,
+    system_component: u32,
+    parent_key: &str,
+    display_icon: &str,
+    install_location: &str,
+) -> Option<InstalledApp> {
+    if system_component != 0 {
+        return None;
+    }
+    if !parent_key.trim().is_empty() {
+        return None;
+    }
+    let name = display_name.trim().to_string();
+    if name.is_empty() {
+        return None;
+    }
+    // DisplayIcon pode vir como `"C:\\path\\app.exe,0"` (icon index após
+    // vírgula) ou apenas `"C:\\path\\app.exe"`. Strip qualquer sufixo `,N`.
+    let icon_path = display_icon.split(',').next().unwrap_or("").trim();
+    let icon_path = icon_path.trim_matches('"');
+    let resolved = if icon_path.to_lowercase().ends_with(".exe") {
+        Some(icon_path.to_string())
+    } else if !install_location.trim().is_empty() {
+        // Sem .exe explícito — usa InstallLocation como pasta informacional.
+        // O launcher cai no fallback do shell, então só useful como hint.
+        let loc = install_location.trim().trim_matches('"').to_string();
+        Some(loc)
+    } else {
+        None
+    };
+    let resolved = resolved?;
+    if resolved.is_empty() {
+        return None;
+    }
+    Some(InstalledApp {
+        name,
+        value: resolved.clone(),
+        path: resolved,
+    })
+}
+
 /// Helper puro: dado o caminho de um `.lnk`, devolve `InstalledApp`:
 /// - `name` = stem do arquivo (display friendly).
-/// - `value` = caminho absoluto do `.lnk`. Launcher detecta `.lnk` extensão
-///   e roteia via `tauri-plugin-opener` (ShellExecute) já que CreateProcess
-///   não resolve shell-links nativamente.
+/// - `value` = target real parseado via crate `parselnk` (path absoluto do
+///   exe alvo). Quando o parse falha — `.lnk` malformado, target aponta pra
+///   protocolo não-arquivo (`.url`), permissão negada, etc. — cai no path
+///   do próprio `.lnk` (launcher detecta extensão `.lnk` e roteia via
+///   `tauri-plugin-opener`/ShellExecute como fallback do Plano 17).
 /// - `path` = mesmo que `value`.
 pub(crate) fn lnk_path_to_installed(path: &Path) -> Option<InstalledApp> {
     if path.extension().and_then(|s| s.to_str()) != Some("lnk") {
@@ -142,11 +248,34 @@ pub(crate) fn lnk_path_to_installed(path: &Path) -> Option<InstalledApp> {
         return None;
     }
     let abs = path.to_string_lossy().into_owned();
+    let resolved = parse_lnk_target(path).unwrap_or_else(|| abs.clone());
     Some(InstalledApp {
         name: stem,
-        value: abs.clone(),
-        path: abs,
+        value: resolved.clone(),
+        path: resolved,
     })
+}
+
+#[cfg(target_os = "windows")]
+fn parse_lnk_target(path: &Path) -> Option<String> {
+    // parselnk lê os bytes do `.lnk` e expõe `link_info` com `local_base_path`
+    // (target absoluto). Falha (path inválido, .lnk malformado, sem link_info)
+    // → `None` e o caller cai no path do próprio .lnk.
+    use parselnk::Lnk;
+    let lnk = Lnk::try_from(path).ok()?;
+    let target = lnk.link_info.local_base_path?;
+    let target = target.trim();
+    if target.is_empty() {
+        return None;
+    }
+    Some(target.to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn parse_lnk_target(_path: &Path) -> Option<String> {
+    // Em outros SOs não há `.lnk` real pra parsear — função existe apenas
+    // pra fechar o cfg, sempre devolve None.
+    None
 }
 
 #[cfg(test)]
@@ -210,6 +339,70 @@ mod tests {
     fn lnk_rejects_no_extension() {
         let p = PathBuf::from("/start/menu/firefox");
         assert!(lnk_path_to_installed(&p).is_none());
+    }
+
+    #[test]
+    fn uninstall_entry_resolves_display_icon_exe() {
+        let app = uninstall_entry_to_installed(
+            "Mozilla Firefox",
+            0,
+            "",
+            "\"C:\\Program Files\\Firefox\\firefox.exe\",0",
+            "C:\\Program Files\\Firefox",
+        )
+        .unwrap();
+        assert_eq!(app.name, "Mozilla Firefox");
+        assert_eq!(app.value, "C:\\Program Files\\Firefox\\firefox.exe");
+        assert_eq!(app.path, "C:\\Program Files\\Firefox\\firefox.exe");
+    }
+
+    #[test]
+    fn uninstall_entry_falls_back_to_install_location_when_icon_not_exe() {
+        let app = uninstall_entry_to_installed(
+            "VLC media player",
+            0,
+            "",
+            "C:\\Program Files\\VLC\\icon.ico,0",
+            "C:\\Program Files\\VLC",
+        )
+        .unwrap();
+        assert_eq!(app.name, "VLC media player");
+        assert_eq!(app.value, "C:\\Program Files\\VLC");
+    }
+
+    #[test]
+    fn uninstall_entry_rejects_system_component() {
+        assert!(uninstall_entry_to_installed(
+            "Hidden Update",
+            1,
+            "",
+            "C:\\Windows\\update.exe",
+            "C:\\Windows"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn uninstall_entry_rejects_child_with_parent_key() {
+        assert!(uninstall_entry_to_installed(
+            "Bundled Tool",
+            0,
+            "MainApp",
+            "C:\\App\\tool.exe",
+            "C:\\App"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn uninstall_entry_rejects_empty_display_name() {
+        assert!(uninstall_entry_to_installed("", 0, "", "C:\\app.exe", "C:\\").is_none());
+        assert!(uninstall_entry_to_installed("   ", 0, "", "C:\\app.exe", "C:\\").is_none());
+    }
+
+    #[test]
+    fn uninstall_entry_rejects_no_path_at_all() {
+        assert!(uninstall_entry_to_installed("App", 0, "", "", "").is_none());
     }
 
     #[test]

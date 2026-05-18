@@ -2,6 +2,8 @@ use crate::commands::AppState;
 use crate::config::schema::SpawnPosition;
 use crate::errors::{AppError, AppResult};
 use mouse_position::mouse_position::Mouse;
+#[cfg(target_os = "macos")]
+use tauri::LogicalPosition;
 use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, Runtime, WebviewUrl, WebviewWindowBuilder,
 };
@@ -90,18 +92,47 @@ fn position_at_cursor<R: Runtime>(window: &tauri::WebviewWindow<R>, size: f64) -
         Mouse::Error => return Ok(()),
     };
 
-    let scale = window.scale_factor().map_err(|e| {
-        AppError::window("window_scale_factor_failed", &[("reason", e.to_string())])
-    })?;
-    let half = (size / 2.0) * scale;
-    let x = (pos.0 - half).round() as i32;
-    let y = (pos.1 - half).round() as i32;
-
-    window
-        .set_position(PhysicalPosition::new(x, y))
-        .map_err(|e| {
-            AppError::window("window_set_position_failed", &[("reason", e.to_string())])
+    // Cuidado com unidades: a crate `mouse_position` devolve coordenadas em
+    // unidades diferentes por SO. Tratamos cada caso na sua unidade nativa
+    // pra evitar confusão de scale especialmente em multi-monitor.
+    //
+    // - macOS: `CGEventGetLocation` retorna pontos lógicos (sistema Quartz).
+    //   Nosso `size` também é lógico (LogicalSize). Subtraímos half lógico
+    //   e setamos via LogicalPosition — Tauri converte pra físico no destino
+    //   usando o scale do monitor onde a janela ficar. Tentar multiplicar
+    //   por `window.scale_factor()` aqui quebra em Retina (mouse em pontos
+    //   * scale ≠ pixels) e em multi-monitor de DPIs diferentes (scale do
+    //   monitor anterior é usado antes da janela mover).
+    //
+    // - Windows: `GetCursorPos` retorna pixels físicos.
+    // - Linux X11: `XQueryPointer` retorna pixels físicos.
+    //   Em ambos, multiplicamos `size/2` por `scale` pra ficar em físicos e
+    //   setamos via PhysicalPosition.
+    #[cfg(target_os = "macos")]
+    {
+        let half = size / 2.0;
+        let x = pos.0 - half;
+        let y = pos.1 - half;
+        window
+            .set_position(LogicalPosition::new(x, y))
+            .map_err(|e| {
+                AppError::window("window_set_position_failed", &[("reason", e.to_string())])
+            })?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let scale = window.scale_factor().map_err(|e| {
+            AppError::window("window_scale_factor_failed", &[("reason", e.to_string())])
         })?;
+        let half = (size / 2.0) * scale;
+        let x = (pos.0 - half).round() as i32;
+        let y = (pos.1 - half).round() as i32;
+        window
+            .set_position(PhysicalPosition::new(x, y))
+            .map_err(|e| {
+                AppError::window("window_set_position_failed", &[("reason", e.to_string())])
+            })?;
+    }
     Ok(())
 }
 
@@ -126,14 +157,34 @@ fn position_at_active_monitor_center<R: Runtime>(
         )
     })?;
 
+    // Match cursor → monitor: comparamos cursor em pontos lógicos contra
+    // bounds do monitor em pontos lógicos. `monitor.position()`/`.size()`
+    // são **pixels físicos** em todas as plataformas (Tauri normaliza),
+    // então em macOS Retina precisamos dividir pelo scale do monitor pra
+    // chegar a pontos. Em Win/Linux cursor já é físico mas dividir por
+    // `scale=1.0` (display sem HiDPI) ou pelo scale correto produz o mesmo
+    // resultado da comparação física original — é estável cross-OS.
     let monitor = cursor
         .and_then(|(cx, cy)| {
+            let cxf = cx as f64;
+            let cyf = cy as f64;
             monitors.iter().find(|m| {
+                let scale = m.scale_factor();
                 let p = m.position();
                 let s = m.size();
-                let right = p.x + s.width as i32;
-                let bottom = p.y + s.height as i32;
-                cx >= p.x && cx < right && cy >= p.y && cy < bottom
+                #[cfg(target_os = "macos")]
+                let (px, py, sw, sh) = (
+                    p.x as f64 / scale,
+                    p.y as f64 / scale,
+                    s.width as f64 / scale,
+                    s.height as f64 / scale,
+                );
+                #[cfg(not(target_os = "macos"))]
+                let (px, py, sw, sh) = {
+                    let _ = scale;
+                    (p.x as f64, p.y as f64, s.width as f64, s.height as f64)
+                };
+                cxf >= px && cxf < px + sw && cyf >= py && cyf < py + sh
             })
         })
         .cloned()
