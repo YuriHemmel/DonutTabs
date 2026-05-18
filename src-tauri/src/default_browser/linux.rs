@@ -138,7 +138,8 @@ mod tests {
     #[test]
     fn falls_back_to_stem_when_file_missing() {
         let dir = tempdir().unwrap();
-        let exec = resolve_desktop_exec("nonexistent.desktop", &[dir.path().to_path_buf()]).unwrap();
+        let exec =
+            resolve_desktop_exec("nonexistent.desktop", &[dir.path().to_path_buf()]).unwrap();
         assert_eq!(exec, "nonexistent");
     }
 
