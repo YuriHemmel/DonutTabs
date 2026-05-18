@@ -156,10 +156,21 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # Sanity check: cache do rust-cache@v2 já pegou um estado onde
+      # `~/.cargo/bin/cargo` era cópia de `rustup-init` (hard-link transiente
+      # do install) e o restore corrompeu binário cargo, fazendo `cargo test`
+      # falhar com "unexpected argument 'test'". `which`+`--version` força o
+      # CI a falhar cedo (e visivelmente) se o cargo voltar a ficar quebrado.
+      - name: Verify cargo shim
+        run: |
+          which cargo
+          cargo --version
+          rustc --version
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: test-macos
+          key: test-macos-v2
 
       - name: cargo test
         working-directory: src-tauri
