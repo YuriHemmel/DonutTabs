@@ -47,16 +47,19 @@ pub async fn check<R: Runtime>(handle: &AppHandle<R>) -> AppResult<Option<Update
             date: update.date.map(|d| d.to_string()),
         })),
         Ok(None) => Ok(None),
-        Err(e) if is_missing_manifest_error(&e) => Ok(None),
+        Err(e) if is_missing_manifest_error(&e) => {
+            eprintln!("[updater] no applicable manifest ({e}); treating as up-to-date");
+            Ok(None)
+        }
         Err(e) => Err(map_check_error(e)),
     }
 }
 
 /// `true` quando o erro do plugin significa "manifest não disponível"
-/// (404 no endpoint, JSON malformado em todos os endpoints, ou manifest
-/// presente sem o target atual). Do ponto de vista do usuário, nenhum
-/// desses casos é "sem conexão" — não há atualização aplicável, então
-/// `check()` os converte em `Ok(None)`.
+/// (404 no endpoint `latest.json`, ou manifest presente porém sem o target
+/// do SO/arch atual). Do ponto de vista do usuário, nenhum desses casos é
+/// "sem conexão" — não há atualização aplicável, então `check()` os
+/// converte em `Ok(None)`.
 pub(crate) fn is_missing_manifest_error(e: &PluginError) -> bool {
     matches!(
         e,
