@@ -47,8 +47,26 @@ pub async fn check<R: Runtime>(handle: &AppHandle<R>) -> AppResult<Option<Update
             date: update.date.map(|d| d.to_string()),
         })),
         Ok(None) => Ok(None),
+        Err(e) if is_missing_manifest_error(&e) => {
+            eprintln!("[updater] no applicable manifest ({e}); treating as up-to-date");
+            Ok(None)
+        }
         Err(e) => Err(map_check_error(e)),
     }
+}
+
+/// `true` quando o erro do plugin significa "manifest não disponível"
+/// (404 no endpoint `latest.json`, ou manifest presente porém sem o target
+/// do SO/arch atual). Do ponto de vista do usuário, nenhum desses casos é
+/// "sem conexão" — não há atualização aplicável, então `check()` os
+/// converte em `Ok(None)`.
+pub(crate) fn is_missing_manifest_error(e: &PluginError) -> bool {
+    matches!(
+        e,
+        PluginError::ReleaseNotFound
+            | PluginError::TargetNotFound(_)
+            | PluginError::TargetsNotFound(_)
+    )
 }
 
 /// Baixa e instala a atualização atual, emitindo `UPDATE_PROGRESS_EVENT`
@@ -117,10 +135,7 @@ pub(crate) fn classify_check_error(e: &PluginError) -> &'static str {
         | PluginError::UrlParse(_)
         | PluginError::Http(_)
         | PluginError::InvalidHeaderName(_)
-        | PluginError::InvalidHeaderValue(_)
-        | PluginError::ReleaseNotFound
-        | PluginError::TargetNotFound(_)
-        | PluginError::TargetsNotFound(_) => "updater_network_unavailable",
+        | PluginError::InvalidHeaderValue(_) => "updater_network_unavailable",
         _ => "updater_check_failed",
     }
 }
@@ -162,19 +177,29 @@ mod tests {
     }
 
     #[test]
-    fn release_not_found_classified_as_network_unavailable() {
-        assert_eq!(
-            classify_check_error(&PluginError::ReleaseNotFound),
-            "updater_network_unavailable",
-        );
+    fn release_not_found_is_missing_manifest() {
+        assert!(is_missing_manifest_error(&PluginError::ReleaseNotFound));
     }
 
     #[test]
-    fn target_not_found_classified_as_network_unavailable() {
-        assert_eq!(
-            classify_check_error(&PluginError::TargetNotFound("darwin-x86_64".into())),
-            "updater_network_unavailable",
-        );
+    fn target_not_found_is_missing_manifest() {
+        assert!(is_missing_manifest_error(&PluginError::TargetNotFound(
+            "darwin-x86_64".into()
+        )));
+    }
+
+    #[test]
+    fn targets_not_found_is_missing_manifest() {
+        assert!(is_missing_manifest_error(&PluginError::TargetsNotFound(
+            vec!["darwin-x86_64".into()],
+        )));
+    }
+
+    #[test]
+    fn network_error_is_not_missing_manifest() {
+        assert!(!is_missing_manifest_error(&PluginError::Network(
+            "dns".into()
+        )));
     }
 
     #[test]
@@ -182,6 +207,18 @@ mod tests {
         // `UnsupportedArch` não é network nem signature — vira fallback.
         assert_eq!(
             classify_check_error(&PluginError::UnsupportedArch),
+            "updater_check_failed",
+        );
+    }
+
+    #[test]
+    fn release_not_found_falls_back_to_check_failed_if_reaches_classifier() {
+        // `check()` curto-circuita esse caso para `Ok(None)` via
+        // `is_missing_manifest_error`, então o classifier nunca deveria
+        // ver `ReleaseNotFound`. Mas se chegar (regressão), o fallback
+        // não-network é o comportamento defensivo correto.
+        assert_eq!(
+            classify_check_error(&PluginError::ReleaseNotFound),
             "updater_check_failed",
         );
     }
