@@ -30,9 +30,15 @@ O comando pede uma senha. Anote — ela será o secret `TAURI_SIGNING_PRIVATE_KE
 
 ### 2. Configurar `tauri.conf.json`
 
-Substitua o placeholder em `src-tauri/tauri.conf.json`:
+Dois blocos precisam ficar certos no `src-tauri/tauri.conf.json`:
 
 ```jsonc
+"bundle": {
+  "active": true,
+  "targets": "all",
+  "createUpdaterArtifacts": true,   // OBRIGATÓRIO — ver nota abaixo
+  ...
+},
 "plugins": {
   "updater": {
     "endpoints": [
@@ -44,7 +50,9 @@ Substitua o placeholder em `src-tauri/tauri.conf.json`:
 }
 ```
 
-**Atenção:** essa pubkey é embarcada nos binários compilados a partir desse commit. Se a chave for trocada depois, **apps com versão antiga rejeitam updates assinados pela nova chave** — o usuário precisaria reinstalar manualmente. Trate a pubkey como decisão para a vida do projeto.
+**`bundle.createUpdaterArtifacts: true`** é a pegadinha do Tauri 2: o default é `false`, e sem ele a build não registra os bundles updater (`*.app.tar.gz` macOS, `*.AppImage.tar.gz` Linux, NSIS Windows) no JSON de output. Resultado: o `tauri-action` loga `Signature not found for the updater JSON. Skipping upload...` e pula o `latest.json` — release sai sem manifest e apps instalados nunca veem novas versões (mostram "Você está na versão mais recente" pra sempre). Aconteceu nos v0.1.0 e v0.1.1 antes de a flag ser adicionada.
+
+**Atenção pubkey:** essa pubkey é embarcada nos binários compilados a partir desse commit. Se a chave for trocada depois, **apps com versão antiga rejeitam updates assinados pela nova chave** — o usuário precisaria reinstalar manualmente. Trate a pubkey como decisão para a vida do projeto.
 
 ### 3. Configurar secrets no GitHub
 
@@ -143,8 +151,9 @@ Solução: confirme que a pubkey no commit do release-tag bate com a chave públ
 
 ### `latest.json` retorna 404
 
-Workflow não terminou ou falhou. Conferir aba **Actions** do repo. Comum em primeiros runs:
+Workflow não terminou ou falhou, **ou** o action pulou a publicação do manifest. Conferir aba **Actions** do repo:
 
+- **Mais comum:** logs dos jobs `Build *` mostram `Signature not found for the updater JSON. Skipping upload...`. Causa: `bundle.createUpdaterArtifacts` ausente ou `false` em `tauri.conf.json` — sem isso o Tauri 2 não gera os bundles updater registrados no JSON de output. Garanta que está `true` (setup §2).
 - Faltam dependências nativas no Linux (já cobertas em `release.yml`, mas se a versão do `webkit2gtk` mudar, ajustar `apt-get install`).
 - macOS sem Apple Dev Cert: build passa, signing local falha. Para v1 do projeto, build sem certs ainda gera bundles válidos para signature do updater (Tauri usa Ed25519 separado de code-signing OS).
 
