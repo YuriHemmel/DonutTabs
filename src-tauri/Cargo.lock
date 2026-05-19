@@ -4323,7 +4323,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-app"
-version = "0.1.1"
+version = "1.0.0"
 dependencies = [
  "core-foundation 0.10.1",
  "core-foundation-sys",
