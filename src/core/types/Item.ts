@@ -17,4 +17,4 @@ monitor: number | null,
  * `open_with` definido — sem navegador explícito não dá pra rotar
  * pra modo anônimo. Configs anteriores deserializam como `false`.
  */
-incognito: boolean, } | { "kind": "file", path: string, openWith: string | null, monitor: number | null, } | { "kind": "folder", path: string, openWith: string | null, monitor: number | null, } | { "kind": "app", name: string, monitor: number | null, } | { "kind": "script", command: string, trusted: boolean, monitor: number | null, };
+incognito: boolean, } | { "kind": "file", path: string, openWith: string | null, monitor: number | null, } | { "kind": "folder", path: string, openWith: string | null, monitor: number | null, } | { "kind": "app", name: string, monitor: number | null, } | { "kind": "script", command: string, trusted: boolean, monitor: number | null, shell: string | null, };

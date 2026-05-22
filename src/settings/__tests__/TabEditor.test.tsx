@@ -366,7 +366,13 @@ describe("TabEditor", () => {
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "script", command: "cargo build", trusted: false, monitor: null },
+      {
+        kind: "script",
+        command: "cargo build",
+        trusted: false,
+        monitor: null,
+        shell: null,
+      },
     ]);
   });
 
@@ -410,7 +416,15 @@ describe("TabEditor", () => {
   it("preserves trusted=true when editing a script item", async () => {
     const tabWithTrustedScript: Tab = {
       ...existing,
-      items: [{ kind: "script", command: "git pull", trusted: true, monitor: null }],
+      items: [
+        {
+          kind: "script",
+          command: "git pull",
+          trusted: true,
+          monitor: null,
+          shell: null,
+        },
+      ],
     };
     const user = userEvent.setup();
     const { props } = await renderEditor({
@@ -423,7 +437,65 @@ describe("TabEditor", () => {
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
-      { kind: "script", command: "git pull", trusted: true, monitor: null },
+      {
+        kind: "script",
+        command: "git pull",
+        trusted: true,
+        monitor: null,
+        shell: null,
+      },
     ]);
+  });
+
+  // ---------- Issue #64: script shell selector ----------
+
+  it("submits script item with selected shell", async () => {
+    const tab: Tab = {
+      ...existing,
+      items: [
+        {
+          kind: "script",
+          command: "ls",
+          trusted: false,
+          monitor: null,
+          shell: null,
+        },
+      ],
+    };
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "edit", initial: tab });
+    fireEvent.change(screen.getByTestId("item-script-shell-0"), {
+      target: { value: "powershell" },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    const first = payload.items[0];
+    if (first.kind !== "script") throw new Error("expected script item");
+    expect(first.shell).toBe("powershell");
+  });
+
+  it("submits script item with shell=null when default selected", async () => {
+    const tab: Tab = {
+      ...existing,
+      items: [
+        {
+          kind: "script",
+          command: "ls",
+          trusted: false,
+          monitor: null,
+          shell: "bash",
+        },
+      ],
+    };
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "edit", initial: tab });
+    fireEvent.change(screen.getByTestId("item-script-shell-0"), {
+      target: { value: "" },
+    });
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    const first = payload.items[0];
+    if (first.kind !== "script") throw new Error("expected script item");
+    expect(first.shell).toBeNull();
   });
 });

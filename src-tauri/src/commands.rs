@@ -132,6 +132,7 @@ impl<R: tauri::Runtime> ScriptCaptureExecutor for TauriCaptureExecutor<R> {
         tab_id: Uuid,
         item_index: usize,
         command: &str,
+        shell: Option<&str>,
     ) -> Result<(), String> {
         let run_id = self
             .history
@@ -140,17 +141,12 @@ impl<R: tauri::Runtime> ScriptCaptureExecutor for TauriCaptureExecutor<R> {
             let _ = self.app.emit(SCRIPT_RUN_STARTED_EVENT, summary);
         }
 
-        #[cfg(target_os = "windows")]
-        let (shell, flag) = ("cmd", "/C");
-        #[cfg(not(target_os = "windows"))]
-        let (shell, flag) = ("sh", "-c");
+        // Issue #64: preset opcional via `script_shell_invocation`.
+        let (program, prefix) = crate::launcher::script_shell_invocation(shell);
+        let mut args: Vec<&str> = prefix.to_vec();
+        args.push(command);
 
-        let spawn_result = self
-            .app
-            .shell()
-            .command(shell)
-            .args([flag, command])
-            .spawn();
+        let spawn_result = self.app.shell().command(program).args(args).spawn();
 
         let (mut rx, child) = match spawn_result {
             Ok(pair) => pair,
@@ -2475,6 +2471,7 @@ mod tests {
             monitor: None,
             command: "git pull".into(),
             trusted: true,
+            shell: None,
         }]);
         let p = profile_with(false, vec![]);
         match check_script_gating(&p, &tab, None).unwrap() {
@@ -2489,6 +2486,7 @@ mod tests {
             monitor: None,
             command: "ls".into(),
             trusted: false,
+            shell: None,
         }]);
         let p = profile_with(true, vec![]);
         match check_script_gating(&p, &tab, None).unwrap() {
@@ -2507,6 +2505,7 @@ mod tests {
             monitor: None,
             command: "ls".into(),
             trusted: true,
+            shell: None,
         }]);
         let p = profile_with(true, vec![]);
         assert!(check_script_gating(&p, &tab, None).is_none());
@@ -2521,11 +2520,13 @@ mod tests {
                 monitor: None,
                 command: "git pull".into(),
                 trusted: false,
+                shell: None,
             },
             Item::Script {
                 monitor: None,
                 command: "rm -rf /tmp/x".into(),
                 trusted: false,
+                shell: None,
             },
         ]);
         let p = profile_with(true, vec![]);
@@ -2549,11 +2550,13 @@ mod tests {
                 monitor: None,
                 command: "git pull".into(),
                 trusted: false,
+                shell: None,
             },
             Item::Script {
                 monitor: None,
                 command: "cargo test".into(),
                 trusted: true,
+                shell: None,
             },
         ]);
         let p = profile_with(true, vec![]);
@@ -2568,6 +2571,7 @@ mod tests {
             monitor: None,
             command: "ls".into(),
             trusted: true,
+            shell: None,
         }]);
         let p = profile_with(false, vec![]);
         match check_script_gating(&p, &tab, Some(0)).unwrap() {
@@ -2591,6 +2595,7 @@ mod tests {
                 monitor: None,
                 command: "ls".into(),
                 trusted: false,
+                shell: None,
             },
         ]);
         let tid = tab.id;
@@ -2646,6 +2651,7 @@ mod tests {
             monitor: None,
             command: "rm -rf /".into(),
             trusted: false,
+            shell: None,
         }]);
         let tid = tab.id;
         cfg.profiles[0].tabs.push(tab);

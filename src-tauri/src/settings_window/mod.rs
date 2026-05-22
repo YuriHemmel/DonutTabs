@@ -2,8 +2,8 @@ use crate::errors::{AppError, AppResult};
 use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 pub const SETTINGS_LABEL: &str = "settings";
-const SETTINGS_MIN_SIZE: (f64, f64) = (720.0, 520.0);
-const SETTINGS_INITIAL_SIZE: (f64, f64) = (960.0, 640.0);
+const SETTINGS_MIN_SIZE: (f64, f64) = (960.0, 640.0);
+const SETTINGS_INITIAL_SIZE: (f64, f64) = (1120.0, 720.0);
 
 /// Cria a janela Settings oculta. Deve ser chamada no `setup()` do Tauri.
 ///

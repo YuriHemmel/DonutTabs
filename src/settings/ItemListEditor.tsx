@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dialog, ipc } from "../core/ipc";
 import { AppPicker } from "./AppPicker";
+import { ScriptHelpModal } from "./ScriptHelpModal";
 import type { InstalledApp } from "../core/types/InstalledApp";
 import type { MonitorInfo } from "../core/types/MonitorInfo";
 
@@ -24,6 +25,10 @@ export interface ItemDraft {
    *  escolhido (`openWith`) em modo anônimo/privado. Requer `openWith`
    *  non-empty; combinação inválida é normalizada pra `false` no submit. */
   incognito?: boolean;
+  /** Issue #64 — preset de shell para `kind: "script"`. `null`/undefined =
+   *  default da plataforma (cmd/sh). Allowlist: cmd | powershell | pwsh |
+   *  wsl | bash | sh | zsh. */
+  shell?: string | null;
 }
 
 export interface ItemListEditorProps {
@@ -177,6 +182,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   /** Plano 17 — index do row de `kind: "app"` aberto no `<AppPicker>`,
    *  ou `null` quando o picker está fechado. */
   const [appPickerIndex, setAppPickerIndex] = useState<number | null>(null);
+  const [scriptHelpOpen, setScriptHelpOpen] = useState(false);
   /** Plano 21 — monitores conectados. Fetched no mount; `null` enquanto
    *  carregando (esconde a coluna até saber a contagem real). */
   const [monitors, setMonitors] = useState<MonitorInfo[] | null>(
@@ -471,27 +477,100 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
             </button>
           </div>
           {isScript(it.kind) && (
-            <label
+            <div
               style={{
                 display: "flex",
-                gap: 6,
+                gap: 12,
                 alignItems: "center",
                 fontSize: 12,
                 color: "var(--muted)",
                 paddingLeft: 116,
+                flexWrap: "wrap",
               }}
             >
-              <input
-                type="checkbox"
-                data-testid={`item-script-trusted-${i}`}
-                checked={!!it.trusted}
-                onChange={(e) => updateAt(i, { trusted: e.target.checked })}
-              />
-              {t("settings.editor.scriptTrustedLabel")}
-            </label>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  data-testid={`item-script-trusted-${i}`}
+                  checked={!!it.trusted}
+                  onChange={(e) => updateAt(i, { trusted: e.target.checked })}
+                />
+                {t("settings.editor.scriptTrustedLabel")}
+              </label>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t("settings.editor.scriptShellLabel")}:</span>
+                <select
+                  aria-label={`${t("settings.editor.scriptShellLabel")} ${i + 1}`}
+                  data-testid={`item-script-shell-${i}`}
+                  value={it.shell ?? ""}
+                  onChange={(e) =>
+                    updateAt(i, {
+                      shell: e.target.value === "" ? null : e.target.value,
+                    })
+                  }
+                  style={{
+                    background: "var(--input-bg)",
+                    color: "var(--fg)",
+                    border: "1px solid var(--input-border)",
+                    borderRadius: 4,
+                    padding: "4px 6px",
+                    font: "inherit",
+                    fontSize: 12,
+                  }}
+                >
+                  <option value="">
+                    {t("settings.editor.scriptShellDefault")}
+                  </option>
+                  <option value="cmd">
+                    {t("settings.editor.scriptShellOptionCmd")}
+                  </option>
+                  <option value="powershell">
+                    {t("settings.editor.scriptShellOptionPowerShell")}
+                  </option>
+                  <option value="pwsh">
+                    {t("settings.editor.scriptShellOptionPwsh")}
+                  </option>
+                  <option value="wsl">
+                    {t("settings.editor.scriptShellOptionWsl")}
+                  </option>
+                  <option value="bash">
+                    {t("settings.editor.scriptShellOptionBash")}
+                  </option>
+                  <option value="sh">
+                    {t("settings.editor.scriptShellOptionSh")}
+                  </option>
+                  <option value="zsh">
+                    {t("settings.editor.scriptShellOptionZsh")}
+                  </option>
+                </select>
+              </label>
+              <button
+                type="button"
+                data-testid={`item-script-help-${i}`}
+                aria-label={t("settings.editor.scriptHelpAria")}
+                title={t("settings.editor.scriptHelpAria")}
+                onClick={() => setScriptHelpOpen(true)}
+                style={{
+                  background: "transparent",
+                  color: "var(--fg)",
+                  border: "1px solid var(--ghost-border)",
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                {t("settings.editor.scriptHelpButton")}
+              </button>
+            </div>
           )}
         </div>
       ))}
+
+      <ScriptHelpModal
+        open={scriptHelpOpen}
+        onClose={() => setScriptHelpOpen(false)}
+      />
 
       <AppPicker
         open={appPickerIndex !== null}

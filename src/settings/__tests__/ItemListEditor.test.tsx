@@ -674,4 +674,72 @@ describe("ItemListEditor", () => {
     await Promise.resolve();
     expect(ipc.listMonitors).toHaveBeenCalled();
   });
+
+  // ---------- Issue #64: script shell selector ----------
+
+  it("shows shell selector only for script rows and propagates changes", async () => {
+    const { onChange } = await renderEditor([
+      {
+        kind: "script",
+        value: "echo hi",
+        openWith: "",
+        trusted: false,
+        shell: null,
+      },
+    ]);
+    const select = screen.getByTestId<HTMLSelectElement>("item-script-shell-0");
+    expect(select).toBeTruthy();
+    expect(select.value).toBe("");
+    fireEvent.change(select, { target: { value: "bash" } });
+    expect(onChange).toHaveBeenCalled();
+    const next = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(next[0].shell).toBe("bash");
+  });
+
+  it("does not show shell selector for non-script rows", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://x.test", openWith: "" },
+    ]);
+    expect(screen.queryByTestId("item-script-shell-0")).toBeNull();
+  });
+
+  it("collapses shell back to null when user picks system default", async () => {
+    const { onChange } = await renderEditor([
+      {
+        kind: "script",
+        value: "ls",
+        openWith: "",
+        trusted: false,
+        shell: "bash",
+      },
+    ]);
+    const select = screen.getByTestId<HTMLSelectElement>("item-script-shell-0");
+    expect(select.value).toBe("bash");
+    fireEvent.change(select, { target: { value: "" } });
+    expect(onChange).toHaveBeenCalled();
+    const next = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(next[0].shell).toBeNull();
+  });
+
+  it("opens the script help modal when the ? button is clicked on a script row", async () => {
+    await renderEditor([
+      {
+        kind: "script",
+        value: "ls",
+        openWith: "",
+        trusted: false,
+        shell: null,
+      },
+    ]);
+    expect(screen.queryByTestId("script-help-modal")).toBeNull();
+    fireEvent.click(screen.getByTestId("item-script-help-0"));
+    expect(screen.getByTestId("script-help-modal")).toBeTruthy();
+  });
+
+  it("does not show the ? help button on non-script rows", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://x.test", openWith: "" },
+    ]);
+    expect(screen.queryByTestId("item-script-help-0")).toBeNull();
+  });
 });

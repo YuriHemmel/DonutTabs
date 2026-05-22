@@ -2,7 +2,11 @@ import React from "react";
 import type { Profile } from "../core/types/Profile";
 import { Slice } from "./Slice";
 import { IconRenderer } from "./IconRenderer";
-import { sliceAngleRange } from "./geometry";
+import {
+  OUTER_SLICE_ANGULAR_GAP_RAD,
+  sliceAngleRange,
+  slicePaintRange,
+} from "./geometry";
 import { useSliceHighlight } from "./useSliceHighlight";
 
 export interface ProfileSwitcherProps {
@@ -15,6 +19,10 @@ export interface ProfileSwitcherProps {
   onSelect: (profileId: string) => void;
   /** Click na fatia "+" — cria novo perfil. */
   onCreate: () => void;
+  /** Issue #58 — paridade com o modo "tabs". Quando `true` (default),
+   *  slices ganham gap angular cosmético via `slicePaintRange`. Hit-testing
+   *  permanece sobre o setor completo via `useSliceHighlight`. */
+  sliceGapEnabled?: boolean;
 }
 
 const PLUS_KEY = "__plus_profile__";
@@ -35,9 +43,11 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
   activeProfileId,
   onSelect,
   onCreate,
+  sliceGapEnabled = true,
 }) => {
   const total = profiles.length + 1;
   const plusIndex = profiles.length;
+  const gap = sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0;
 
   const { highlighted, onMouseMove, onMouseLeave } = useSliceHighlight({
     center: { x: cx, y: cy },
@@ -53,7 +63,8 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
       onMouseLeave={onMouseLeave}
     >
       {profiles.map((profile, i) => {
-        const { start, end } = sliceAngleRange(i, total);
+        const { start, end } = slicePaintRange(i, total, gap);
+        const full = sliceAngleRange(i, total);
         const label = profile.name;
         const fallbackInitial =
           profile.name.trim().charAt(0).toUpperCase() || "?";
@@ -82,15 +93,15 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
                 cx={cx}
                 cy={cy}
                 outerR={outerR}
-                startAngle={start}
-                endAngle={end}
+                startAngle={full.start}
+                endAngle={full.end}
               />
             )}
           </g>
         );
       })}
       {(() => {
-        const { start, end } = sliceAngleRange(plusIndex, total);
+        const { start, end } = slicePaintRange(plusIndex, total, gap);
         return (
           <Slice
             key={PLUS_KEY}

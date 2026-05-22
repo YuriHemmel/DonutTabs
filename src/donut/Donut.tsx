@@ -440,6 +440,7 @@ export const Donut: React.FC<DonutProps> = ({
               setMode("tabs");
               onCreateProfile?.();
             }}
+            sliceGapEnabled={sliceGapEnabled}
           />
           <CenterCircle
             cx={cx}
