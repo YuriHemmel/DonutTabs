@@ -888,6 +888,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "donuttabs"
+version = "1.0.0"
+dependencies = [
+ "core-foundation 0.10.1",
+ "core-foundation-sys",
+ "mouse_position",
+ "parselnk",
+ "regex",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-dialog",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-shell",
+ "tauri-plugin-updater",
+ "tempfile",
+ "thiserror 1.0.69",
+ "ts-rs",
+ "url",
+ "uuid",
+ "winreg 0.52.0",
+]
+
+[[package]]
 name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4319,36 +4349,6 @@ dependencies = [
  "webview2-com",
  "window-vibrancy",
  "windows",
-]
-
-[[package]]
-name = "tauri-app"
-version = "1.0.0"
-dependencies = [
- "core-foundation 0.10.1",
- "core-foundation-sys",
- "mouse_position",
- "parselnk",
- "regex",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "sha2",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-shell",
- "tauri-plugin-updater",
- "tempfile",
- "thiserror 1.0.69",
- "ts-rs",
- "url",
- "uuid",
- "winreg 0.52.0",
 ]
 
 [[package]]
