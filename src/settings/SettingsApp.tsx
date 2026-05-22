@@ -361,9 +361,28 @@ export const SettingsApp: React.FC = () => {
           <TabList
             tabs={selectedProfile.tabs}
             selectedId={selection.mode === "edit" ? selection.tabId : null}
-            onSelect={(id) => setSelection({ mode: "edit", tabId: id })}
-            onAdd={() => setSelection({ mode: "new" })}
-            onReorder={handleReorderTabs}
+            onSelect={(id, parentPath) =>
+              setSelection({ mode: "edit", tabId: id, parentPath })
+            }
+            onAdd={(parentPath, kind) =>
+              setSelection({
+                mode: "new",
+                parentPath,
+                suggestedKind: kind,
+              })
+            }
+            onReorder={(parentPath, orderedIds) => {
+              if (parentPath.length === 0) {
+                handleReorderTabs(orderedIds);
+              } else {
+                reorderTabs(selectedProfile.id, orderedIds, parentPath).catch(
+                  (e) => {
+                    console.error("reorderTabs failed", e);
+                  },
+                );
+              }
+            }}
+            maxDepth={2}
           />
           {selection.mode === "new" ? (
             <TabEditor
