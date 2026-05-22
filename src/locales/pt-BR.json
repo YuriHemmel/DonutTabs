@@ -296,6 +296,8 @@
       "scriptShellOptionBash": "bash",
       "scriptShellOptionSh": "sh",
       "scriptShellOptionZsh": "zsh",
+      "scriptHelpButton": "?",
+      "scriptHelpAria": "Ajuda sobre scripts",
       "incognitoLabel": "Anônima",
       "incognitoHint": "Abre em modo anônimo/privado. Usa o navegador escolhido em \"Abrir com\"; se for \"Padrão do sistema\", o app detecta o navegador padrão do SO.",
       "openWithLabel": "Abrir com",
@@ -329,6 +331,19 @@
       "addChildGroup": "+ Adicionar subgrupo",
       "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui.",
       "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas."
+    },
+    "scriptHelp": {
+      "title": "Como usar scripts",
+      "howItWorksTitle": "Como funciona",
+      "howItWorksBody": "O comando é executado pelo shell escolhido no seletor \"Shell\" da linha. Padrão da plataforma: {{defaultShell}}.",
+      "chainingTitle": "Encadeamento",
+      "chainingBody": "Operadores como &&, ||, | e redirecionamentos (> >> <) funcionam como no terminal — a string inteira é passada ao shell via -c/-Command/C.",
+      "outputTitle": "Saída",
+      "outputBody": "stdout e stderr aparecem na aba \"Histórico\" do Settings quando essa opção está habilitada em \"Sistema\". Sem captura, scripts rodam fire-and-forget (sem visualização).",
+      "securityTitle": "Segurança",
+      "securityBody": "Scripts não \"Confiáveis\" pedem confirmação na primeira execução. O kill-switch \"Permitir scripts\" no perfil bloqueia toda execução de scripts no perfil, independente do flag de confiança.",
+      "examplesTitle": "Exemplos",
+      "close": "Fechar"
     },
     "tree": {
       "groupBadge": "Grupo",

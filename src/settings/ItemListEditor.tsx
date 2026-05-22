@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dialog, ipc } from "../core/ipc";
 import { AppPicker } from "./AppPicker";
+import { ScriptHelpModal } from "./ScriptHelpModal";
 import type { InstalledApp } from "../core/types/InstalledApp";
 import type { MonitorInfo } from "../core/types/MonitorInfo";
 
@@ -181,6 +182,7 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
   /** Plano 17 — index do row de `kind: "app"` aberto no `<AppPicker>`,
    *  ou `null` quando o picker está fechado. */
   const [appPickerIndex, setAppPickerIndex] = useState<number | null>(null);
+  const [scriptHelpOpen, setScriptHelpOpen] = useState(false);
   /** Plano 21 — monitores conectados. Fetched no mount; `null` enquanto
    *  carregando (esconde a coluna até saber a contagem real). */
   const [monitors, setMonitors] = useState<MonitorInfo[] | null>(
@@ -542,10 +544,33 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                   </option>
                 </select>
               </label>
+              <button
+                type="button"
+                data-testid={`item-script-help-${i}`}
+                aria-label={t("settings.editor.scriptHelpAria")}
+                title={t("settings.editor.scriptHelpAria")}
+                onClick={() => setScriptHelpOpen(true)}
+                style={{
+                  background: "transparent",
+                  color: "var(--fg)",
+                  border: "1px solid var(--ghost-border)",
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                {t("settings.editor.scriptHelpButton")}
+              </button>
             </div>
           )}
         </div>
       ))}
+
+      <ScriptHelpModal
+        open={scriptHelpOpen}
+        onClose={() => setScriptHelpOpen(false)}
+      />
 
       <AppPicker
         open={appPickerIndex !== null}

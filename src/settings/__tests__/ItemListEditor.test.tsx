@@ -720,4 +720,26 @@ describe("ItemListEditor", () => {
     const next = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(next[0].shell).toBeNull();
   });
+
+  it("opens the script help modal when the ? button is clicked on a script row", async () => {
+    await renderEditor([
+      {
+        kind: "script",
+        value: "ls",
+        openWith: "",
+        trusted: false,
+        shell: null,
+      },
+    ]);
+    expect(screen.queryByTestId("script-help-modal")).toBeNull();
+    fireEvent.click(screen.getByTestId("item-script-help-0"));
+    expect(screen.getByTestId("script-help-modal")).toBeTruthy();
+  });
+
+  it("does not show the ? help button on non-script rows", async () => {
+    await renderEditor([
+      { kind: "url", value: "https://x.test", openWith: "" },
+    ]);
+    expect(screen.queryByTestId("item-script-help-0")).toBeNull();
+  });
 });
