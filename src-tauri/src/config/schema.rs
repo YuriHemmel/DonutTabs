@@ -334,7 +334,9 @@ pub enum Item {
     /// `trusted: false` exige confirmação no `<ScriptConfirmModal>` na
     /// primeira execução; `Profile.allow_scripts: false` bloqueia toda
     /// execução de script no perfil. Configs Plano-13 sem `trusted` no JSON
-    /// deserializam como `false`.
+    /// deserializam como `false`. Issue #64: `shell` é um preset opcional
+    /// (`cmd | powershell | pwsh | wsl | bash | sh | zsh`). `None` cai no
+    /// default da plataforma (cmd no Windows, sh no Unix).
     #[serde(rename_all = "camelCase")]
     Script {
         command: String,
@@ -342,6 +344,8 @@ pub enum Item {
         trusted: bool,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         monitor: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        shell: Option<String>,
     },
 }
 
@@ -640,6 +644,7 @@ mod tests {
             monitor: None,
             command: "git pull".into(),
             trusted: true,
+            shell: None,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert!(json.contains("\"trusted\":true"));
@@ -657,7 +662,8 @@ mod tests {
             Item::Script {
                 monitor: None,
                 command: "ls".into(),
-                trusted: false
+                trusted: false,
+                shell: None,
             }
         );
     }
@@ -1101,6 +1107,7 @@ mod tests {
             monitor: Some(3),
             command: "ls".into(),
             trusted: true,
+            shell: None,
         };
         assert_eq!(url.monitor(), Some(1));
         assert_eq!(file.monitor(), Some(2));
@@ -1171,10 +1178,55 @@ mod tests {
             monitor: Some(2),
             command: "ls".into(),
             trusted: true,
+            shell: None,
         };
         let json = serde_json::to_string(&it).unwrap();
         assert!(json.contains("\"monitor\":2"));
         let back: Item = serde_json::from_str(&json).unwrap();
         assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_script_with_shell_round_trips() {
+        let it = Item::Script {
+            monitor: None,
+            command: "echo hi".into(),
+            trusted: true,
+            shell: Some("powershell".into()),
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(json.contains("\"shell\":\"powershell\""));
+        let back: Item = serde_json::from_str(&json).unwrap();
+        assert_eq!(it, back);
+    }
+
+    #[test]
+    fn item_script_without_shell_field_defaults_to_none() {
+        let it: Item =
+            serde_json::from_str(r#"{"kind":"script","command":"ls","trusted":true}"#).unwrap();
+        assert_eq!(
+            it,
+            Item::Script {
+                monitor: None,
+                command: "ls".into(),
+                trusted: true,
+                shell: None,
+            }
+        );
+    }
+
+    #[test]
+    fn item_script_with_shell_none_omits_field_in_json() {
+        let it = Item::Script {
+            monitor: None,
+            command: "ls".into(),
+            trusted: false,
+            shell: None,
+        };
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(
+            !json.contains("\"shell\""),
+            "field should be skipped when None: {json}"
+        );
     }
 }

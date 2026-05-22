@@ -88,6 +88,7 @@ function itemToDraft(it: Item): ItemDraft {
     openWith: "",
     trusted: it.trusted,
     monitor: it.monitor ?? null,
+    shell: it.shell ?? null,
   };
 }
 
@@ -125,6 +126,7 @@ function draftToItem(d: ItemDraft): Item {
     command: d.value,
     trusted: d.trusted ?? false,
     monitor,
+    shell: d.shell ?? null,
   };
 }
 
@@ -204,6 +206,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
           trusted: it.trusted,
           monitor: it.monitor ?? null,
           incognito: it.incognito,
+          shell: it.shell ?? null,
         }))
         .filter((it) => it.value.length > 0);
       if (trimmed.length === 0) {

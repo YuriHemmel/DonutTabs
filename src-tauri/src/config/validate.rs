@@ -2,6 +2,12 @@ use super::schema::*;
 use crate::errors::{AppError, AppResult};
 use crate::shortcut;
 
+/// Issue #64 — presets canônicos suportados pelo launcher (`script_shell_invocation`).
+/// Validate rejeita valores fora desta lista. Cross-OS mismatch (ex. `cmd` no Linux)
+/// não é rejeitado aqui — é checagem runtime via "program not found".
+pub(crate) const SCRIPT_SHELL_ALLOWLIST: &[&str] =
+    &["cmd", "powershell", "pwsh", "wsl", "bash", "sh", "zsh"];
+
 /// Retorna `Ok(())` se a config v2 é semanticamente válida.
 /// Retorna `Err(AppError::Config { code, context })` com o primeiro erro encontrado.
 pub fn validate(config: &Config) -> AppResult<()> {
@@ -298,7 +304,7 @@ fn validate_item(profile: &Profile, tab: &Tab, item: &Item) -> AppResult<()> {
                 ));
             }
         }
-        Item::Script { command, .. } => {
+        Item::Script { command, shell, .. } => {
             if command.trim().is_empty() {
                 return Err(AppError::config(
                     "script_command_empty",
@@ -307,6 +313,18 @@ fn validate_item(profile: &Profile, tab: &Tab, item: &Item) -> AppResult<()> {
                         ("profileId", profile.id.to_string()),
                     ],
                 ));
+            }
+            if let Some(s) = shell {
+                if !SCRIPT_SHELL_ALLOWLIST.contains(&s.as_str()) {
+                    return Err(AppError::config(
+                        "script_shell_invalid",
+                        &[
+                            ("tabId", tab.id.to_string()),
+                            ("profileId", profile.id.to_string()),
+                            ("value", s.clone()),
+                        ],
+                    ));
+                }
             }
         }
     }
@@ -891,6 +909,7 @@ mod tests {
                 monitor: None,
                 command: "cargo build".into(),
                 trusted: false,
+                shell: None,
             }],
         ));
         // Validate is structural — não importa se profile.allow_scripts é
@@ -908,6 +927,7 @@ mod tests {
                 monitor: None,
                 command: "".into(),
                 trusted: false,
+                shell: None,
             }],
         ));
         assert_config_code(validate(&cfg).unwrap_err(), "script_command_empty");
@@ -1354,8 +1374,66 @@ mod tests {
                     monitor: None,
                     command: "git pull".into(),
                     trusted: false,
+                    shell: None,
                 },
             ],
+        ));
+        assert!(validate(&cfg).is_ok());
+    }
+
+    // ---------- Issue #64: script shell allowlist ----------
+
+    #[test]
+    fn validate_accepts_script_with_valid_shell_preset() {
+        for preset in ["cmd", "powershell", "pwsh", "wsl", "bash", "sh", "zsh"] {
+            let mut cfg = base_config();
+            cfg.profiles[0].tabs.push(tab_with(
+                Some("t"),
+                None,
+                vec![Item::Script {
+                    monitor: None,
+                    command: "ls".into(),
+                    trusted: false,
+                    shell: Some(preset.into()),
+                }],
+            ));
+            cfg.profiles[0].allow_scripts = true;
+            assert!(
+                validate(&cfg).is_ok(),
+                "preset {preset:?} should be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_rejects_script_with_unknown_shell() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("t"),
+            None,
+            vec![Item::Script {
+                monitor: None,
+                command: "ls".into(),
+                trusted: false,
+                shell: Some("nu".into()),
+            }],
+        ));
+        let err = validate(&cfg).unwrap_err();
+        assert_config_code(err, "script_shell_invalid");
+    }
+
+    #[test]
+    fn validate_accepts_script_with_no_shell() {
+        let mut cfg = base_config();
+        cfg.profiles[0].tabs.push(tab_with(
+            Some("t"),
+            None,
+            vec![Item::Script {
+                monitor: None,
+                command: "ls".into(),
+                trusted: false,
+                shell: None,
+            }],
         ));
         assert!(validate(&cfg).is_ok());
     }

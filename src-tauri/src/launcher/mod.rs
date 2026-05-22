@@ -15,6 +15,7 @@ pub trait ScriptCaptureExecutor: Send + Sync {
         tab_id: Uuid,
         item_index: usize,
         command: &str,
+        shell: Option<&str>,
     ) -> Result<(), String>;
 }
 
@@ -38,7 +39,7 @@ pub trait Opener: Send + Sync {
     fn open_url(&self, url: &str, with: Option<&str>) -> Result<(), String>;
     fn open_path(&self, path: &str, with: Option<&str>) -> Result<(), String>;
     fn spawn_app(&self, name: &str) -> Result<(), String>;
-    fn spawn_script(&self, command: &str) -> Result<(), String>;
+    fn spawn_script(&self, command: &str, shell: Option<&str>) -> Result<(), String>;
     /// Abre uma URL no navegador `browser` em modo anônimo/privado. Browser
     /// é resolvido para flag CLI específico via `browser_incognito_flag`.
     /// Implementações reais spawnam o processo direto via plugin-shell
@@ -108,6 +109,32 @@ pub fn browser_incognito_flag(browser: &str) -> Option<&'static str> {
     // Safari não suporta CLI flag pra Private Browsing. Tor Browser sempre
     // é privado por design; flag não necessária.
     None
+}
+
+/// Issue #64 — mapeia preset de shell pra `(program, args_prefix)`. `None`
+/// cai no default da plataforma em compile-time (cmd no Windows, sh no Unix).
+/// `Some(unknown)` cai no platform default — defesa contra valores que
+/// escapem da validação (não deveria acontecer porque `validate` rejeita).
+pub fn script_shell_invocation(shell: Option<&str>) -> (&'static str, &'static [&'static str]) {
+    match shell {
+        Some("cmd") => ("cmd", &["/C"]),
+        Some("powershell") => ("powershell", &["-Command"]),
+        Some("pwsh") => ("pwsh", &["-Command"]),
+        Some("wsl") => ("wsl", &["-e", "bash", "-c"]),
+        Some("bash") => ("bash", &["-c"]),
+        Some("sh") => ("sh", &["-c"]),
+        Some("zsh") => ("zsh", &["-c"]),
+        _ => {
+            #[cfg(target_os = "windows")]
+            {
+                ("cmd", &["/C"])
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                ("sh", &["-c"])
+            }
+        }
+    }
 }
 
 /// Resultado da tentativa de abrir uma aba: lista de erros por item.
@@ -213,11 +240,11 @@ pub fn launch_tab(
                     outcome.failures.push((name.clone(), e));
                 }
             }
-            Item::Script { command, .. } => {
+            Item::Script { command, shell, .. } => {
                 let result = if let Some(exec) = script_capture {
-                    exec.execute_script(profile_id, tab.id, idx, command)
+                    exec.execute_script(profile_id, tab.id, idx, command, shell.as_deref())
                 } else {
-                    opener.spawn_script(command)
+                    opener.spawn_script(command, shell.as_deref())
                 };
                 if let Err(e) = result {
                     outcome.failures.push((command.clone(), e));
@@ -369,18 +396,19 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
         }
     }
 
-    fn spawn_script(&self, command: &str) -> Result<(), String> {
+    fn spawn_script(&self, command: &str, shell: Option<&str>) -> Result<(), String> {
         use tauri_plugin_shell::ShellExt;
         // Trust + profile.allow_scripts gating já aconteceu no `open_tab`;
         // aqui só executamos. Shell wrapping permite operadores (&&, |, etc.).
-        #[cfg(target_os = "windows")]
-        let (shell, flag) = ("cmd", "/C");
-        #[cfg(not(target_os = "windows"))]
-        let (shell, flag) = ("sh", "-c");
+        // Issue #64: preset opcional via `script_shell_invocation`. `None` cai
+        // no default da plataforma (cmd no Windows, sh no Unix).
+        let (program, prefix) = script_shell_invocation(shell);
+        let mut args: Vec<&str> = prefix.to_vec();
+        args.push(command);
         self.app
             .shell()
-            .command(shell)
-            .args([flag, command])
+            .command(program)
+            .args(args)
             .spawn()
             .map(|_| ())
             .map_err(|e| e.to_string())
@@ -404,7 +432,7 @@ mod tests {
         url_calls: Mutex<Vec<Call>>,
         path_calls: Mutex<Vec<Call>>,
         app_calls: Mutex<Vec<String>>,
-        script_calls: Mutex<Vec<String>>,
+        script_calls: Mutex<Vec<(String, Option<String>)>>,
         /// Plano 21 — registra cada chamada `warp_cursor_to_monitor`. Pré-launch:
         /// a ordem dos warps relativa aos opens é o que validamos nos tests.
         warp_calls: Mutex<Vec<u32>>,
@@ -493,8 +521,11 @@ mod tests {
             }
         }
 
-        fn spawn_script(&self, command: &str) -> Result<(), String> {
-            self.script_calls.lock().unwrap().push(command.to_string());
+        fn spawn_script(&self, command: &str, shell: Option<&str>) -> Result<(), String> {
+            self.script_calls
+                .lock()
+                .unwrap()
+                .push((command.to_string(), shell.map(str::to_string)));
             if self.fail_scripts.iter().any(|f| f == command) {
                 Err("simulated script failure".into())
             } else {
@@ -756,18 +787,20 @@ mod tests {
                 monitor: None,
                 command: "ls".into(),
                 trusted: false,
+                shell: None,
             },
             Item::Script {
                 monitor: None,
                 command: "git status".into(),
                 trusted: true,
+                shell: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
         assert_eq!(
             *opener.script_calls.lock().unwrap(),
-            vec!["ls".to_string(), "git status".to_string()]
+            vec![("ls".to_string(), None), ("git status".to_string(), None)]
         );
     }
 
@@ -798,6 +831,7 @@ mod tests {
             monitor: None,
             command: "rm -rf /".into(),
             trusted: true,
+            shell: None,
         }]);
         match launch_tab(&tab, &opener, Uuid::nil(), None).unwrap_err() {
             AppError::Launcher { code, .. } => assert_eq!(code, "all_items_failed"),
@@ -849,6 +883,7 @@ mod tests {
                 monitor: None,
                 command: "git pull".into(),
                 trusted: true,
+                shell: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
@@ -883,6 +918,7 @@ mod tests {
             tab_id: Uuid,
             item_index: usize,
             command: &str,
+            _shell: Option<&str>,
         ) -> Result<(), String> {
             self.calls
                 .lock()
@@ -912,11 +948,13 @@ mod tests {
                 monitor: None,
                 command: "ls".into(),
                 trusted: true,
+                shell: None,
             },
             Item::Script {
                 monitor: None,
                 command: "git status".into(),
                 trusted: true,
+                shell: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener, profile_id, Some(&executor)).unwrap();
@@ -941,11 +979,15 @@ mod tests {
             monitor: None,
             command: "ls".into(),
             trusted: true,
+            shell: None,
         }]);
         // `None` desliga captura — script vai pro fire-and-forget legacy.
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
         assert!(outcome.failures.is_empty());
-        assert_eq!(*opener.script_calls.lock().unwrap(), vec!["ls".to_string()]);
+        assert_eq!(
+            *opener.script_calls.lock().unwrap(),
+            vec![("ls".to_string(), None)]
+        );
         assert!(executor.calls.lock().unwrap().is_empty());
     }
 
@@ -959,11 +1001,13 @@ mod tests {
                 monitor: None,
                 command: "good".into(),
                 trusted: true,
+                shell: None,
             },
             Item::Script {
                 monitor: None,
                 command: "bad-cmd".into(),
                 trusted: true,
+                shell: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), Some(&executor)).unwrap();
@@ -1079,6 +1123,7 @@ mod tests {
                 monitor: Some(0),
                 command: "git pull".into(),
                 trusted: true,
+                shell: None,
             },
         ]);
         let outcome = launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
@@ -1264,5 +1309,76 @@ mod tests {
             inc,
             vec![("https://example.com".into(), Some("Chrome".into()))]
         );
+    }
+
+    // ---------- Issue #64: script_shell_invocation + propagation ----------
+
+    #[test]
+    fn script_shell_invocation_returns_expected_tuples_per_preset() {
+        assert_eq!(script_shell_invocation(Some("cmd")), ("cmd", &["/C"][..]));
+        assert_eq!(
+            script_shell_invocation(Some("powershell")),
+            ("powershell", &["-Command"][..])
+        );
+        assert_eq!(
+            script_shell_invocation(Some("pwsh")),
+            ("pwsh", &["-Command"][..])
+        );
+        assert_eq!(
+            script_shell_invocation(Some("wsl")),
+            ("wsl", &["-e", "bash", "-c"][..])
+        );
+        assert_eq!(script_shell_invocation(Some("bash")), ("bash", &["-c"][..]));
+        assert_eq!(script_shell_invocation(Some("sh")), ("sh", &["-c"][..]));
+        assert_eq!(script_shell_invocation(Some("zsh")), ("zsh", &["-c"][..]));
+    }
+
+    #[test]
+    fn script_shell_invocation_falls_back_to_platform_default_on_none() {
+        let (program, _) = script_shell_invocation(None);
+        #[cfg(target_os = "windows")]
+        assert_eq!(program, "cmd");
+        #[cfg(not(target_os = "windows"))]
+        assert_eq!(program, "sh");
+    }
+
+    #[test]
+    fn script_shell_invocation_falls_back_to_platform_default_on_unknown() {
+        let (program, _) = script_shell_invocation(Some("foobar"));
+        #[cfg(target_os = "windows")]
+        assert_eq!(program, "cmd");
+        #[cfg(not(target_os = "windows"))]
+        assert_eq!(program, "sh");
+    }
+
+    #[test]
+    fn launch_tab_passes_shell_to_spawn_script() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![Item::Script {
+            monitor: None,
+            command: "echo hi".into(),
+            trusted: true,
+            shell: Some("powershell".into()),
+        }]);
+        launch_tab(&tab, &opener, Uuid::new_v4(), None).unwrap();
+        let calls = opener.script_calls.lock().unwrap();
+        assert_eq!(
+            calls.as_slice(),
+            &[("echo hi".to_string(), Some("powershell".to_string()))]
+        );
+    }
+
+    #[test]
+    fn launch_tab_passes_none_shell_when_unset() {
+        let opener = MockOpener::new();
+        let tab = tab_with_items(vec![Item::Script {
+            monitor: None,
+            command: "ls".into(),
+            trusted: true,
+            shell: None,
+        }]);
+        launch_tab(&tab, &opener, Uuid::new_v4(), None).unwrap();
+        let calls = opener.script_calls.lock().unwrap();
+        assert_eq!(calls.as_slice(), &[("ls".to_string(), None)]);
     }
 }

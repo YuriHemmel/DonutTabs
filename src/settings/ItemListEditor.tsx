@@ -24,6 +24,10 @@ export interface ItemDraft {
    *  escolhido (`openWith`) em modo anônimo/privado. Requer `openWith`
    *  non-empty; combinação inválida é normalizada pra `false` no submit. */
   incognito?: boolean;
+  /** Issue #64 — preset de shell para `kind: "script"`. `null`/undefined =
+   *  default da plataforma (cmd/sh). Allowlist: cmd | powershell | pwsh |
+   *  wsl | bash | sh | zsh. */
+  shell?: string | null;
 }
 
 export interface ItemListEditorProps {
@@ -471,24 +475,74 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
             </button>
           </div>
           {isScript(it.kind) && (
-            <label
+            <div
               style={{
                 display: "flex",
-                gap: 6,
+                gap: 12,
                 alignItems: "center",
                 fontSize: 12,
                 color: "var(--muted)",
                 paddingLeft: 116,
+                flexWrap: "wrap",
               }}
             >
-              <input
-                type="checkbox"
-                data-testid={`item-script-trusted-${i}`}
-                checked={!!it.trusted}
-                onChange={(e) => updateAt(i, { trusted: e.target.checked })}
-              />
-              {t("settings.editor.scriptTrustedLabel")}
-            </label>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  data-testid={`item-script-trusted-${i}`}
+                  checked={!!it.trusted}
+                  onChange={(e) => updateAt(i, { trusted: e.target.checked })}
+                />
+                {t("settings.editor.scriptTrustedLabel")}
+              </label>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t("settings.editor.scriptShellLabel")}:</span>
+                <select
+                  aria-label={`${t("settings.editor.scriptShellLabel")} ${i + 1}`}
+                  data-testid={`item-script-shell-${i}`}
+                  value={it.shell ?? ""}
+                  onChange={(e) =>
+                    updateAt(i, {
+                      shell: e.target.value === "" ? null : e.target.value,
+                    })
+                  }
+                  style={{
+                    background: "var(--input-bg)",
+                    color: "var(--fg)",
+                    border: "1px solid var(--input-border)",
+                    borderRadius: 4,
+                    padding: "4px 6px",
+                    font: "inherit",
+                    fontSize: 12,
+                  }}
+                >
+                  <option value="">
+                    {t("settings.editor.scriptShellDefault")}
+                  </option>
+                  <option value="cmd">
+                    {t("settings.editor.scriptShellOptionCmd")}
+                  </option>
+                  <option value="powershell">
+                    {t("settings.editor.scriptShellOptionPowerShell")}
+                  </option>
+                  <option value="pwsh">
+                    {t("settings.editor.scriptShellOptionPwsh")}
+                  </option>
+                  <option value="wsl">
+                    {t("settings.editor.scriptShellOptionWsl")}
+                  </option>
+                  <option value="bash">
+                    {t("settings.editor.scriptShellOptionBash")}
+                  </option>
+                  <option value="sh">
+                    {t("settings.editor.scriptShellOptionSh")}
+                  </option>
+                  <option value="zsh">
+                    {t("settings.editor.scriptShellOptionZsh")}
+                  </option>
+                </select>
+              </label>
+            </div>
           )}
         </div>
       ))}
