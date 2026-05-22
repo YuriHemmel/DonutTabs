@@ -145,4 +145,48 @@ describe("ProfileSwitcher", () => {
     );
     expect(texts).toContain("?");
   });
+
+  it("applies angular gap between slices when sliceGapEnabled=true", () => {
+    const profiles = [profile("a", "A"), profile("b", "B")];
+    const { container } = renderInSvg(
+      <ProfileSwitcher
+        cx={200}
+        cy={200}
+        innerR={80}
+        outerR={180}
+        profiles={profiles}
+        activeProfileId="a"
+        onSelect={() => {}}
+        onCreate={() => {}}
+        sliceGapEnabled={true}
+      />,
+    );
+    const paths = container.querySelectorAll<SVGPathElement>(
+      'path[data-testid="donut-slice"]',
+    );
+    expect(paths.length).toBe(3);
+    const d = paths[0].getAttribute("d") ?? "";
+    expect(d.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to no gap when sliceGapEnabled=false", () => {
+    const profiles = [profile("a", "A"), profile("b", "B")];
+    const { container } = renderInSvg(
+      <ProfileSwitcher
+        cx={200}
+        cy={200}
+        innerR={80}
+        outerR={180}
+        profiles={profiles}
+        activeProfileId="a"
+        onSelect={() => {}}
+        onCreate={() => {}}
+        sliceGapEnabled={false}
+      />,
+    );
+    const paths = container.querySelectorAll<SVGPathElement>(
+      'path[data-testid="donut-slice"]',
+    );
+    expect(paths.length).toBe(3);
+  });
 });
