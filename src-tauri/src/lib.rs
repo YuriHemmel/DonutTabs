@@ -138,12 +138,21 @@ pub fn run() {
             }
 
             // Sincroniza o estado do autostart no SO com o config (best-effort).
-            // Apenas garante o `enable()` quando `cfg.system.autostart == true`
-            // E o SO ainda não está habilitado — evita brigar com toggles
-            // manuais (Task Scheduler / launchctl). Quando o config diz `false`
-            // não fazemos `disable()` proativo: a única forma de o app desligar
-            // o autostart é via comando `set_autostart` explícito.
-            // Falha típica em sandbox (snap/flatpak) — log e segue.
+            // Quando `cfg.system.autostart == true` sempre re-registramos
+            // (`disable()` + `enable()`) para que o entry do SO aponte para
+            // `current_exe()` atual. Isso é necessário porque após uma
+            // atualização no Windows o caminho do executável muda
+            // (`%LOCALAPPDATA%\Programs\<productName>\<productName>.exe`
+            // — quando `productName` mudou entre versões, ou quando o NSIS
+            // instala lado-a-lado em vez de upgrade in-place), mas o entry
+            // em `HKCU\...\Run` continua apontando para o EXE antigo. Sem
+            // refresh, após reboot o autostart sobe a versão anterior
+            // (issue #74). A operação é idempotente — no macOS reescreve a
+            // LaunchAgent plist com o mesmo path; no Linux idem o
+            // `.desktop`. Quando o config diz `false` não fazemos
+            // `disable()` proativo: a única forma de o app desligar o
+            // autostart é via comando `set_autostart` explícito. Falha
+            // típica em sandbox (snap/flatpak) — log e segue.
             {
                 use tauri_plugin_autostart::ManagerExt;
                 let cfg = {
@@ -153,18 +162,18 @@ pub fn run() {
                 };
                 if cfg.system.autostart {
                     let manager = app.autolaunch();
-                    match manager.is_enabled() {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            if let Err(e) = manager.enable() {
-                                eprintln!(
-                                    "[setup] autostart enable failed ({e:?}); config says on but SO state stays off"
-                                );
-                            }
-                        }
-                        Err(e) => eprintln!(
-                            "[setup] autostart is_enabled query failed ({e:?}); skipping reconcile"
-                        ),
+                    // `disable()` ignora-se silenciosamente se já não havia
+                    // entry — o objetivo é só garantir o re-`enable()` com
+                    // path atualizado.
+                    if let Err(e) = manager.disable() {
+                        eprintln!(
+                            "[setup] autostart disable (pre-refresh) failed ({e:?}); will try enable anyway"
+                        );
+                    }
+                    if let Err(e) = manager.enable() {
+                        eprintln!(
+                            "[setup] autostart enable failed ({e:?}); config says on but SO state stays off"
+                        );
                     }
                 }
             }
