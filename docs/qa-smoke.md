@@ -22,6 +22,15 @@ Rodar este checklist antes de considerar o Plano 1 concluído. Repetir em cada S
 - [ ] **Tray → Abrir donut**: abre donut (no cursor atual).
 - [ ] **Tray → Sair**: app encerra limpamente. Atalho global deixa de responder.
 
+## Issue #74 — autostart refresh em todo startup
+
+> Pré-requisito: build/install real (`npm run tauri build` + instalar bundle), não dev. Autostart entry só é registrado pelo plugin em release.
+
+- [ ] **Refresh idempotente**: ativar autostart em Settings → Aparência → Sistema. Verificar entry no SO (Windows: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; macOS: `~/Library/LaunchAgents/<bundleId>.plist`; Linux: `~/.config/autostart/<app>.desktop`). Reabrir o app → entry continua presente apontando para o EXE atual (sem race / sumiço).
+- [ ] **Refresh após simulação de update no Windows**: ativar autostart, fechar o app, mover o EXE manualmente para outro path (simulando reinstall side-by-side), atualizar o entry do registry para apontar para o EXE no path antigo (agora inexistente), reabrir o app **a partir do path novo** → após o setup hook, o registry entry passa a apontar para o EXE novo. Reboot → app sobe na versão correta.
+- [ ] **Config off não toca SO**: ativar autostart manualmente via Task Scheduler (Win) / launchctl (macOS) / autostart manager (Linux) com `cfg.system.autostart == false` → reabrir o app → entry manual permanece intocado (o setup hook não chama `disable()` proativo).
+- [ ] **Falha silenciosa em sandbox**: rodar versão snap/flatpak no Linux com permissão de autostart negada → log mostra `[setup] autostart disable/enable failed (...)` mas app continua subindo normal.
+
 ## Plano 19 — output capture pra scripts
 
 > Pré-requisito: criar uma aba com `Item::Script { command, trusted: true }` e `Profile.allowScripts: true`. Comandos de teste: `echo hello`, `echo err 1>&2`, `sleep 30`, `seq 15000` (gera 15K linhas).
