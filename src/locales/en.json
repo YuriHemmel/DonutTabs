@@ -111,7 +111,8 @@
       "appearance": "Appearance",
       "shortcut": "Shortcut",
       "system": "System",
-      "history": "History"
+      "history": "History",
+      "about": "About"
     },
     "profile": {
       "label": "Profile:",
@@ -148,7 +149,6 @@
         "general": "General",
         "donut": "Donut",
         "scripts": "Scripts",
-        "updates": "Updates",
         "backupAndTutorial": "Backup and tutorial"
       },
       "allowScriptsLabel": "Allow scripts in this profile",
@@ -205,6 +205,20 @@
         "cancel": "Cancel run",
         "copy": "Copy"
       }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "Radial tab launcher triggered by a global shortcut.",
+      "version": "Version",
+      "versionValue": "v{{version}}",
+      "versionLoading": "…",
+      "author": "Author",
+      "authorName": "Yuri Hemmel",
+      "repository": "🔗 GitHub repository",
+      "updates": "Updates",
+      "support": "Support the project",
+      "supportBody": "If DonutTabs helps you day-to-day, consider supporting the project. Every donation helps keep development active.",
+      "kofiButton": "☕ Support on Ko-fi"
     },
     "icon": {
       "modalTitle": "Pick an icon",

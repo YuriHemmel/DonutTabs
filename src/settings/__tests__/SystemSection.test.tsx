@@ -15,8 +15,6 @@ async function renderSection(overrides: Partial<{
   onImportConfig: () => void;
   allowScripts: boolean;
   onAllowScriptsChange: (a: boolean) => void;
-  autoCheckUpdates: boolean;
-  onAutoCheckUpdatesChange: (e: boolean) => void;
   scriptHistoryEnabled: boolean;
   onScriptHistoryEnabledChange: (e: boolean) => void;
 }> = {}) {

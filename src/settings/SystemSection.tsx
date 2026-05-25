@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Language } from "../core/types/Language";
 import type { SpawnPosition } from "../core/types/SpawnPosition";
-import { UpdateCard } from "./UpdateCard";
 
 export interface SystemSectionProps {
   language: Language;
@@ -16,9 +15,6 @@ export interface SystemSectionProps {
   /** Plano 14: kill-switch global de scripts no perfil em edição. */
   allowScripts?: boolean;
   onAllowScriptsChange?: (allow: boolean) => void;
-  /** Plano 18: toggle global do check de update no startup. */
-  autoCheckUpdates?: boolean;
-  onAutoCheckUpdatesChange?: (enabled: boolean) => void;
   /** Issue #54 (rev) — habilita captura de saída de scripts E expõe a aba
    *  "Histórico" no Settings. Quando `false`, scripts continuam rodando mas
    *  saída não é capturada e a aba some da nav. */
@@ -59,8 +55,6 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
   onImportConfig,
   allowScripts,
   onAllowScriptsChange,
-  autoCheckUpdates,
-  onAutoCheckUpdatesChange,
   scriptHistoryEnabled,
   onScriptHistoryEnabledChange,
   spawnPosition,
@@ -219,19 +213,6 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
               </small>
             </div>
           )}
-        </fieldset>
-      )}
-
-      {/* Atualizações: card do updater. */}
-      {autoCheckUpdates !== undefined && onAutoCheckUpdatesChange && (
-        <fieldset style={groupStyle}>
-          <legend style={legendStyle}>
-            {t("settings.system.groups.updates")}
-          </legend>
-          <UpdateCard
-            autoCheckUpdates={autoCheckUpdates}
-            onAutoCheckUpdatesChange={onAutoCheckUpdatesChange}
-          />
         </fieldset>
       )}
 

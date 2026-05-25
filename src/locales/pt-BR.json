@@ -111,7 +111,8 @@
       "appearance": "Aparência",
       "shortcut": "Atalho",
       "system": "Sistema",
-      "history": "Histórico"
+      "history": "Histórico",
+      "about": "Sobre"
     },
     "profile": {
       "label": "Perfil:",
@@ -148,7 +149,6 @@
         "general": "Geral",
         "donut": "Donut",
         "scripts": "Scripts",
-        "updates": "Atualizações",
         "backupAndTutorial": "Backup e tutorial"
       },
       "allowScriptsLabel": "Permitir scripts neste perfil",
@@ -205,6 +205,20 @@
         "cancel": "Cancelar execução",
         "copy": "Copiar"
       }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "Lançador de abas radial via atalho global.",
+      "version": "Versão",
+      "versionValue": "v{{version}}",
+      "versionLoading": "…",
+      "author": "Autor",
+      "authorName": "Yuri Hemmel",
+      "repository": "🔗 Repositório no GitHub",
+      "updates": "Atualizações",
+      "support": "Apoie o projeto",
+      "supportBody": "Se o DonutTabs te ajuda no dia a dia, considere apoiar o projeto. Cada doação ajuda a manter o desenvolvimento ativo.",
+      "kofiButton": "☕ Apoiar no Ko-fi"
     },
     "icon": {
       "modalTitle": "Escolher ícone",
