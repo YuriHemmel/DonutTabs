@@ -141,6 +141,11 @@ export const SettingsApp: React.FC = () => {
   const configRef = useRef<Config | null>(config);
   configRef.current = config;
   const pendingIntentRef = useRef<string | null>(null);
+  // Issue #76 — guarda o último `activeProfileId` visto para detectar
+  // mudanças externas (donut, "definir como ativo" no Settings, import).
+  // `null` antes do primeiro config carregar; sincronizado pelo effect
+  // abaixo.
+  const prevActiveProfileIdRef = useRef<string | null>(null);
 
   const apply = (target: IntentTarget) => {
     setSection(target.section);
@@ -192,12 +197,24 @@ export const SettingsApp: React.FC = () => {
       const target = resolveIntent(pending, config);
       if (target) {
         apply(target);
+        prevActiveProfileIdRef.current = config.activeProfileId;
         return;
       }
     }
-    if (selectedProfileId === null) {
-      setSelectedProfileId(config.activeProfileId);
+    // Issue #76 — quando o perfil ativo muda externamente (donut, botão
+    // "definir como ativo", import), retargeta o editor pro novo ativo
+    // pra que a seção "Abas" mostre as abas certas. Usuário ainda pode
+    // selecionar manualmente outro perfil no picker depois — só sobrescreve
+    // quando `activeProfileId` realmente muda entre snapshots.
+    const prev = prevActiveProfileIdRef.current;
+    const next = config.activeProfileId;
+    if (prev !== null && prev !== next) {
+      setSelectedProfileId(next);
+      setSelection({ mode: "empty" });
+    } else if (selectedProfileId === null) {
+      setSelectedProfileId(next);
     }
+    prevActiveProfileIdRef.current = next;
   }, [config]);
 
   // Issue #39 — se o perfil sob edição sumiu do config (ex: outra janela

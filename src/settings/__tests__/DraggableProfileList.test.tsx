@@ -128,7 +128,7 @@ describe("DraggableProfileList", () => {
     expect(props.onSelect).toHaveBeenCalledWith("p2");
   });
 
-  it("active profile shows the gold marker", async () => {
+  it("active profile shows the 'Ativo' badge", async () => {
     await renderList({
       profiles: [
         profile({ id: "p1" }),
@@ -136,8 +136,23 @@ describe("DraggableProfileList", () => {
       ],
       activeId: "p2",
     });
-    expect(screen.getByTestId("profile-chip-active-p2")).toBeTruthy();
+    const badge = screen.getByTestId("profile-chip-active-p2");
+    expect(badge).toBeTruthy();
+    expect(badge.textContent).toMatch(/ativo/i);
     expect(screen.queryByTestId("profile-chip-active-p1")).toBeNull();
+  });
+
+  it("selected profile shows the editing pencil marker", async () => {
+    await renderList({
+      profiles: [
+        profile({ id: "p1" }),
+        profile({ id: "p2", name: "Estudo" }),
+      ],
+      selectedId: "p2",
+      activeId: "p1",
+    });
+    expect(screen.getByTestId("profile-chip-editing-p2")).toBeTruthy();
+    expect(screen.queryByTestId("profile-chip-editing-p1")).toBeNull();
   });
 
   it("dragging chip p1 over the right half of chip p2 emits onReorder([p2, p1])", async () => {

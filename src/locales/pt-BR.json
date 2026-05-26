@@ -122,6 +122,7 @@
       "activate": "Definir como perfil ativo",
       "activeMarker": "(ativo)",
       "activeBadge": "Ativo",
+      "editingMarker": "Editando",
       "sectionTitle": "Perfis",
       "addProfile": "Adicionar perfil",
       "selectPrompt": "Selecione um perfil para editar ou clique em \"+ Adicionar perfil\".",

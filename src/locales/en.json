@@ -122,6 +122,7 @@
       "activate": "Set as active profile",
       "activeMarker": "(active)",
       "activeBadge": "Active",
+      "editingMarker": "Editing",
       "sectionTitle": "Profiles",
       "addProfile": "Add profile",
       "selectPrompt": "Select a profile to edit or click \"+ Add profile\".",

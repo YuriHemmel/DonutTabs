@@ -56,7 +56,7 @@ describe("ProfilePicker", () => {
     expect(screen.getByTestId("profile-chip-p2")).toBeTruthy();
   });
 
-  it("active profile shows the gold marker", async () => {
+  it("active profile shows the 'Ativo' badge", async () => {
     await renderPicker({
       profiles: [
         profile({ id: "p1", name: "Padrão" }),
@@ -65,8 +65,23 @@ describe("ProfilePicker", () => {
       selectedId: "p1",
       activeId: "p2",
     });
-    expect(screen.getByTestId("profile-chip-active-p2")).toBeTruthy();
+    const badge = screen.getByTestId("profile-chip-active-p2");
+    expect(badge).toBeTruthy();
+    expect(badge.textContent).toMatch(/ativo/i);
     expect(screen.queryByTestId("profile-chip-active-p1")).toBeNull();
+  });
+
+  it("selected profile shows the editing pencil marker", async () => {
+    await renderPicker({
+      profiles: [
+        profile({ id: "p1", name: "Padrão" }),
+        profile({ id: "p2", name: "Estudo" }),
+      ],
+      selectedId: "p1",
+      activeId: "p2",
+    });
+    expect(screen.getByTestId("profile-chip-editing-p1")).toBeTruthy();
+    expect(screen.queryByTestId("profile-chip-editing-p2")).toBeNull();
   });
 
   it("calls onSelect when a chip is clicked", async () => {
