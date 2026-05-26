@@ -208,7 +208,7 @@
     },
     "about": {
       "appName": "DonutTabs",
-      "description": "Lançador de abas radial via atalho global.",
+      "description": "Acesse seus sites, apps e arquivos favoritos com um atalho — direto do seu cursor.",
       "version": "Versão",
       "versionValue": "v{{version}}",
       "author": "Autor",

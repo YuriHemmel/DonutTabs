@@ -68,7 +68,7 @@ describe("AboutSection", () => {
     vi.mocked(getVersion).mockResolvedValue("1.1.0");
     await renderSection();
     expect(screen.getByText("DonutTabs")).toBeTruthy();
-    expect(screen.getByText(/Lançador de abas radial/i)).toBeTruthy();
+    expect(screen.getByText(/sites, apps e arquivos favoritos/i)).toBeTruthy();
     expect(screen.getByText(/Yuri Hemmel/)).toBeTruthy();
   });
 

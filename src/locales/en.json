@@ -208,7 +208,7 @@
     },
     "about": {
       "appName": "DonutTabs",
-      "description": "Radial tab launcher triggered by a global shortcut.",
+      "description": "Open your favorite sites, apps and files with a shortcut — right from your cursor.",
       "version": "Version",
       "versionValue": "v{{version}}",
       "author": "Author",
