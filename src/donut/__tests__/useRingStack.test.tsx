@@ -114,4 +114,46 @@ describe("useRingStack", () => {
     expect(result.current.expandedGroupIds).toEqual([]);
     expect(result.current.rings).toHaveLength(1);
   });
+
+  it("expand at depth 0 opens ring 1 with the group's children", () => {
+    const tabs = [group("g", [leaf("g1"), leaf("g2")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    expect(result.current.expandedGroupIds).toEqual(["g"]);
+    expect(result.current.rings).toHaveLength(2);
+    expect(result.current.rings[1].tabs.map((t) => t.id)).toEqual(["g1", "g2"]);
+  });
+
+  it("expand is idempotent: re-expanding the same group keeps ring open", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    expect(result.current.rings).toHaveLength(2);
+    // Diferente de toggle: chamar de novo NÃO fecha.
+    act(() => result.current.expand("g", 0));
+    expect(result.current.expandedGroupIds).toEqual(["g"]);
+    expect(result.current.rings).toHaveLength(2);
+  });
+
+  it("expand replaces a different group at the same depth", () => {
+    const tabs = [
+      group("a", [leaf("a1")]),
+      group("b", [leaf("b1")]),
+    ];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("a", 0));
+    expect(result.current.rings[1].tabs[0].id).toBe("a1");
+    act(() => result.current.expand("b", 0));
+    expect(result.current.expandedGroupIds).toEqual(["b"]);
+    expect(result.current.rings[1].tabs[0].id).toBe("b1");
+  });
+
+  it("expand at outermost depth (MAX-1) is no-op", () => {
+    const tabs = [group("g1", [group("g2", [leaf("l")])])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g1", 0));
+    act(() => result.current.expand("g2", 1));
+    expect(result.current.expandedGroupIds).toEqual(["g1"]);
+    expect(result.current.rings).toHaveLength(2);
+  });
 });

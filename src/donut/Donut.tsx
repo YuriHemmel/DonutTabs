@@ -150,7 +150,18 @@ export interface DonutProps {
   activeProfileId?: string;
   onSelectProfile?: (profileId: string) => void;
   onCreateProfile?: () => void;
+  /** Issue #71 — sobe pra o entry o alvo atualmente sob o cursor. Usado
+   *  pelo modo modo rápido: ao soltar o atalho global, o entry decide ação
+   *  baseado no kind (leaf → openTab, group → só esconde, gear →
+   *  openSettings, null → esconde). */
+  onHoverChange?: (target: DonutHoverTarget) => void;
 }
+
+export type DonutHoverTarget =
+  | { kind: "leaf"; id: string }
+  | { kind: "group"; id: string }
+  | { kind: "gear" }
+  | null;
 
 const PLUS_KEY = "__plus__";
 const DEFAULT_TOKENS: ThemeTokens = resolvePresetTokens("dark");
@@ -183,6 +194,7 @@ export const Donut: React.FC<DonutProps> = ({
   activeProfileId,
   onSelectProfile,
   onCreateProfile,
+  onHoverChange,
 }) => {
   const effectiveTokens = tokens ?? DEFAULT_TOKENS;
   const cx = size / 2;
@@ -328,6 +340,54 @@ export const Donut: React.FC<DonutProps> = ({
   };
   const onMouseLeave = () => setHovered(null);
 
+  // Issue #71 — resolve o tab atualmente sob o cursor (não dispara em
+  // hover do "+" ou fora de slice). Em modo profile-switcher o hover não
+  // representa uma tab abrível, então mantemos `null`.
+  const hoveredInfo = useMemo<{
+    tab: Tab;
+    ringDepth: number;
+  } | null>(() => {
+    if (mode !== "tabs" || hovered === null) return null;
+    const { ring, slice } = decodeHoverIndex(hovered);
+    if (ring < 0 || ring >= currentPerRing.length) return null;
+    const tab = currentPerRing[ring].tabs[slice];
+    if (!tab) return null;
+    return { tab, ringDepth: visibleRings[ring]?.depth ?? ring };
+  }, [hovered, currentPerRing, visibleRings, mode]);
+
+  // Issue #71 — tracking do hover sobre o CenterCircle. Permite que o entry
+  // saiba quando o cursor está sobre o gear (left) — release-over-gear no
+  // modo modo rápido abre Settings.
+  const [centerHover, setCenterHover] = useState<"left" | "right" | null>(null);
+
+  const hoverTarget = useMemo<DonutHoverTarget>(() => {
+    if (mode !== "tabs") return null;
+    if (centerHover === "left") return { kind: "gear" };
+    if (hoveredInfo) {
+      return isGroup(hoveredInfo.tab)
+        ? { kind: "group", id: hoveredInfo.tab.id }
+        : { kind: "leaf", id: hoveredInfo.tab.id };
+    }
+    return null;
+  }, [mode, centerHover, hoveredInfo]);
+
+  useEffect(() => {
+    onHoverChange?.(hoverTarget);
+  }, [hoverTarget, onHoverChange]);
+
+  // Hover-to-expand: passar o cursor sobre um group abre o sub-anel
+  // instantaneamente. Comportamento universal — não depende do modo
+  // modo rápido. `expand` é idempotente: re-hover no mesmo group não fecha o
+  // ring, então o cursor pode entrar/sair do slice livremente enquanto o
+  // sub-donut continua aberto. Click no group continua chamando `toggle`,
+  // que vira o gesto de fechar.
+  const expandRing = ringStack.expand;
+  useEffect(() => {
+    if (!hoveredInfo) return;
+    if (!isGroup(hoveredInfo.tab)) return;
+    expandRing(hoveredInfo.tab.id, hoveredInfo.ringDepth);
+  }, [hoveredInfo, expandRing]);
+
   const isTabSlice = (idx: number) => {
     const { ring, slice } = decodeHoverIndex(idx);
     if (ring < 0 || ring >= currentPerRing.length) return false;
@@ -448,6 +508,7 @@ export const Donut: React.FC<DonutProps> = ({
             r={innerRRoot * 0.85}
             onGearClick={onOpenSettings}
             onProfileSwitcherClick={() => setMode("tabs")}
+            onHoverChange={setCenterHover}
           />
         </svg>
       </ThemeContext.Provider>
@@ -635,6 +696,7 @@ export const Donut: React.FC<DonutProps> = ({
             onProfileSwitcherClick={
               switcherEnabled ? () => setMode("profiles") : undefined
             }
+            onHoverChange={setCenterHover}
           />
           {outermostPagesCount > 1 && (
             <PaginationDots

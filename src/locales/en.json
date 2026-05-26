@@ -159,6 +159,8 @@
       "spawnPositionCursor": "At the mouse position",
       "spawnPositionCenter": "Centered on the active monitor",
       "spawnPositionHint": "Sets the donut's starting point when you trigger the global shortcut.",
+      "quickModeLabel": "Quick mode (hold to show, release to open)",
+      "quickModeHint": "While enabled, the donut only stays visible while the global shortcut is held. Release the keys with the cursor over a tab to open it (or over the ⚙ to open settings).",
       "resetOnboardingButton": "Show welcome again",
       "resetOnboardingHint": "The welcome overlay reappears the next time you open DonutTabs manually.",
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",

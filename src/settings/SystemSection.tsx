@@ -24,6 +24,10 @@ export interface SystemSectionProps {
   /** Issue #52: posição inicial do donut quando aberto pelo atalho. */
   spawnPosition?: SpawnPosition;
   onSpawnPositionChange?: (position: SpawnPosition) => void;
+  /** Issue #71: "modo rápido" — donut visível enquanto o atalho está
+   *  pressionado; soltar abre a aba sob o cursor. */
+  quickMode?: boolean;
+  onQuickModeChange?: (enabled: boolean) => void;
   /** Plano 22: re-armar tutorial de boas-vindas na próxima manual launch.
    *  Quando ausente, o botão não renderiza. */
   onResetOnboarding?: () => void;
@@ -42,6 +46,8 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
   onScriptHistoryEnabledChange,
   spawnPosition,
   onSpawnPositionChange,
+  quickMode,
+  onQuickModeChange,
   onResetOnboarding,
 }) => {
   const { t } = useTranslation();
@@ -112,44 +118,65 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
         </div>
       </fieldset>
 
-      {/* Donut: posição de spawn. */}
-      {spawnPosition !== undefined && onSpawnPositionChange && (
+      {/* Donut: posição de spawn + modo rápido. */}
+      {((spawnPosition !== undefined && onSpawnPositionChange) ||
+        (quickMode !== undefined && onQuickModeChange)) && (
         <fieldset style={groupStyle}>
           <legend style={legendStyle}>
             {t("settings.system.groups.donut")}
           </legend>
-          <div role="group" aria-label={t("settings.system.spawnPositionLegend")}>
-            <div style={{ marginBottom: 4, fontSize: 14 }}>
-              {t("settings.system.spawnPositionLegend")}
+          {spawnPosition !== undefined && onSpawnPositionChange && (
+            <div role="group" aria-label={t("settings.system.spawnPositionLegend")}>
+              <div style={{ marginBottom: 4, fontSize: 14 }}>
+                {t("settings.system.spawnPositionLegend")}
+              </div>
+              <label
+                style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+              >
+                <input
+                  type="radio"
+                  name="spawn-position"
+                  data-testid="spawn-position-cursor"
+                  checked={spawnPosition === "cursor"}
+                  onChange={() => onSpawnPositionChange("cursor")}
+                />
+                {t("settings.system.spawnPositionCursor")}
+              </label>
+              <label
+                style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+              >
+                <input
+                  type="radio"
+                  name="spawn-position"
+                  data-testid="spawn-position-center"
+                  checked={spawnPosition === "center"}
+                  onChange={() => onSpawnPositionChange("center")}
+                />
+                {t("settings.system.spawnPositionCenter")}
+              </label>
+              <small style={{ color: "var(--muted)", display: "block", paddingTop: 4 }}>
+                {t("settings.system.spawnPositionHint")}
+              </small>
             </div>
-            <label
-              style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
-            >
-              <input
-                type="radio"
-                name="spawn-position"
-                data-testid="spawn-position-cursor"
-                checked={spawnPosition === "cursor"}
-                onChange={() => onSpawnPositionChange("cursor")}
-              />
-              {t("settings.system.spawnPositionCursor")}
-            </label>
-            <label
-              style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
-            >
-              <input
-                type="radio"
-                name="spawn-position"
-                data-testid="spawn-position-center"
-                checked={spawnPosition === "center"}
-                onChange={() => onSpawnPositionChange("center")}
-              />
-              {t("settings.system.spawnPositionCenter")}
-            </label>
-            <small style={{ color: "var(--muted)", display: "block", paddingTop: 4 }}>
-              {t("settings.system.spawnPositionHint")}
-            </small>
-          </div>
+          )}
+          {quickMode !== undefined && onQuickModeChange && (
+            <div>
+              <label
+                style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
+              >
+                <input
+                  type="checkbox"
+                  data-testid="quick-mode-toggle"
+                  checked={quickMode}
+                  onChange={(e) => onQuickModeChange(e.target.checked)}
+                />
+                {t("settings.system.quickModeLabel")}
+              </label>
+              <small style={{ color: "var(--muted)", display: "block", paddingLeft: 26 }}>
+                {t("settings.system.quickModeHint")}
+              </small>
+            </div>
+          )}
         </fieldset>
       )}
 

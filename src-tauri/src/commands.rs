@@ -708,6 +708,31 @@ pub(crate) fn apply_set_slice_gap_enabled(cfg: &mut Config, enabled: bool) {
     cfg.interaction.slice_gap_enabled = enabled;
 }
 
+/// Issue #71 — toggle do "modo rápido". `true` = donut só fica visível
+/// enquanto o atalho está pressionado e abre a aba sob o cursor ao soltar;
+/// `false` = comportamento click-to-open clássico. Persiste + emite
+/// `CONFIG_CHANGED_EVENT`.
+#[tauri::command]
+pub fn set_quick_mode<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    enabled: bool,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_quick_mode(&mut cfg, enabled);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Issue #71 — helper puro pra mutar `Config.interaction.quick_mode`.
+pub(crate) fn apply_set_quick_mode(cfg: &mut Config, enabled: bool) {
+    cfg.interaction.quick_mode = enabled;
+}
+
 /// Issue #52 — toggle entre `Cursor` (donut nasce na posição do mouse) e
 /// `Center` (centro do monitor onde o cursor está). Persiste + emite
 /// `CONFIG_CHANGED_EVENT`. A próxima abertura do donut respeita o novo
@@ -2815,6 +2840,17 @@ mod tests {
         assert!(!cfg.interaction.slice_gap_enabled);
         apply_set_slice_gap_enabled(&mut cfg, true);
         assert!(cfg.interaction.slice_gap_enabled);
+    }
+
+    #[test]
+    fn apply_set_quick_mode_toggles_flag() {
+        let mut cfg = Config::default();
+        // Default = false.
+        assert!(!cfg.interaction.quick_mode);
+        apply_set_quick_mode(&mut cfg, true);
+        assert!(cfg.interaction.quick_mode);
+        apply_set_quick_mode(&mut cfg, false);
+        assert!(!cfg.interaction.quick_mode);
     }
 
     #[test]

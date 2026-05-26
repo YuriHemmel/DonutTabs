@@ -253,6 +253,7 @@ pub fn run() {
             commands::import_config,
             commands::set_search_shortcut,
             commands::set_slice_gap_enabled,
+            commands::set_quick_mode,
             commands::set_spawn_position,
             commands::set_script_trusted,
             commands::set_profile_allow_scripts,

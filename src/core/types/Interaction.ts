@@ -15,4 +15,13 @@ searchShortcut: string,
  * original Plano 16). Configs anteriores deserializam como `true`
  * graças ao `#[serde(default = "default_slice_gap_enabled")]`.
  */
-sliceGapEnabled: boolean, };
+sliceGapEnabled: boolean, 
+/**
+ * Issue #71 — "modo rápido". Quando `true`, o donut só fica visível
+ * enquanto o atalho global estiver pressionado: soltar a tecla abre
+ * a aba sob o cursor (se houver) e esconde o donut. Default `false`
+ * preserva o comportamento click-to-open. Configs anteriores
+ * deserializam como `false` graças ao
+ * `#[serde(default)]` (bool default). Wire: `quickMode` (camelCase).
+ */
+quickMode: boolean, };

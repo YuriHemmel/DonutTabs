@@ -17,6 +17,8 @@ async function renderSection(overrides: Partial<{
   onAllowScriptsChange: (a: boolean) => void;
   scriptHistoryEnabled: boolean;
   onScriptHistoryEnabledChange: (e: boolean) => void;
+  quickMode: boolean;
+  onQuickModeChange: (e: boolean) => void;
 }> = {}) {
   const i18n = await createI18n("pt-BR");
   const props = {
@@ -107,5 +109,26 @@ describe("SystemSection", () => {
   it("Issue #54 (rev) — does not render the script-history toggle when prop missing", async () => {
     await renderSection();
     expect(screen.queryByTestId("script-history-toggle")).toBeNull();
+  });
+
+  it("Issue #71 — quick-mode toggle reflects current value", async () => {
+    await renderSection({ quickMode: true, onQuickModeChange: vi.fn() });
+    const cb = screen.getByTestId("quick-mode-toggle") as HTMLInputElement;
+    expect(cb.checked).toBe(true);
+  });
+
+  it("Issue #71 — toggling the quick-mode checkbox calls the handler", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderSection({
+      quickMode: false,
+      onQuickModeChange: vi.fn(),
+    });
+    await user.click(screen.getByTestId("quick-mode-toggle"));
+    expect(props.onQuickModeChange).toHaveBeenCalledWith(true);
+  });
+
+  it("Issue #71 — does not render the quick-mode toggle when prop missing", async () => {
+    await renderSection();
+    expect(screen.queryByTestId("quick-mode-toggle")).toBeNull();
   });
 });

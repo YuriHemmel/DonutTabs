@@ -23,6 +23,11 @@ export interface UseRingStack {
    *  expandido, colapsa-o e tudo fora dele. Senão, abre o anel
    *  no nível `depth + 1` substituindo qualquer anel mais externo. */
   toggle: (groupId: string, depth: number) => void;
+  /** Issue #71 — abre o grupo no nível `depth + 1` sem colapsar caso já
+   *  esteja aberto (idempotente). Usado pela expansão por hover: passar o
+   *  cursor de novo sobre o mesmo group não fecha o ring. Se outro group
+   *  estiver expandido nesse depth, substitui. */
+  expand: (groupId: string, depth: number) => void;
   /** Colapsa todos os anéis externos. Equivale a expandedGroupIds = []. */
   collapseAll: () => void;
 }
@@ -106,6 +111,15 @@ export function useRingStack(rootTabs: Tab[]): UseRingStack {
     [],
   );
 
+  const expand = useCallback((groupId: string, depth: number) => {
+    setExpandedGroupIds((current) => {
+      if (depth >= MAX_RINGS - 1) return current;
+      const targetIndex = depth;
+      if (current[targetIndex] === groupId) return current;
+      return [...current.slice(0, targetIndex), groupId];
+    });
+  }, []);
+
   const collapseAll = useCallback(() => {
     setExpandedGroupIds((c) => (c.length === 0 ? c : []));
   }, []);
@@ -114,6 +128,7 @@ export function useRingStack(rootTabs: Tab[]): UseRingStack {
     expandedGroupIds: sanitized,
     rings,
     toggle,
+    expand,
     collapseAll,
   };
 }

@@ -134,6 +134,14 @@ pub struct Interaction {
     /// graças ao `#[serde(default = "default_slice_gap_enabled")]`.
     #[serde(default = "default_slice_gap_enabled")]
     pub slice_gap_enabled: bool,
+    /// Issue #71 — "modo rápido". Quando `true`, o donut só fica visível
+    /// enquanto o atalho global estiver pressionado: soltar a tecla abre
+    /// a aba sob o cursor (se houver) e esconde o donut. Default `false`
+    /// preserva o comportamento click-to-open. Configs anteriores
+    /// deserializam como `false` graças ao
+    /// `#[serde(default)]` (bool default). Wire: `quickMode` (camelCase).
+    #[serde(default)]
+    pub quick_mode: bool,
 }
 
 fn default_search_shortcut() -> String {
@@ -395,6 +403,7 @@ impl Default for Config {
                 hover_hold_ms: 1200,
                 search_shortcut: default_search_shortcut(),
                 slice_gap_enabled: default_slice_gap_enabled(),
+                quick_mode: false,
             },
             pagination: Pagination {
                 items_per_page: 6,
@@ -1035,11 +1044,51 @@ mod tests {
             hover_hold_ms: 1200,
             search_shortcut: "CommandOrControl+F".into(),
             slice_gap_enabled: false,
+            quick_mode: false,
         };
         let json = serde_json::to_string(&i).unwrap();
         assert!(json.contains("\"sliceGapEnabled\":false"));
         let back: Interaction = serde_json::from_str(&json).unwrap();
         assert_eq!(i, back);
+    }
+
+    // ---------- Issue #71: Interaction.quick_mode ----------
+
+    #[test]
+    fn interaction_defaults_quick_mode_to_false_when_absent() {
+        // Configs anteriores à #71 não têm o campo. Precisa virar `false`
+        // (preserva comportamento click-to-open).
+        let json = r#"{
+            "spawnPosition": "cursor",
+            "selectionMode": "clickOrRelease",
+            "hoverHoldMs": 1200,
+            "searchShortcut": "CommandOrControl+F",
+            "sliceGapEnabled": true
+        }"#;
+        let i: Interaction = serde_json::from_str(json).unwrap();
+        assert!(!i.quick_mode);
+    }
+
+    #[test]
+    fn interaction_round_trip_with_quick_mode_enabled() {
+        let i = Interaction {
+            spawn_position: SpawnPosition::Cursor,
+            selection_mode: SelectionMode::ClickOrRelease,
+            hover_hold_ms: 1200,
+            search_shortcut: "CommandOrControl+F".into(),
+            slice_gap_enabled: true,
+            quick_mode: true,
+        };
+        let json = serde_json::to_string(&i).unwrap();
+        assert!(json.contains("\"quickMode\":true"));
+        let back: Interaction = serde_json::from_str(&json).unwrap();
+        assert_eq!(i, back);
+    }
+
+    #[test]
+    fn default_config_has_quick_mode_disabled() {
+        let cfg = Config::default();
+        assert!(!cfg.interaction.quick_mode);
     }
 
     #[test]

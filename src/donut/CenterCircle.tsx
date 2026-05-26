@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTheme } from "./themeContext";
 
 export interface CenterCircleProps {
@@ -7,6 +7,11 @@ export interface CenterCircleProps {
   r: number;
   onGearClick?: () => void;
   onProfileSwitcherClick?: () => void;
+  /** Issue #71 — emite mudanças do estado de hover das metades pra que o
+   *  `<Donut>` saiba quando o cursor está sobre o gear/profile-switcher.
+   *  Usado pelo modo rápido pra disparar `openSettings` ao soltar o
+   *  atalho global sobre o ícone de engrenagem. */
+  onHoverChange?: (half: "left" | "right" | null) => void;
 }
 
 type Half = "left" | "right" | null;
@@ -27,9 +32,13 @@ export const CenterCircle: React.FC<CenterCircleProps> = ({
   r,
   onGearClick,
   onProfileSwitcherClick,
+  onHoverChange,
 }) => {
   const tokens = useTheme();
   const [hovered, setHovered] = useState<Half>(null);
+  useEffect(() => {
+    onHoverChange?.(hovered);
+  }, [hovered, onHoverChange]);
   const leftHover = hovered === "left" && !!onGearClick;
   const rightHover = hovered === "right" && !!onProfileSwitcherClick;
   return (
