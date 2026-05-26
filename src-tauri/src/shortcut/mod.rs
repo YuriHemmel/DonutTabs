@@ -1,8 +1,13 @@
 use crate::donut_window;
 use crate::errors::{AppError, AppResult};
 use std::sync::Mutex;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+
+/// Issue #71 — evento emitido para a janela `donut` quando o atalho global
+/// é solto e `interaction.quick_mode` está ligado. O frontend do donut
+/// decide o que fazer (abre a aba sob o cursor + esconde, ou só esconde).
+pub const SHORTCUT_RELEASED_EVENT: &str = "shortcut-released";
 
 /// Estado do atalho global ativo. Vive em `AppState` e é consultado pelo
 /// comando `set_shortcut` para fazer o swap conflict-aware (registra o novo
@@ -102,9 +107,21 @@ mod tests {
 fn bind<R: Runtime>(app: &AppHandle<R>, sc: &Shortcut) -> AppResult<()> {
     let app_for_handler = app.clone();
     app.global_shortcut()
-        .on_shortcut(*sc, move |_app, _sc, event| {
-            if event.state() == ShortcutState::Pressed {
+        .on_shortcut(*sc, move |_app, _sc, event| match event.state() {
+            ShortcutState::Pressed => {
                 let _ = donut_window::show(&app_for_handler);
+            }
+            ShortcutState::Released => {
+                // Issue #71 — emitir só quando o usuário optou pelo modo
+                // quick_mode. Lê config via AppState; falha em pegar o
+                // state (cenário raro de setup parcial) é silenciada — o
+                // atalho já funcionou no Pressed, soltar sem efeito é
+                // fail-safe.
+                let state: tauri::State<'_, crate::commands::AppState> = app_for_handler.state();
+                let quick_mode = state.config.read().unwrap().interaction.quick_mode;
+                if quick_mode {
+                    let _ = app_for_handler.emit_to("donut", SHORTCUT_RELEASED_EVENT, ());
+                }
             }
         })
         .map_err(|e| {

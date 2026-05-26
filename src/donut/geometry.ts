@@ -87,13 +87,19 @@ export const RING_GAP = 4;
 export const OUTER_SLICE_ANGULAR_GAP_RAD = 0.04;
 
 /**
- * Plano 23 — calcula os raios de cada anel concêntrico (`ring 0` =
- * innermost = root; `ring N-1` = outermost). Ring 0 usa a banda derivada
- * do tema (`innerRRoot..outerRRoot`); rings 1+ usam banda menor
- * (`OUTER_RING_BAND_WIDTH`) com `RING_GAP` separando vizinhos.
+ * Plano 23 — calcula os raios de cada anel concêntrico para **pintura**
+ * (`ring 0` = innermost = root; `ring N-1` = outermost). Ring 0 usa a
+ * banda derivada do tema (`innerRRoot..outerRRoot`); rings 1+ usam
+ * banda menor (`OUTER_RING_BAND_WIDTH`) com `RING_GAP` separando
+ * vizinhos.
  *
- * Pure pra teste; reusado pelo `<Donut>` e pelo highlight global pra mapear
- * `radius → ringIndex`.
+ * **Não usar em hit-test** — o gap entre anéis aparece como região
+ * vazia aqui, e cursor passando por ele faria `pointToRingIndex` virar
+ * `null`, derrubando o `hovered` e colapsando rings abertos. Para
+ * hit-test use `ringHitBounds`, que absorve o gap no ring externo.
+ *
+ * Pure pra teste; reusado pelo `<Donut>` na renderização SVG e no
+ * posicionamento do `HoverHoldOverlay`.
  */
 export function ringDims(
   ringIndex: number,
@@ -109,11 +115,44 @@ export function ringDims(
 }
 
 /**
- * Plano 23 — descobre qual anel concêntrico contém o ponto, usando a
- * distância radial. Pure pra teste. Retorna `null` se o ponto está
- * dentro do círculo central (raio < `innerRRoot`), na região de gap
- * entre anéis, ou fora do anel mais externo. `ringCount` define quantos
- * anéis estão renderizados.
+ * Issue #71 — versão sem-gap dos raios concêntricos para uso em
+ * hit-test (`pointToRingIndex` + `pointToSliceIndex` no `<Donut>`).
+ * Cada ring externo absorve o `RING_GAP` que o precede, eliminando a
+ * "região morta" radial onde o cursor virava `null` e disparava
+ * collapse indevido enquanto o usuário transitava do slice do group
+ * para o anel externo.
+ *
+ * Pintura visual (`ringDims`) preserva o gap; só a detecção de
+ * cursor enxerga os anéis contíguos.
+ */
+export function ringHitBounds(
+  ringIndex: number,
+  innerRRoot: number,
+  outerRRoot: number,
+): RingDims {
+  if (ringIndex <= 0) {
+    return { innerR: innerRRoot, outerR: outerRRoot };
+  }
+  // Ring i (>= 1) cobre desde o outer paint do ring anterior até o
+  // outer paint deste ring. O gap radial antes deste ring fica
+  // englobado neste hit zone.
+  const innerR =
+    ringIndex === 1
+      ? outerRRoot
+      : outerRRoot + (ringIndex - 1) * (OUTER_RING_BAND_WIDTH + RING_GAP);
+  const outerR =
+    outerRRoot + ringIndex * (OUTER_RING_BAND_WIDTH + RING_GAP);
+  return { innerR, outerR };
+}
+
+/**
+ * Plano 23 / Issue #71 — descobre qual anel concêntrico contém o ponto,
+ * usando a distância radial. Pure pra teste. Retorna `null` se o ponto
+ * está dentro do círculo central (raio < `innerRRoot`) ou fora do anel
+ * mais externo. **Não retorna `null` para o gap entre anéis** — usa
+ * `ringHitBounds` que absorve o gap no ring externo, evitando que o
+ * cursor "caia no buraco" entre anéis e dispare collapse do sub-anel
+ * que o usuário está prestes a alcançar.
  */
 export function pointToRingIndex(
   p: Point,
@@ -125,7 +164,7 @@ export function pointToRingIndex(
   const r = Math.hypot(p.x, p.y);
   if (r < innerRRoot) return null;
   for (let i = 0; i < ringCount; i++) {
-    const dims = ringDims(i, innerRRoot, outerRRoot);
+    const dims = ringHitBounds(i, innerRRoot, outerRRoot);
     if (r >= dims.innerR && r <= dims.outerR) return i;
   }
   return null;

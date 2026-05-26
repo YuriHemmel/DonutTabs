@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import i18next from "i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { Donut } from "../donut/Donut";
+import { Donut, type DonutHoverTarget } from "../donut/Donut";
+import { decideQuickRelease } from "../donut/quickRelease";
 import { ScriptConfirmModal } from "../donut/ScriptConfirmModal";
 import { OnboardingHint } from "../donut/OnboardingHint";
-import { ipc, CONFIG_CHANGED_EVENT } from "../core/ipc";
+import { ipc, CONFIG_CHANGED_EVENT, SHORTCUT_RELEASED_EVENT } from "../core/ipc";
 import { initI18n, changeLanguage } from "../core/i18n";
 import { applyTokensAsCssVars, watchSystemTheme } from "../core/theme";
 import { resolveThemeTokens, type ThemeTokens } from "../core/themeTokens";
@@ -28,6 +29,13 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [scriptPrompt, setScriptPrompt] = useState<ScriptPrompt | null>(null);
   const [tokens, setTokens] = useState<ThemeTokens | undefined>(undefined);
+  // Issue #71 — refs (não state) pra que o listener do shortcut-released
+  // sempre leia os valores mais recentes sem re-bindar quando o cursor
+  // se mexe ou o config troca.
+  const hoverTargetRef = useRef<DonutHoverTarget>(null);
+  const configRef = useRef<Config | null>(initialConfig);
+  const handleSelectRef = useRef<(tabId: string) => void>(() => {});
+  const handleOpenSettingsRef = useRef<() => void>(() => {});
   // Plano 22 — `null` = ainda não consultado; `true` = mostra overlay;
   // `false` = launch normal (sem onboarding) ou já dispensado.
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -120,6 +128,10 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   }, []);
 
   useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
+  useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen<Config>(CONFIG_CHANGED_EVENT, (e) => {
       setConfig(e.payload);
@@ -132,6 +144,41 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     return () => {
       unlisten?.();
     };
+  }, []);
+
+  // Issue #71 — modo rápido: ao soltar o atalho global o backend emite
+  // `shortcut-released`. Se houver tab sob o cursor, abre; senão só esconde
+  // o donut. Listener registrado apenas uma vez; refs cuidam de ler valores
+  // atuais.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen(SHORTCUT_RELEASED_EVENT, () => {
+      const action = decideQuickRelease(
+        configRef.current,
+        hoverTargetRef.current,
+      );
+      switch (action.type) {
+        case "openTab":
+          handleSelectRef.current(action.tabId);
+          break;
+        case "openSettings":
+          handleOpenSettingsRef.current();
+          break;
+        case "hide":
+          void ipc.hideDonut();
+          break;
+        case "noop":
+          break;
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+    // `handleSelect` é re-criado a cada render mas a referência via closure
+    // sempre lê o config atual via configRef; refs estabilizam o listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Plano 15: aplica tokens visuais como CSS vars sempre que o config muda
@@ -171,6 +218,10 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
       void ipc.hideDonut();
     }
   };
+
+  const handleHoverChange = useCallback((target: DonutHoverTarget) => {
+    hoverTargetRef.current = target;
+  }, []);
 
   const handleSelect = async (tabId: string) => {
     // Plano 22 — interagir = onboarding cumprido (user já entendeu o app).
@@ -245,6 +296,16 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     }
   };
 
+  // Mantém o ref apontando para a versão atual de handleSelect; o listener
+  // de SHORTCUT_RELEASED_EVENT (registrado uma única vez) lê via ref pra
+  // não capturar uma closure antiga com `config`/`showOnboarding` stale.
+  handleSelectRef.current = (tabId: string) => {
+    void handleSelect(tabId);
+  };
+  handleOpenSettingsRef.current = () => {
+    void handleOpenSettings();
+  };
+
   const handleEditTab = (tabId: string) => {
     void handleOpenSettings(`edit-tab:${tabId}` as import("../core/ipc").SettingsIntent);
   };
@@ -299,6 +360,7 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
               onCreateProfile={() => {
                 void handleOpenSettings("new-profile");
               }}
+              onHoverChange={handleHoverChange}
             />
           );
         })()}

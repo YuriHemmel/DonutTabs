@@ -114,4 +114,108 @@ describe("useRingStack", () => {
     expect(result.current.expandedGroupIds).toEqual([]);
     expect(result.current.rings).toHaveLength(1);
   });
+
+  it("expand at depth 0 opens ring 1 with the group's children", () => {
+    const tabs = [group("g", [leaf("g1"), leaf("g2")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    expect(result.current.expandedGroupIds).toEqual(["g"]);
+    expect(result.current.rings).toHaveLength(2);
+    expect(result.current.rings[1].tabs.map((t) => t.id)).toEqual(["g1", "g2"]);
+  });
+
+  it("expand is idempotent: re-expanding the same group keeps ring open", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    expect(result.current.rings).toHaveLength(2);
+    // Diferente de toggle: chamar de novo NÃO fecha.
+    act(() => result.current.expand("g", 0));
+    expect(result.current.expandedGroupIds).toEqual(["g"]);
+    expect(result.current.rings).toHaveLength(2);
+  });
+
+  it("expand replaces a different group at the same depth", () => {
+    const tabs = [
+      group("a", [leaf("a1")]),
+      group("b", [leaf("b1")]),
+    ];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("a", 0));
+    expect(result.current.rings[1].tabs[0].id).toBe("a1");
+    act(() => result.current.expand("b", 0));
+    expect(result.current.expandedGroupIds).toEqual(["b"]);
+    expect(result.current.rings[1].tabs[0].id).toBe("b1");
+  });
+
+  it("expand at outermost depth (MAX-1) is no-op", () => {
+    const tabs = [group("g1", [group("g2", [leaf("l")])])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g1", 0));
+    act(() => result.current.expand("g2", 1));
+    expect(result.current.expandedGroupIds).toEqual(["g1"]);
+    expect(result.current.rings).toHaveLength(2);
+  });
+
+  it("trimToLength shortens expandedGroupIds to the length returned by computeLen", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    expect(result.current.expandedGroupIds).toEqual(["g"]);
+    act(() => result.current.trimToLength(() => 0));
+    expect(result.current.expandedGroupIds).toEqual([]);
+    expect(result.current.rings).toHaveLength(1);
+  });
+
+  it("trimToLength is idempotent (no-op when computeLen returns >= current length)", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    const ref = result.current.expandedGroupIds;
+    act(() => result.current.trimToLength(() => 5));
+    // Mesma referência preservada — nenhum re-render por causa do trim.
+    expect(result.current.expandedGroupIds).toBe(ref);
+    act(() => result.current.trimToLength(() => 1));
+    expect(result.current.expandedGroupIds).toBe(ref);
+  });
+
+  it("trimToLength clamps negative computeLen output to 0", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    act(() => result.current.trimToLength(() => -3));
+    expect(result.current.expandedGroupIds).toEqual([]);
+  });
+
+  it("trimToLength's computeLen receives the current (post-update) expandedGroupIds", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    act(() => result.current.expand("g", 0));
+    let received: string[] | null = null;
+    act(() =>
+      result.current.trimToLength((c) => {
+        received = c.slice();
+        return c.length;
+      }),
+    );
+    expect(received).toEqual(["g"]);
+  });
+
+  it("trimToLength does not undo a concurrent expand (race regression: hover-expand + hover-collapse in same commit must not cancel out)", () => {
+    const tabs = [group("g", [leaf("g1")])];
+    const { result } = renderHook(() => useRingStack(tabs));
+    // Mesma fase de effects: expand e trim disparam juntos. Trim usa
+    // updater funcional que enxerga o expand já aplicado, então
+    // mantém o que expand colocou (cursor em (0, g) → len = 1).
+    act(() => {
+      result.current.expand("g", 0);
+      result.current.trimToLength((current) => {
+        // Simula computeTrimLength({ring:0,tabId:"g"}, current):
+        // ring(0) < current.length(1) && tabId === current[0] → len 1.
+        if (current.length > 0 && current[0] === "g") return 1;
+        return 0;
+      });
+    });
+    expect(result.current.expandedGroupIds).toEqual(["g"]);
+  });
 });

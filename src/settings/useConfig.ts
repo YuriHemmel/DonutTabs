@@ -51,6 +51,7 @@ export interface UseConfig {
   setAutoCheckUpdates: (enabled: boolean) => Promise<Config>;
   setScriptHistoryEnabled: (enabled: boolean) => Promise<Config>;
   setSpawnPosition: (position: SpawnPosition) => Promise<Config>;
+  setQuickMode: (enabled: boolean) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -234,6 +235,12 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setQuickMode = useCallback(async (enabled: boolean) => {
+    const next = await ipc.setQuickMode(enabled);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -256,5 +263,6 @@ export function useConfig(): UseConfig {
     setAutoCheckUpdates,
     setScriptHistoryEnabled,
     setSpawnPosition,
+    setQuickMode,
   };
 }

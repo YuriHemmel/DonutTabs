@@ -127,6 +127,7 @@ export const SettingsApp: React.FC = () => {
     setAutoCheckUpdates,
     setScriptHistoryEnabled,
     setSpawnPosition,
+    setQuickMode,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -539,6 +540,12 @@ export const SettingsApp: React.FC = () => {
           spawnPosition={config.interaction.spawnPosition}
           onSpawnPositionChange={(position) => {
             void setSpawnPosition(position);
+          }}
+          quickMode={config.interaction.quickMode}
+          onQuickModeChange={(enabled) => {
+            void setQuickMode(enabled).catch((err) => {
+              window.alert(translateAppError(err, t));
+            });
           }}
           onResetOnboarding={() => {
             // Plano 22 — re-arma o overlay de boas-vindas pra próxima

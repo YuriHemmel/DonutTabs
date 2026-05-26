@@ -70,6 +70,7 @@ mod tests {
                 hover_hold_ms: 800,
                 search_shortcut: "CommandOrControl+F".into(),
                 slice_gap_enabled: true,
+                quick_mode: false,
             },
             pagination: Pagination {
                 items_per_page: 6,

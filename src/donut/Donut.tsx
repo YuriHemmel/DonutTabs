@@ -13,6 +13,7 @@ import {
   pointToRingIndex,
   pointToSliceIndex,
   ringDims,
+  ringHitBounds,
   slicePaintRange,
   type RingDims,
 } from "./geometry";
@@ -27,6 +28,8 @@ import { tabInitial } from "./tabUtils";
 import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
 import { useRingStack, MAX_RINGS } from "./useRingStack";
+import { useHoverToExpand } from "./useHoverToExpand";
+import { useHoverToCollapse } from "./useHoverToCollapse";
 
 /** Stack de fontes sans-serif do sistema. SVG `<text>` default cai em Times
  *  serif em vários navegadores — feio dentro do donut. Aplicado na raiz
@@ -150,7 +153,18 @@ export interface DonutProps {
   activeProfileId?: string;
   onSelectProfile?: (profileId: string) => void;
   onCreateProfile?: () => void;
+  /** Issue #71 — sobe pra o entry o alvo atualmente sob o cursor. Usado
+   *  pelo modo modo rápido: ao soltar o atalho global, o entry decide ação
+   *  baseado no kind (leaf → openTab, group → só esconde, gear →
+   *  openSettings, null → esconde). */
+  onHoverChange?: (target: DonutHoverTarget) => void;
 }
+
+export type DonutHoverTarget =
+  | { kind: "leaf"; id: string }
+  | { kind: "group"; id: string }
+  | { kind: "gear" }
+  | null;
 
 const PLUS_KEY = "__plus__";
 const DEFAULT_TOKENS: ThemeTokens = resolvePresetTokens("dark");
@@ -183,6 +197,7 @@ export const Donut: React.FC<DonutProps> = ({
   activeProfileId,
   onSelectProfile,
   onCreateProfile,
+  onHoverChange,
 }) => {
   const effectiveTokens = tokens ?? DEFAULT_TOKENS;
   const cx = size / 2;
@@ -309,7 +324,13 @@ export const Donut: React.FC<DonutProps> = ({
       setHovered(null);
       return;
     }
-    const dims = ringDims(ring, innerRRoot, outerRRoot);
+    // Issue #71 — hit-test usa `ringHitBounds` (sem gap) pra que o
+    // cursor passando pela "região morta" radial entre ring 0 e ring 1
+    // ainda mapeie pra um slice válido do ring externo, em vez de
+    // virar `null` e colapsar o sub-anel. Pintura (mais abaixo)
+    // continua via `ringDims`, então o respiro visual entre anéis
+    // fica intacto.
+    const dims = ringHitBounds(ring, innerRRoot, outerRRoot);
     const current = currentPerRing[ring];
     const sliceCount = current.tabs.length + (current.hasPlus ? 1 : 0);
     if (sliceCount <= 0) {
@@ -327,6 +348,75 @@ export const Donut: React.FC<DonutProps> = ({
     setHovered(encodeHoverIndex(ring, slice));
   };
   const onMouseLeave = () => setHovered(null);
+
+  // Issue #71 — resolve o tab atualmente sob o cursor (não dispara em
+  // hover do "+" ou fora de slice). Em modo profile-switcher o hover não
+  // representa uma tab abrível, então mantemos `null`.
+  const hoveredInfo = useMemo<{
+    tab: Tab;
+    ringDepth: number;
+  } | null>(() => {
+    if (mode !== "tabs" || hovered === null) return null;
+    const { ring, slice } = decodeHoverIndex(hovered);
+    if (ring < 0 || ring >= currentPerRing.length) return null;
+    const tab = currentPerRing[ring].tabs[slice];
+    if (!tab) return null;
+    return { tab, ringDepth: visibleRings[ring]?.depth ?? ring };
+  }, [hovered, currentPerRing, visibleRings, mode]);
+
+  // Issue #71 — tracking do hover sobre o CenterCircle. Permite que o entry
+  // saiba quando o cursor está sobre o gear (left) — release-over-gear no
+  // modo modo rápido abre Settings.
+  const [centerHover, setCenterHover] = useState<"left" | "right" | null>(null);
+
+  const hoverTarget = useMemo<DonutHoverTarget>(() => {
+    if (mode !== "tabs") return null;
+    if (centerHover === "left") return { kind: "gear" };
+    if (hoveredInfo) {
+      return isGroup(hoveredInfo.tab)
+        ? { kind: "group", id: hoveredInfo.tab.id }
+        : { kind: "leaf", id: hoveredInfo.tab.id };
+    }
+    return null;
+  }, [mode, centerHover, hoveredInfo]);
+
+  useEffect(() => {
+    onHoverChange?.(hoverTarget);
+  }, [hoverTarget, onHoverChange]);
+
+  // Hover-to-expand: passar o cursor sobre um group abre o sub-anel
+  // instantaneamente. Comportamento universal — não depende do modo
+  // rápido. `useHoverToExpand` guarda a expansão pela string `id`,
+  // evitando re-disparo quando outra atualização (ex.: o próprio `toggle`
+  // de fechamento por click) regenera as refs upstream sem mudar de fato
+  // o group sob o cursor. Click no group continua chamando `toggle`, que
+  // permanece como o gesto de fechar.
+  const hoveredGroup = useMemo(
+    () =>
+      hoveredInfo && isGroup(hoveredInfo.tab)
+        ? { id: hoveredInfo.tab.id, depth: hoveredInfo.ringDepth }
+        : null,
+    [hoveredInfo],
+  );
+  useHoverToExpand(hoveredGroup, ringStack.expand);
+
+  // Hover-to-collapse: complementa o hover-to-expand. Quando o cursor sai
+  // da fatia do group E do anel externo correspondente, o group volta
+  // (sem precisar de click). Pausa enquanto context-menu/search overlay
+  // estão abertos pra não colapsar a estrutura por baixo do user.
+  const hoveredForCollapse = useMemo(() => {
+    if (mode !== "tabs" || hovered === null) return null;
+    const { ring, slice } = decodeHoverIndex(hovered);
+    if (ring < 0 || ring >= currentPerRing.length) return null;
+    const tab = currentPerRing[ring].tabs[slice];
+    return { ring, tabId: tab?.id ?? null };
+  }, [mode, hovered, currentPerRing]);
+  useHoverToCollapse({
+    hovered: hoveredForCollapse,
+    expandedGroupIds: ringStack.expandedGroupIds,
+    trim: ringStack.trimToLength,
+    enabled: !contextMenu && !searchOpen,
+  });
 
   const isTabSlice = (idx: number) => {
     const { ring, slice } = decodeHoverIndex(idx);
@@ -448,6 +538,7 @@ export const Donut: React.FC<DonutProps> = ({
             r={innerRRoot * 0.85}
             onGearClick={onOpenSettings}
             onProfileSwitcherClick={() => setMode("tabs")}
+            onHoverChange={setCenterHover}
           />
         </svg>
       </ThemeContext.Provider>
@@ -635,6 +726,7 @@ export const Donut: React.FC<DonutProps> = ({
             onProfileSwitcherClick={
               switcherEnabled ? () => setMode("profiles") : undefined
             }
+            onHoverChange={setCenterHover}
           />
           {outermostPagesCount > 1 && (
             <PaginationDots

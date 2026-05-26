@@ -89,6 +89,11 @@ export const ipc = {
    *  Mora em `interaction.sliceGapEnabled` (global, não per-perfil). */
   setSliceGapEnabled: (enabled: boolean) =>
     invoke<Config>("set_slice_gap_enabled", { enabled }),
+  /** Issue #71 — toggle do "modo rápido": donut só visível enquanto o
+   *  atalho global está pressionado; soltar abre o tab sob o cursor.
+   *  Mora em `interaction.quickMode` (global, não per-perfil). */
+  setQuickMode: (enabled: boolean) =>
+    invoke<Config>("set_quick_mode", { enabled }),
   /** Issue #52 — alterna onde o donut nasce ao abrir: na posição do mouse
    *  (`cursor`) ou no centro do monitor ativo (`center`). */
   setSpawnPosition: (position: SpawnPosition) =>
@@ -210,6 +215,10 @@ export const dialog = {
 export const CONFIG_CHANGED_EVENT = "config-changed";
 export const SETTINGS_INTENT_EVENT = "settings-intent";
 export const UPDATE_PROGRESS_EVENT = "update-progress";
+/** Issue #71 — emitido pelo backend quando o atalho global é solto e
+ *  `interaction.quickMode` está ligado. O frontend do donut consome para
+ *  abrir o tab sob o cursor (se houver) e esconder a janela. */
+export const SHORTCUT_RELEASED_EVENT = "shortcut-released";
 
 export interface UpdateProgress {
   downloaded: number;
