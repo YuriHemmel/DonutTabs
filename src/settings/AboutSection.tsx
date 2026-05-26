@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { UpdateCard } from "./UpdateCard";
+import { groupStyle, legendStyle } from "./fieldsetStyles";
 
 export interface AboutSectionProps {
   autoCheckUpdates: boolean;
@@ -11,21 +12,8 @@ export interface AboutSectionProps {
 
 const REPO_URL = "https://github.com/YuriHemmel/DonutTabs";
 const KOFI_URL = "https://ko-fi.com/yurihm";
-
-const groupStyle: React.CSSProperties = {
-  border: "1px solid var(--input-border)",
-  borderRadius: 6,
-  padding: "12px 16px 16px 16px",
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  margin: 0,
-};
-
-const legendStyle: React.CSSProperties = {
-  padding: "0 6px",
-  fontWeight: 600,
-};
+const AUTHOR_NAME = "Yuri Hemmel";
+const VERSION_PLACEHOLDER = "…";
 
 const linkButtonStyle: React.CSSProperties = {
   background: "transparent",
@@ -45,6 +33,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [version, setVersion] = React.useState<string | null>(null);
+  const [iconBroken, setIconBroken] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -88,14 +77,31 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
           gap: 12,
         }}
       >
-        <img
-          src="/app-icon.png"
-          alt=""
-          aria-hidden
-          width={48}
-          height={48}
-          style={{ display: "block" }}
-        />
+        {iconBroken ? (
+          <div
+            aria-hidden
+            style={{
+              width: 48,
+              height: 48,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 32,
+            }}
+          >
+            🍩
+          </div>
+        ) : (
+          <img
+            src="/app-icon.png"
+            alt=""
+            aria-hidden
+            width={48}
+            height={48}
+            onError={() => setIconBroken(true)}
+            style={{ display: "block" }}
+          />
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <strong style={{ fontSize: 20 }}>{t("settings.about.appName")}</strong>
           <span
@@ -104,7 +110,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
           >
             {version
               ? t("settings.about.versionValue", { version })
-              : t("settings.about.versionLoading")}
+              : VERSION_PLACEHOLDER}
           </span>
         </div>
       </header>
@@ -113,8 +119,7 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span>
-          <strong>{t("settings.about.author")}:</strong>{" "}
-          {t("settings.about.authorName")}
+          <strong>{t("settings.about.author")}:</strong> {AUTHOR_NAME}
         </span>
         <button
           type="button"
