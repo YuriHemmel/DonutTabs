@@ -702,6 +702,123 @@ describe("SettingsApp intent routing", () => {
     });
   });
 
+  it("issue #76: switching active profile via config-changed retargets the tabs section to the new active profile", async () => {
+    // Regressão: usuário trocava o perfil ativo pelo donut (ou via "definir
+    // como ativo"), mas a aba "Abas" continuava mostrando as abas do perfil
+    // anterior porque `selectedProfileId` ficava preso. Agora `activeProfileId`
+    // mudando entre snapshots força o editor a seguir.
+    const cfgA = makeConfig({
+      activeProfileId: PROFILE_ID,
+      profiles: [
+        makeProfile({
+          tabs: [
+            {
+              id: "t-a",
+              name: "AbaA",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://a.test" }],
+            },
+          ],
+        }),
+        makeProfile({
+          id: PROFILE_ID_2,
+          name: "Estudo",
+          tabs: [
+            {
+              id: "t-b",
+              name: "AbaB",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://b.test" }],
+            },
+          ],
+        }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfgA);
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText("AbaA")).toBeTruthy();
+    });
+    const cfgB = { ...cfgA, activeProfileId: PROFILE_ID_2 };
+    act(() => {
+      (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
+        "config-changed",
+        cfgB,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText("AbaB")).toBeTruthy();
+      expect(screen.queryByText("AbaA")).toBeNull();
+    });
+    expect(
+      screen.getByTestId(`profile-chip-${PROFILE_ID_2}`).getAttribute(
+        "aria-selected",
+      ),
+    ).toBe("true");
+  });
+
+  it("issue #76: manual profile picks are not undone by unrelated config-changed events", async () => {
+    // Garante que a lógica de "seguir activeProfileId" não pisa em cima da
+    // escolha manual quando o config-changed não mexe no perfil ativo
+    // (ex: usuário salvou uma aba enquanto editava perfil inativo).
+    const cfg = makeConfig({
+      activeProfileId: PROFILE_ID,
+      profiles: [
+        makeProfile({
+          tabs: [
+            {
+              id: "t-a",
+              name: "AbaA",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://a.test" }],
+            },
+          ],
+        }),
+        makeProfile({
+          id: PROFILE_ID_2,
+          name: "Estudo",
+          tabs: [
+            {
+              id: "t-b",
+              name: "AbaB",
+              icon: null,
+              order: 0,
+              openMode: "reuseOrNewWindow",
+              items: [{ kind: "url", value: "https://b.test" }],
+            },
+          ],
+        }),
+      ],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    const user = userEvent.setup();
+    await renderApp();
+    await waitFor(() => {
+      expect(screen.getByText("AbaA")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId(`profile-chip-${PROFILE_ID_2}`));
+    await waitFor(() => {
+      expect(screen.getByText("AbaB")).toBeTruthy();
+    });
+    // config-changed sem alterar activeProfileId não deve voltar pra A.
+    act(() => {
+      (events as unknown as { __emit: (n: string, p: unknown) => void }).__emit(
+        "config-changed",
+        { ...cfg },
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText("AbaB")).toBeTruthy();
+    });
+    expect(screen.queryByText("AbaA")).toBeNull();
+  });
+
   it("AppearanceSection shows the set-active button only when editing a non-active profile", async () => {
     const cfg = makeConfig({
       profiles: [

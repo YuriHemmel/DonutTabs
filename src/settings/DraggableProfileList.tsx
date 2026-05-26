@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Pencil } from "lucide-react";
 import type { Profile } from "../core/types/Profile";
 import { useDragReorder } from "./useDragReorder";
 import { IconDisplay } from "./IconDisplay";
@@ -108,14 +109,35 @@ export const DraggableProfileList: React.FC<DraggableProfileListProps> = ({
                 aria-label={t("settings.profile.activeMarker")}
                 title={t("settings.profile.activeMarker")}
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: "#f3c742",
                   marginLeft: 4,
-                  display: "inline-block",
+                  padding: "1px 6px",
+                  borderRadius: 999,
+                  background: "#3fb950",
+                  color: "#ffffff",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
                 }}
-              />
+              >
+                {t("settings.profile.activeBadge")}
+              </span>
+            )}
+            {isSelected && (
+              <span
+                data-testid={`profile-chip-editing-${p.id}`}
+                aria-label={t("settings.profile.editingMarker")}
+                title={t("settings.profile.editingMarker")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  marginLeft: 4,
+                  color: "var(--muted)",
+                }}
+              >
+                <Pencil size={12} />
+              </span>
             )}
           </li>
         );

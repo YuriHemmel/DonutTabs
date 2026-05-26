@@ -19,7 +19,8 @@ export interface ProfilePickerProps {
  * "Aparência", "Atalho"). Issue #39: criação/edição/exclusão de perfis
  * mudaram pra a seção dedicada `<ProfilesSection>`. Aqui só ficam os chips
  * de seleção e o label. O perfil **ativo** (que comanda o donut) pode ser
- * diferente do **selecionado**; o marcador dourado sinaliza isso.
+ * diferente do **selecionado** (sob edição); um badge verde "Ativo" marca
+ * o primeiro e um ícone de lápis marca o segundo.
  */
 export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   profiles,
