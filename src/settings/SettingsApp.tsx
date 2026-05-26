@@ -6,6 +6,7 @@ import { TabEditor } from "./TabEditor";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
 import { SystemSection } from "./SystemSection";
+import { AboutSection } from "./AboutSection";
 import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
@@ -514,10 +515,6 @@ export const SettingsApp: React.FC = () => {
           onAllowScriptsChange={(allow) => {
             void setProfileAllowScripts(selectedProfile.id, allow);
           }}
-          autoCheckUpdates={config.system.autoCheckUpdates}
-          onAutoCheckUpdatesChange={(enabled) => {
-            void setAutoCheckUpdates(enabled);
-          }}
           scriptHistoryEnabled={config.system.scriptHistoryEnabled}
           onScriptHistoryEnabledChange={(enabled) => {
             void setScriptHistoryEnabled(enabled);
@@ -552,6 +549,15 @@ export const SettingsApp: React.FC = () => {
 
       {section === "history" && config.system.scriptHistoryEnabled && (
         <HistorySection enabled={config.system.scriptHistoryEnabled} />
+      )}
+
+      {section === "about" && (
+        <AboutSection
+          autoCheckUpdates={config.system.autoCheckUpdates}
+          onAutoCheckUpdatesChange={(enabled) => {
+            void setAutoCheckUpdates(enabled);
+          }}
+        />
       )}
     </div>
   );
