@@ -88,15 +88,14 @@ export const AboutSection: React.FC<AboutSectionProps> = ({
           gap: 12,
         }}
       >
-        <div
+        <img
+          src="/app-icon.png"
+          alt=""
           aria-hidden
-          style={{
-            fontSize: 40,
-            lineHeight: 1,
-          }}
-        >
-          🍩
-        </div>
+          width={48}
+          height={48}
+          style={{ display: "block" }}
+        />
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <strong style={{ fontSize: 20 }}>{t("settings.about.appName")}</strong>
           <span
