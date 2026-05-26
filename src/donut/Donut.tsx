@@ -13,6 +13,7 @@ import {
   pointToRingIndex,
   pointToSliceIndex,
   ringDims,
+  ringHitBounds,
   slicePaintRange,
   type RingDims,
 } from "./geometry";
@@ -323,7 +324,13 @@ export const Donut: React.FC<DonutProps> = ({
       setHovered(null);
       return;
     }
-    const dims = ringDims(ring, innerRRoot, outerRRoot);
+    // Issue #71 — hit-test usa `ringHitBounds` (sem gap) pra que o
+    // cursor passando pela "região morta" radial entre ring 0 e ring 1
+    // ainda mapeie pra um slice válido do ring externo, em vez de
+    // virar `null` e colapsar o sub-anel. Pintura (mais abaixo)
+    // continua via `ringDims`, então o respiro visual entre anéis
+    // fica intacto.
+    const dims = ringHitBounds(ring, innerRRoot, outerRRoot);
     const current = currentPerRing[ring];
     const sliceCount = current.tabs.length + (current.hasPlus ? 1 : 0);
     if (sliceCount <= 0) {
