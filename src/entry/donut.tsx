@@ -5,6 +5,7 @@ import i18next from "i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { Donut, type DonutHoverTarget } from "../donut/Donut";
+import { decideQuickRelease } from "../donut/quickRelease";
 import { ScriptConfirmModal } from "../donut/ScriptConfirmModal";
 import { OnboardingHint } from "../donut/OnboardingHint";
 import { ipc, CONFIG_CHANGED_EVENT, SHORTCUT_RELEASED_EVENT } from "../core/ipc";
@@ -152,20 +153,23 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void listen(SHORTCUT_RELEASED_EVENT, () => {
-      const cfg = configRef.current;
-      if (!cfg?.interaction.quickMode) return;
-      const target = hoverTargetRef.current;
-      if (target?.kind === "leaf") {
-        handleSelectRef.current(target.id);
-        return;
+      const action = decideQuickRelease(
+        configRef.current,
+        hoverTargetRef.current,
+      );
+      switch (action.type) {
+        case "openTab":
+          handleSelectRef.current(action.tabId);
+          break;
+        case "openSettings":
+          handleOpenSettingsRef.current();
+          break;
+        case "hide":
+          void ipc.hideDonut();
+          break;
+        case "noop":
+          break;
       }
-      if (target?.kind === "gear") {
-        handleOpenSettingsRef.current();
-        return;
-      }
-      // `group` (drilling-só) ou `null` (fora de qualquer alvo): só
-      // esconde — modo rápido garante que soltar = donut some.
-      void ipc.hideDonut();
     }).then((fn) => {
       unlisten = fn;
     });

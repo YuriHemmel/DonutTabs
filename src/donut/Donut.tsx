@@ -27,6 +27,8 @@ import { tabInitial } from "./tabUtils";
 import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
 import { useRingStack, MAX_RINGS } from "./useRingStack";
+import { useHoverToExpand } from "./useHoverToExpand";
+import { useHoverToCollapse } from "./useHoverToCollapse";
 
 /** Stack de fontes sans-serif do sistema. SVG `<text>` default cai em Times
  *  serif em vários navegadores — feio dentro do donut. Aplicado na raiz
@@ -377,16 +379,37 @@ export const Donut: React.FC<DonutProps> = ({
 
   // Hover-to-expand: passar o cursor sobre um group abre o sub-anel
   // instantaneamente. Comportamento universal — não depende do modo
-  // modo rápido. `expand` é idempotente: re-hover no mesmo group não fecha o
-  // ring, então o cursor pode entrar/sair do slice livremente enquanto o
-  // sub-donut continua aberto. Click no group continua chamando `toggle`,
-  // que vira o gesto de fechar.
-  const expandRing = ringStack.expand;
-  useEffect(() => {
-    if (!hoveredInfo) return;
-    if (!isGroup(hoveredInfo.tab)) return;
-    expandRing(hoveredInfo.tab.id, hoveredInfo.ringDepth);
-  }, [hoveredInfo, expandRing]);
+  // rápido. `useHoverToExpand` guarda a expansão pela string `id`,
+  // evitando re-disparo quando outra atualização (ex.: o próprio `toggle`
+  // de fechamento por click) regenera as refs upstream sem mudar de fato
+  // o group sob o cursor. Click no group continua chamando `toggle`, que
+  // permanece como o gesto de fechar.
+  const hoveredGroup = useMemo(
+    () =>
+      hoveredInfo && isGroup(hoveredInfo.tab)
+        ? { id: hoveredInfo.tab.id, depth: hoveredInfo.ringDepth }
+        : null,
+    [hoveredInfo],
+  );
+  useHoverToExpand(hoveredGroup, ringStack.expand);
+
+  // Hover-to-collapse: complementa o hover-to-expand. Quando o cursor sai
+  // da fatia do group E do anel externo correspondente, o group volta
+  // (sem precisar de click). Pausa enquanto context-menu/search overlay
+  // estão abertos pra não colapsar a estrutura por baixo do user.
+  const hoveredForCollapse = useMemo(() => {
+    if (mode !== "tabs" || hovered === null) return null;
+    const { ring, slice } = decodeHoverIndex(hovered);
+    if (ring < 0 || ring >= currentPerRing.length) return null;
+    const tab = currentPerRing[ring].tabs[slice];
+    return { ring, tabId: tab?.id ?? null };
+  }, [mode, hovered, currentPerRing]);
+  useHoverToCollapse({
+    hovered: hoveredForCollapse,
+    expandedGroupIds: ringStack.expandedGroupIds,
+    trim: ringStack.trimToLength,
+    enabled: !contextMenu && !searchOpen,
+  });
 
   const isTabSlice = (idx: number) => {
     const { ring, slice } = decodeHoverIndex(idx);

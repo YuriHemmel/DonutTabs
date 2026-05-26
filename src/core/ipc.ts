@@ -216,7 +216,7 @@ export const CONFIG_CHANGED_EVENT = "config-changed";
 export const SETTINGS_INTENT_EVENT = "settings-intent";
 export const UPDATE_PROGRESS_EVENT = "update-progress";
 /** Issue #71 — emitido pelo backend quando o atalho global é solto e
- *  `interaction.gameslike` está ligado. O frontend do donut consome para
+ *  `interaction.quickMode` está ligado. O frontend do donut consome para
  *  abrir o tab sob o cursor (se houver) e esconder a janela. */
 export const SHORTCUT_RELEASED_EVENT = "shortcut-released";
 
