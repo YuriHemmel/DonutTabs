@@ -5,6 +5,14 @@
 //! `GetModuleBaseNameW`, e ativa a primeira janela cujo process basename
 //! casa (case-insensitive, ignorando `.exe`) com `name`.
 //!
+//! `SetForegroundWindow` tem restrições documentadas (MSFT): só funciona
+//! quando o caller já é o foreground process — caso contrário a janela
+//! pisca na taskbar em vez de ganhar foco. Quando o donut clica numa aba,
+//! o donut window normalmente ainda é o foreground, mas isso não é
+//! garantido (race com sistema, screensaver, etc.). Usamos o pattern
+//! canônico `AttachThreadInput` do thread atual ao do foreground antes
+//! de `SetForegroundWindow`, depois detach — isso suprime as restrições.
+//!
 //! Falhas de FFI são tratadas como "não focou" — caller cai no spawn
 //! normal. Best-effort end-to-end.
 
@@ -41,11 +49,11 @@ mod imp {
     use windows_sys::Win32::Foundation::{BOOL, FALSE, HMODULE, HWND, LPARAM, MAX_PATH, TRUE};
     use windows_sys::Win32::System::ProcessStatus::GetModuleBaseNameW;
     use windows_sys::Win32::System::Threading::{
-        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
+        GetCurrentThreadId, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
     };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GetWindowThreadProcessId, IsWindowVisible, SetForegroundWindow, ShowWindow,
-        SW_RESTORE,
+        AttachThreadInput, EnumWindows, GetForegroundWindow, GetWindowThreadProcessId,
+        IsWindowVisible, SetForegroundWindow, ShowWindow, SW_RESTORE,
     };
 
     thread_local! {
@@ -128,6 +136,33 @@ mod imp {
         }
     }
 
+    /// Eleva uma janela pro foreground contornando as restrições do
+    /// `SetForegroundWindow`. Sem o `AttachThreadInput` trick a chamada
+    /// só funciona quando o caller já é o foreground process — caso
+    /// contrário a janela só pisca na taskbar. Detach é sempre feito,
+    /// mesmo se `SetForegroundWindow` falhar.
+    fn bring_window_to_front(hwnd: HWND) {
+        unsafe {
+            ShowWindow(hwnd, SW_RESTORE);
+            let current_thread = GetCurrentThreadId();
+            let fg_window = GetForegroundWindow();
+            // `fg_window` pode ser null (nenhum app em foreground) — não
+            // há thread pra attachar; SetForegroundWindow é chamado direto.
+            let fg_thread = if !fg_window.is_null() {
+                GetWindowThreadProcessId(fg_window, std::ptr::null_mut())
+            } else {
+                0
+            };
+            let attached = fg_thread != 0
+                && fg_thread != current_thread
+                && AttachThreadInput(current_thread, fg_thread, TRUE) != 0;
+            SetForegroundWindow(hwnd);
+            if attached {
+                AttachThreadInput(current_thread, fg_thread, FALSE);
+            }
+        }
+    }
+
     pub fn try_focus_app(name: &str) -> Result<bool, String> {
         let target = normalize_app_name(name);
         if target.is_empty() {
@@ -148,10 +183,7 @@ mod imp {
         let Some(hwnd) = hwnd else {
             return Ok(false);
         };
-        unsafe {
-            ShowWindow(hwnd, SW_RESTORE);
-            SetForegroundWindow(hwnd);
-        }
+        bring_window_to_front(hwnd);
         Ok(true)
     }
 }

@@ -7,6 +7,12 @@
 //! URL match é `starts with` na URL completa: tolera query strings/hashes
 //! adicionados pela página após o load (ex: configurada
 //! "https://github.com" → matcha "https://github.com/").
+//!
+//! Performance: `try_focus_url` empacota TODOS os browsers candidatos em
+//! **um único** script AppleScript com `try / end try` por browser. Spawn
+//! do `osascript` custa ~100-300ms por chamada — varrer 6 browsers em
+//! loop sequencial daria 1-2s no pior caso. Script combinado paga o boot
+//! uma vez só e roda os `tell application` em ms.
 
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
@@ -68,19 +74,20 @@ pub fn escape_applescript_string(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
-/// Gera AppleScript que procura uma aba com URL começando por `url` em
-/// qualquer janela de `app_name` (família Chromium). Ativa a janela
-/// correspondente, traz pro front e retorna `"focused"` ou `"not-found"`.
-pub fn build_chromium_family_focus_script(url: &str, app_name: &str) -> String {
-    let url = escape_applescript_string(url);
-    let app = escape_applescript_string(app_name);
+/// Bloco `tell application` (família Chromium) que procura uma aba cuja
+/// URL começa com `url_escaped` e, se achar, ativa + retorna `"focused"`
+/// do script todo. **Pré-escapado** — caller deve passar via
+/// `escape_applescript_string`. Sem `return` no caminho "não-achou":
+/// quando o block é encadeado com outros browsers, queremos cair na
+/// próxima tentativa.
+fn chromium_tell_block(url_escaped: &str, app_escaped: &str) -> String {
     format!(
-        r#"tell application "{app}"
+        r#"tell application "{app_escaped}"
     if it is running then
         repeat with w in windows
             set i to 1
             repeat with t in tabs of w
-                if URL of t starts with "{url}" then
+                if URL of t starts with "{url_escaped}" then
                     set active tab index of w to i
                     set index of w to 1
                     activate
@@ -90,22 +97,20 @@ pub fn build_chromium_family_focus_script(url: &str, app_name: &str) -> String {
             end repeat
         end repeat
     end if
-    return "not-found"
 end tell"#
     )
 }
 
-/// Gera AppleScript pra Safari. API difere: `current tab of window` e
-/// `URL of tab` (sem `tabs of w` na mesma forma — Safari tem `tabs`
+/// Bloco `tell application` pra Safari. API difere: `current tab of window`
+/// e `URL of tab` (sem `tabs of w` na mesma forma — Safari tem `tabs`
 /// indexável mas o setter é `current tab`).
-pub fn build_safari_focus_script(url: &str) -> String {
-    let url = escape_applescript_string(url);
+fn safari_tell_block(url_escaped: &str) -> String {
     format!(
         r#"tell application "Safari"
     if it is running then
         repeat with w in windows
             repeat with t in tabs of w
-                if URL of t starts with "{url}" then
+                if URL of t starts with "{url_escaped}" then
                     set current tab of w to t
                     set index of w to 1
                     activate
@@ -114,9 +119,34 @@ pub fn build_safari_focus_script(url: &str) -> String {
             end repeat
         end repeat
     end if
-    return "not-found"
 end tell"#
     )
+}
+
+/// Gera **um único** AppleScript que tenta focar a URL em cada browser de
+/// `ordered_browsers` na ordem dada. Cada bloco é envolto em `try / end
+/// try` pra que app não-instalado não interrompa a tentativa nos demais.
+/// Retorna `"focused"` no primeiro match ou `"not-found"` se nenhum
+/// browser tem a URL aberta. Substitui o loop antigo de N spawns de
+/// `osascript` por 1 spawn só (ver `//!` no header pra justificativa).
+pub fn build_combined_url_focus_script(url: &str, ordered_browsers: &[&str]) -> String {
+    let url_escaped = escape_applescript_string(url);
+    let mut script = String::new();
+    for app in ordered_browsers {
+        let app_escaped = escape_applescript_string(app);
+        let block = if *app == "Safari" {
+            safari_tell_block(&url_escaped)
+        } else if is_chromium_family(app) {
+            chromium_tell_block(&url_escaped, &app_escaped)
+        } else {
+            continue;
+        };
+        script.push_str("try\n");
+        script.push_str(&block);
+        script.push_str("\nend try\n");
+    }
+    script.push_str("return \"not-found\"");
+    script
 }
 
 /// AppleScript pra checar se um app está rodando E ativá-lo. Retorna
@@ -151,10 +181,10 @@ pub fn try_focus_app(name: &str) -> Result<bool, String> {
     Ok(out == "focused")
 }
 
-#[cfg(target_os = "macos")]
-pub fn try_focus_url(url: &str, preferred_browser: Option<&str>) -> Result<bool, String> {
-    // Ordem: preferred normalizado primeiro; depois os candidatos default
-    // sem repetir o preferred.
+/// Resolve a ordem final de browsers a tentar: preferred primeiro (se
+/// reconhecido), seguido pelos defaults sem repetir o preferred. Pure
+/// helper pra deixar `try_focus_url` testável sem rodar osascript.
+pub fn resolve_browser_order(preferred_browser: Option<&str>) -> Vec<&'static str> {
     let preferred = preferred_browser.and_then(normalize_browser_hint);
     let mut order: Vec<&'static str> = Vec::with_capacity(DEFAULT_BROWSER_CANDIDATES.len() + 1);
     if let Some(p) = preferred {
@@ -165,26 +195,23 @@ pub fn try_focus_url(url: &str, preferred_browser: Option<&str>) -> Result<bool,
             order.push(cand);
         }
     }
-    for app in order {
-        let script = if app == "Safari" {
-            build_safari_focus_script(url)
-        } else if is_chromium_family(app) {
-            build_chromium_family_focus_script(url, app)
-        } else {
-            continue;
-        };
-        match run_osascript(&script) {
-            Ok(out) if out == "focused" => return Ok(true),
-            Ok(_) => continue, // not-found / app não está rodando
-            Err(e) => {
-                // App não instalado retorna erro do osascript; logamos e
-                // seguimos pro próximo candidato — best-effort.
-                eprintln!("[focus_macos] osascript {app} falhou: {e}");
-                continue;
-            }
+    order
+}
+
+#[cfg(target_os = "macos")]
+pub fn try_focus_url(url: &str, preferred_browser: Option<&str>) -> Result<bool, String> {
+    // Single-spawn: empacota todos os browsers em um script só. Sem o
+    // refator, cada browser custava 1 boot de osascript (~100-300ms);
+    // a chamada com 6 candidatos podia gastar 1-2s no pior caso.
+    let order = resolve_browser_order(preferred_browser);
+    let script = build_combined_url_focus_script(url, &order);
+    match run_osascript(&script) {
+        Ok(out) => Ok(out == "focused"),
+        Err(e) => {
+            eprintln!("[focus_macos] osascript falhou: {e}");
+            Ok(false)
         }
     }
-    Ok(false)
 }
 
 #[cfg(test)]
@@ -192,19 +219,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn chromium_script_contains_app_and_url() {
-        let s = build_chromium_family_focus_script("https://example.com", "Google Chrome");
+    fn combined_script_includes_chromium_block_with_app_and_url() {
+        let s =
+            build_combined_url_focus_script("https://example.com", &["Google Chrome", "Safari"]);
         assert!(s.contains(r#"tell application "Google Chrome""#));
         assert!(s.contains(r#"starts with "https://example.com""#));
         assert!(s.contains("set active tab index of w"));
     }
 
     #[test]
-    fn safari_script_uses_current_tab() {
-        let s = build_safari_focus_script("https://x.test");
+    fn combined_script_includes_safari_block_with_current_tab() {
+        let s = build_combined_url_focus_script("https://x.test", &["Safari"]);
         assert!(s.contains(r#"tell application "Safari""#));
         assert!(s.contains("set current tab of w to t"));
         assert!(s.contains(r#"starts with "https://x.test""#));
+    }
+
+    #[test]
+    fn combined_script_wraps_each_browser_in_try_block() {
+        // Cada browser precisa ter `try / end try` pra que app não-instalado
+        // não interrompa as tentativas dos demais. Conta de blocos = nº de
+        // browsers reconhecidos passados. (Conta `end try` em vez de `try\n`
+        // pra evitar overlap com `end try\n`.)
+        let s = build_combined_url_focus_script(
+            "https://x.test",
+            &["Google Chrome", "Safari", "Microsoft Edge"],
+        );
+        assert_eq!(s.matches("end try").count(), 3);
+    }
+
+    #[test]
+    fn combined_script_ends_with_not_found_fallback() {
+        let s = build_combined_url_focus_script("https://x", &["Safari"]);
+        assert!(s.trim_end().ends_with(r#"return "not-found""#));
+    }
+
+    #[test]
+    fn combined_script_skips_unknown_browsers() {
+        // "Firefox" não está na família Chromium e não é Safari — deve ser
+        // ignorado silenciosamente (Firefox não expõe abas via AppleScript).
+        let s = build_combined_url_focus_script("https://x", &["Firefox", "Safari"]);
+        assert!(!s.contains(r#"tell application "Firefox""#));
+        assert!(s.contains(r#"tell application "Safari""#));
+        // Apenas 1 bloco try (Safari), não 2.
+        assert_eq!(s.matches("end try").count(), 1);
     }
 
     #[test]
@@ -218,9 +276,31 @@ mod tests {
 
     #[test]
     fn url_with_quotes_is_safely_embedded() {
-        let s = build_chromium_family_focus_script("https://x?q=\"a\"", "Google Chrome");
+        let s = build_combined_url_focus_script("https://x?q=\"a\"", &["Google Chrome"]);
         // Não deve quebrar o literal AppleScript com aspas cruas.
         assert!(s.contains("https://x?q=\\\"a\\\""));
+    }
+
+    #[test]
+    fn resolve_browser_order_places_preferred_first() {
+        let order = resolve_browser_order(Some("Safari"));
+        assert_eq!(order.first().copied(), Some("Safari"));
+        // Safari aparece exatamente uma vez (não duplica nos defaults).
+        assert_eq!(order.iter().filter(|b| **b == "Safari").count(), 1);
+    }
+
+    #[test]
+    fn resolve_browser_order_without_preferred_uses_defaults() {
+        let order = resolve_browser_order(None);
+        assert_eq!(order, DEFAULT_BROWSER_CANDIDATES.to_vec());
+    }
+
+    #[test]
+    fn resolve_browser_order_ignores_unknown_preferred() {
+        // Firefox não é reconhecido como candidato suportado — cai nos
+        // defaults sem ele aparecer.
+        let order = resolve_browser_order(Some("Firefox"));
+        assert_eq!(order, DEFAULT_BROWSER_CANDIDATES.to_vec());
     }
 
     #[test]

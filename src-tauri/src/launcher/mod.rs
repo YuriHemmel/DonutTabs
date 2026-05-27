@@ -94,13 +94,6 @@ pub trait Opener: Send + Sync {
     fn try_focus_url(&self, _url: &str, _preferred_browser: Option<&str>) -> Result<bool, String> {
         Ok(false)
     }
-    /// Plano 24 — tenta focar a janela do app que abriu um arquivo/pasta.
-    /// Fase 1: sempre `Ok(false)` (fora de escopo). Existe pra simetria
-    /// com `try_focus_app`/`try_focus_url` e pra fases futuras não
-    /// precisarem mudar a assinatura.
-    fn try_focus_path(&self, _path: &str) -> Result<bool, String> {
-        Ok(false)
-    }
 }
 
 /// Mapeia nome/path do navegador → flag CLI de modo anônimo. Match é
@@ -275,16 +268,9 @@ pub fn launch_tab(
             | Item::Folder {
                 path, open_with, ..
             } => {
-                // Plano 24 — Fase 1: try_focus_path tem default `Ok(false)`,
-                // então este ramo é efetivamente no-op fora de implementações
-                // futuras. Mantemos o call site pra simetria.
-                if tab.focus_if_open {
-                    match opener.try_focus_path(path) {
-                        Ok(true) => continue,
-                        Ok(false) => {}
-                        Err(e) => eprintln!("[launcher] try_focus_path falhou: {} ({})", path, e),
-                    }
-                }
+                // Plano 24 — focus para file/folder fica pra fase futura
+                // (precisa rastrear qual app abriu o quê). Mantém o fluxo
+                // de abrir normalmente mesmo com `focus_if_open=true`.
                 if let Err(e) = opener.open_path(path, open_with.as_deref()) {
                     outcome.failures.push((path.clone(), e));
                 }
@@ -548,15 +534,13 @@ mod tests {
         fail_apps: Vec<String>,
         fail_scripts: Vec<String>,
         fail_warps: Vec<u32>,
-        /// Plano 24 — apps/URLs/paths cujo `try_focus_*` deve retornar
-        /// `Ok(true)` (simula "já está aberto"). Default vazio = nada
-        /// foca, tudo cai no spawn normal.
+        /// Plano 24 — apps/URLs cujo `try_focus_*` deve retornar `Ok(true)`
+        /// (simula "já está aberto"). Default vazio = nada foca, tudo cai
+        /// no spawn normal.
         focusable_apps: Vec<String>,
         focusable_urls: Vec<String>,
-        focusable_paths: Vec<String>,
         focus_app_calls: Mutex<Vec<String>>,
         focus_url_calls: Mutex<Vec<(String, Option<String>)>>,
-        focus_path_calls: Mutex<Vec<String>>,
     }
 
     impl MockOpener {
@@ -576,10 +560,8 @@ mod tests {
                 fail_warps: vec![],
                 focusable_apps: vec![],
                 focusable_urls: vec![],
-                focusable_paths: vec![],
                 focus_app_calls: Mutex::new(vec![]),
                 focus_url_calls: Mutex::new(vec![]),
-                focus_path_calls: Mutex::new(vec![]),
             }
         }
 
@@ -685,11 +667,6 @@ mod tests {
                 .unwrap()
                 .push((url.to_string(), preferred_browser.map(str::to_string)));
             Ok(self.focusable_urls.iter().any(|f| f == url))
-        }
-
-        fn try_focus_path(&self, path: &str) -> Result<bool, String> {
-            self.focus_path_calls.lock().unwrap().push(path.to_string());
-            Ok(self.focusable_paths.iter().any(|f| f == path))
         }
     }
 

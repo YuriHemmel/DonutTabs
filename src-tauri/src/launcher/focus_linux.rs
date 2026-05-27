@@ -6,6 +6,12 @@
 //! `exit_code == 0` = ativou; `!= 0` = não encontrou. `wmctrl` ausente
 //! retorna `Ok(false)` pra cair no fallback de spawn.
 //!
+//! Caveat conhecido — falso positivo: como o match é **substring no
+//! título da janela** (não no nome do processo / WM_CLASS), uma aba do
+//! Chrome com título "How to install Firefox" pode ser ativada quando o
+//! user pediu pra focar o Firefox. Best-effort intencional; resolver
+//! isso exigiria parsing manual de `wmctrl -l -x` e match por WM_CLASS.
+//!
 //! Wayland sessions: `wmctrl` é X11-only. Em Wayland puro, o comando
 //! falha; tratamos como "não focou" — caller cai no spawn normal, que
 //! continua funcionando porque o app é spawnado via OS handler.
@@ -24,9 +30,16 @@ pub fn normalize_app_name(input: &str) -> String {
 
 #[cfg(target_os = "linux")]
 pub fn try_focus_app(name: &str) -> Result<bool, String> {
-    use std::process::Command;
+    use std::process::{Command, Stdio};
     let normalized = normalize_app_name(name);
-    let status = Command::new("wmctrl").args(["-a", &normalized]).status();
+    // Silencia stdout/stderr — wmctrl ausente imprime "command not found"
+    // herdado do shell pai e o "Cannot get client list" do X11 falha por
+    // sessão Wayland, poluindo o stdio do app sem trazer info útil.
+    let status = Command::new("wmctrl")
+        .args(["-a", &normalized])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
     match status {
         Ok(s) if s.success() => Ok(true),
         Ok(_) => Ok(false),
