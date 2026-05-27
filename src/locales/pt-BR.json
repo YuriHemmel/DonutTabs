@@ -348,7 +348,12 @@
       "addChildTab": "+ Adicionar aba",
       "addChildGroup": "+ Adicionar subgrupo",
       "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui.",
-      "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas."
+      "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas.",
+      "focusIfOpen": {
+        "label": "Focar se já estiver aberto",
+        "hint": "Apps e abas já abertos ganham foco; os demais abrem normalmente. URLs no macOS: Chrome, Safari, Edge, Arc, Brave, Vivaldi. Firefox não é suportado (limitação do AppleScript no Firefox).",
+        "firefoxWarning": "Uma ou mais URLs usam Firefox como navegador. O Firefox no macOS não expõe abas via AppleScript, então essas URLs abrirão sempre como nova aba. Para foco de aba, use Chrome, Safari, Edge, Arc, Brave ou Vivaldi."
+      }
     },
     "scriptHelp": {
       "title": "Como usar scripts",

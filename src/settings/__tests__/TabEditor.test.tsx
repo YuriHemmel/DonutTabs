@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import type { ComponentProps } from "react";
 import { createI18n } from "../../core/i18n";
-import { TabEditor } from "../TabEditor";
+import { TabEditor, hasFirefoxUrlItem } from "../TabEditor";
 import type { Tab } from "../../core/types/Tab";
 
 type Props = ComponentProps<typeof TabEditor>;
@@ -36,6 +36,7 @@ const existing: Tab = {
   items: [{ kind: "url", value: "https://example.com", openWith: null, monitor: null , incognito: false}],
   kind: "leaf",
   children: [],
+  focusIfOpen: false,
 };
 
 describe("TabEditor", () => {
@@ -402,6 +403,7 @@ describe("TabEditor", () => {
       items: [],
       kind: "group",
       children: [],
+      focusIfOpen: false,
     };
     const user = userEvent.setup();
     const { props } = await renderEditor({ mode: "edit", initial: emptyGroup });
@@ -497,5 +499,143 @@ describe("TabEditor", () => {
     const first = payload.items[0];
     if (first.kind !== "script") throw new Error("expected script item");
     expect(first.shell).toBeNull();
+  });
+
+  // ---------- Plano 24: focus_if_open toggle ----------
+
+  it("defaults focus_if_open to false in new tab and submits it", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor();
+    const checkbox = screen.getByTestId("tab-focus-if-open") as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+    await user.type(screen.getByLabelText(/nome/i), "Foo");
+    await user.type(screen.getByLabelText(/url 1/i), "https://ok.test");
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.focusIfOpen).toBe(false);
+  });
+
+  it("toggling focus_if_open propagates to the save payload", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderEditor({ mode: "edit", initial: existing });
+    const checkbox = screen.getByTestId("tab-focus-if-open") as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+    await user.click(checkbox);
+    expect(checkbox.checked).toBe(true);
+    await user.click(screen.getByRole("button", { name: /^salvar$/i }));
+    const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
+    expect(payload.focusIfOpen).toBe(true);
+  });
+
+  it("hydrates focus_if_open from initial tab when editing", async () => {
+    const focused: Tab = { ...existing, focusIfOpen: true };
+    await renderEditor({ mode: "edit", initial: focused });
+    const checkbox = screen.getByTestId("tab-focus-if-open") as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it("shows Firefox warning when focus_if_open=true and a URL uses openWith=Firefox", async () => {
+    const firefoxTab: Tab = {
+      ...existing,
+      focusIfOpen: true,
+      items: [
+        {
+          kind: "url",
+          value: "https://x.test",
+          openWith: "Firefox",
+          monitor: null,
+          incognito: false,
+        },
+      ],
+    };
+    await renderEditor({ mode: "edit", initial: firefoxTab });
+    expect(screen.getByTestId("tab-focus-firefox-warning")).toBeTruthy();
+  });
+
+  it("hides Firefox warning when focus_if_open is off (even with Firefox openWith)", async () => {
+    const firefoxTab: Tab = {
+      ...existing,
+      focusIfOpen: false,
+      items: [
+        {
+          kind: "url",
+          value: "https://x.test",
+          openWith: "Firefox",
+          monitor: null,
+          incognito: false,
+        },
+      ],
+    };
+    await renderEditor({ mode: "edit", initial: firefoxTab });
+    expect(screen.queryByTestId("tab-focus-firefox-warning")).toBeNull();
+  });
+
+  it("hides Firefox warning when no URL uses Firefox (even with focus_if_open on)", async () => {
+    const chromeTab: Tab = {
+      ...existing,
+      focusIfOpen: true,
+      items: [
+        {
+          kind: "url",
+          value: "https://x.test",
+          openWith: "Google Chrome",
+          monitor: null,
+          incognito: false,
+        },
+      ],
+    };
+    await renderEditor({ mode: "edit", initial: chromeTab });
+    expect(screen.queryByTestId("tab-focus-firefox-warning")).toBeNull();
+  });
+});
+
+describe("hasFirefoxUrlItem", () => {
+  it("matches exact 'Firefox' case-insensitively", () => {
+    expect(
+      hasFirefoxUrlItem([{ kind: "url", openWith: "Firefox" }]),
+    ).toBe(true);
+    expect(
+      hasFirefoxUrlItem([{ kind: "url", openWith: "firefox" }]),
+    ).toBe(true);
+    expect(
+      hasFirefoxUrlItem([{ kind: "url", openWith: "FIREFOX" }]),
+    ).toBe(true);
+  });
+
+  it("matches Firefox variants (paths, suffixes)", () => {
+    expect(
+      hasFirefoxUrlItem([{ kind: "url", openWith: "/Applications/Firefox.app" }]),
+    ).toBe(true);
+    expect(
+      hasFirefoxUrlItem([{ kind: "url", openWith: "Firefox Developer Edition" }]),
+    ).toBe(true);
+  });
+
+  it("ignores Firefox openWith on non-URL items", () => {
+    expect(
+      hasFirefoxUrlItem([{ kind: "file", openWith: "Firefox" }]),
+    ).toBe(false);
+    expect(
+      hasFirefoxUrlItem([{ kind: "folder", openWith: "firefox" }]),
+    ).toBe(false);
+  });
+
+  it("returns false for Chrome/Safari/empty", () => {
+    expect(
+      hasFirefoxUrlItem([{ kind: "url", openWith: "Google Chrome" }]),
+    ).toBe(false);
+    expect(hasFirefoxUrlItem([{ kind: "url", openWith: "" }])).toBe(false);
+    expect(hasFirefoxUrlItem([{ kind: "url", openWith: "   " }])).toBe(false);
+    expect(hasFirefoxUrlItem([])).toBe(false);
+  });
+
+  it("returns true if at least one item matches in a mixed list", () => {
+    expect(
+      hasFirefoxUrlItem([
+        { kind: "url", openWith: "Chrome" },
+        { kind: "url", openWith: "Firefox" },
+        { kind: "url", openWith: "" },
+      ]),
+    ).toBe(true);
   });
 });

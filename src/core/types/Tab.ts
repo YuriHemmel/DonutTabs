@@ -22,4 +22,20 @@ kind: TabKind,
  * "Vec::is_empty")]` mantém configs Plano-15 carregando sem migração
  * e não polui JSON de leaves.
  */
-children: Array<Tab>, };
+children: Array<Tab>, 
+/**
+ * Plano 24 — quando `true`, o launcher tenta dar foco a apps/URLs já
+ * abertos antes de cair no fluxo de abrir novo. Decisão é por item:
+ * se algum está aberto e outro não, foca o primeiro e abre o segundo.
+ *
+ * Cobertura por OS na Fase 1:
+ *   * Apps nativos: Win/macOS/Linux
+ *   * URLs: somente macOS (Chrome, Safari, Edge, Arc, Brave, Vivaldi)
+ *   * URLs em Win/Linux caem no fallback (sem extensão de browser)
+ *   * Arquivos/pastas/scripts: sempre fallback (fora de escopo da v1)
+ *
+ * Configs Plano-23 e anteriores deserializam como `false`
+ * (comportamento inalterado). `skip_serializing_if = "is_default_bool"`
+ * mantém JSON enxuto pro caso comum.
+ */
+focusIfOpen: boolean, };

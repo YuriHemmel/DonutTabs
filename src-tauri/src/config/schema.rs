@@ -269,6 +269,21 @@ pub struct Tab {
     /// e não polui JSON de leaves.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Tab>,
+    /// Plano 24 — quando `true`, o launcher tenta dar foco a apps/URLs já
+    /// abertos antes de cair no fluxo de abrir novo. Decisão é por item:
+    /// se algum está aberto e outro não, foca o primeiro e abre o segundo.
+    ///
+    /// Cobertura por OS na Fase 1:
+    ///   * Apps nativos: Win/macOS/Linux
+    ///   * URLs: somente macOS (Chrome, Safari, Edge, Arc, Brave, Vivaldi)
+    ///   * URLs em Win/Linux caem no fallback (sem extensão de browser)
+    ///   * Arquivos/pastas/scripts: sempre fallback (fora de escopo da v1)
+    ///
+    /// Configs Plano-23 e anteriores deserializam como `false`
+    /// (comportamento inalterado). `skip_serializing_if = "is_default_bool"`
+    /// mantém JSON enxuto pro caso comum.
+    #[serde(default, skip_serializing_if = "is_default_bool")]
+    pub focus_if_open: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, TS)]
@@ -477,6 +492,7 @@ mod tests {
                 }],
                 kind: TabKind::Leaf,
                 children: vec![],
+                focus_if_open: false,
             }],
             allow_scripts: false,
             theme_overrides: None,
@@ -587,6 +603,7 @@ mod tests {
             ],
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let json = serde_json::to_string(&tab).unwrap();
         let back: Tab = serde_json::from_str(&json).unwrap();
@@ -817,6 +834,7 @@ mod tests {
             }],
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let json = serde_json::to_string(&tab).unwrap();
         assert!(
@@ -863,6 +881,7 @@ mod tests {
             }],
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let group = Tab {
             id: Uuid::nil(),
@@ -873,6 +892,7 @@ mod tests {
             items: vec![],
             kind: TabKind::Group,
             children: vec![child],
+            focus_if_open: false,
         };
         let json = serde_json::to_string(&group).unwrap();
         assert!(json.contains("\"children\""));
@@ -896,6 +916,7 @@ mod tests {
             items: vec![],
             kind: TabKind::Group,
             children: vec![],
+            focus_if_open: false,
         };
         let json = serde_json::to_string(&group).unwrap();
         assert!(json.contains("\"kind\":\"group\""));
@@ -921,6 +942,7 @@ mod tests {
             }],
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let mid = Tab {
             id: Uuid::nil(),
@@ -931,6 +953,7 @@ mod tests {
             items: vec![],
             kind: TabKind::Group,
             children: vec![leaf],
+            focus_if_open: false,
         };
         let root = Tab {
             id: Uuid::nil(),
@@ -941,10 +964,75 @@ mod tests {
             items: vec![],
             kind: TabKind::Group,
             children: vec![mid],
+            focus_if_open: false,
         };
         let json = serde_json::to_string(&root).unwrap();
         let back: Tab = serde_json::from_str(&json).unwrap();
         assert_eq!(root, back);
+    }
+
+    #[test]
+    fn tab_focus_if_open_default_is_omitted_from_json() {
+        // Plano 24: campo novo elidido quando false (padrão), pra não
+        // poluir configs Plano-23 e anteriores depois da próxima escrita.
+        let tab = Tab {
+            id: Uuid::nil(),
+            name: Some("x".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![Item::Url {
+                monitor: None,
+                value: "https://x".into(),
+                open_with: None,
+                incognito: false,
+            }],
+            kind: TabKind::Leaf,
+            children: vec![],
+            focus_if_open: false,
+        };
+        let json = serde_json::to_string(&tab).unwrap();
+        assert!(
+            !json.contains("focusIfOpen"),
+            "focusIfOpen=false should be skipped: {json}"
+        );
+    }
+
+    #[test]
+    fn tab_focus_if_open_true_serializes_and_round_trips() {
+        let tab = Tab {
+            id: Uuid::nil(),
+            name: Some("x".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items: vec![Item::App {
+                monitor: None,
+                name: "Firefox".into(),
+            }],
+            kind: TabKind::Leaf,
+            children: vec![],
+            focus_if_open: true,
+        };
+        let json = serde_json::to_string(&tab).unwrap();
+        assert!(json.contains("\"focusIfOpen\":true"));
+        let back: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(tab, back);
+    }
+
+    #[test]
+    fn tab_without_focus_if_open_deserializes_as_false() {
+        // Plano 23 e anteriores não têm o campo no JSON.
+        let json = r#"{
+            "id": "11111111-1111-1111-1111-111111111111",
+            "name": "old",
+            "icon": null,
+            "order": 0,
+            "openMode": "reuseOrNewWindow",
+            "items": [{"kind":"url","value":"https://x"}]
+        }"#;
+        let t: Tab = serde_json::from_str(json).unwrap();
+        assert!(!t.focus_if_open);
     }
 
     #[test]

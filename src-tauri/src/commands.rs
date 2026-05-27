@@ -1698,6 +1698,7 @@ mod tests {
             }],
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         }
     }
 
@@ -1752,6 +1753,7 @@ mod tests {
             items: vec![],
             kind: TabKind::Group,
             children,
+            focus_if_open: false,
         }
     }
 
@@ -1928,6 +1930,7 @@ mod tests {
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let leaf_a1 = Tab {
             id: Uuid::new_v4(),
@@ -1943,6 +1946,7 @@ mod tests {
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let leaf_b1 = Tab {
             id: Uuid::new_v4(),
@@ -1958,6 +1962,7 @@ mod tests {
             }],
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         };
         let leaf_root_id = leaf_root.id;
         let leaf_a1_id = leaf_a1.id;
@@ -1971,6 +1976,7 @@ mod tests {
             items: vec![],
             kind: crate::config::schema::TabKind::Group,
             children: vec![leaf_b1],
+            focus_if_open: false,
         };
         let group_a = Tab {
             id: Uuid::new_v4(),
@@ -1981,6 +1987,7 @@ mod tests {
             items: vec![],
             kind: crate::config::schema::TabKind::Group,
             children: vec![leaf_a1, group_b],
+            focus_if_open: false,
         };
         (
             vec![leaf_root, group_a],
@@ -2518,6 +2525,7 @@ mod tests {
             items,
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         }
     }
 

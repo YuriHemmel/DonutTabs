@@ -13,6 +13,7 @@ function makeTab(id: string, name: string, order = 0): Tab {
     items: [{ kind: "url", value: "https://example.com", openWith: null, monitor: null , incognito: false}],
     kind: "leaf",
     children: [],
+    focusIfOpen: false,
   };
 }
 
@@ -47,6 +48,7 @@ describe("Donut", () => {
       items: [],
       kind: "group",
       children: [],
+      focusIfOpen: false,
     };
     const onOpenSettings = vi.fn();
     const { container } = render(
@@ -77,6 +79,7 @@ describe("Donut", () => {
       items: [],
       kind: "group",
       children: [],
+      focusIfOpen: false,
     };
     const outer: Tab = {
       id: "g1",
@@ -87,6 +90,7 @@ describe("Donut", () => {
       items: [],
       kind: "group",
       children: [inner],
+      focusIfOpen: false,
     };
     const onOpenSettings = vi.fn();
     const onSelect = vi.fn();

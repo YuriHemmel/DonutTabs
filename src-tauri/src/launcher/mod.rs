@@ -2,6 +2,13 @@ use crate::config::schema::{Item, Tab};
 use crate::errors::{AppError, AppResult};
 use uuid::Uuid;
 
+// Plano 24 — backends de foco por SO. Cada módulo declara helpers puros
+// (testáveis em qualquer host) + `#[cfg(target_os = "X")]` pra entrypoint
+// runtime. Declaração incondicional pra que os helpers puros rodem no CI.
+pub mod focus_linux;
+pub mod focus_macos;
+pub mod focus_windows;
+
 /// Plano 19 — abstração ortogonal ao `Opener` para execução de scripts
 /// com captura de stdout/stderr. Implementação real (em `commands.rs`)
 /// instancia uma run no `ScriptHistory`, spawna o child via
@@ -68,6 +75,24 @@ pub trait Opener: Send + Sync {
     /// futuros backends).
     fn warp_cursor_to_monitor(&self, _monitor_index: u32) -> Result<(), String> {
         Ok(())
+    }
+    /// Plano 24 — tenta dar foco a um app já em execução. `Ok(true)` =
+    /// app encontrado e ativado; `Ok(false)` = não está rodando (caller
+    /// deve cair no spawn normal). `Err` é falha do mecanismo de detecção
+    /// e também é tratado como fallback pelo caller (best-effort, nunca
+    /// fatal). Default impl: sem foco — usado por mocks e backends
+    /// futuros que não suportarem.
+    fn try_focus_app(&self, _name: &str) -> Result<bool, String> {
+        Ok(false)
+    }
+    /// Plano 24 — tenta focar uma aba de navegador com a URL especificada.
+    /// `preferred_browser` (`Some(name)`) prioriza esse browser; `None`
+    /// varre os browsers conhecidos. Match é case-insensitive e tolerante
+    /// a query strings/fragments adicionados pela página. Mesma semântica
+    /// de retorno do `try_focus_app`. Fase 1: só implementado no macOS;
+    /// Win/Linux retornam `Ok(false)` (sem extensão de browser).
+    fn try_focus_url(&self, _url: &str, _preferred_browser: Option<&str>) -> Result<bool, String> {
+        Ok(false)
     }
 }
 
@@ -191,6 +216,18 @@ pub fn launch_tab(
                 incognito,
                 ..
             } => {
+                // Plano 24 — tenta focar aba existente antes de spawnar.
+                // Incognito é incompatível com focus (sessões anônimas
+                // são isoladas; focar uma anônima existente seria
+                // semanticamente errado). Erro do detector cai no
+                // fallback (best-effort).
+                if tab.focus_if_open && !*incognito {
+                    match opener.try_focus_url(value, open_with.as_deref()) {
+                        Ok(true) => continue,
+                        Ok(false) => {}
+                        Err(e) => eprintln!("[launcher] try_focus_url falhou: {} ({})", value, e),
+                    }
+                }
                 let result = if *incognito {
                     // Resolve navegador: explícito > detecção do default do SO.
                     let explicit = open_with
@@ -231,11 +268,22 @@ pub fn launch_tab(
             | Item::Folder {
                 path, open_with, ..
             } => {
+                // Plano 24 — focus para file/folder fica pra fase futura
+                // (precisa rastrear qual app abriu o quê). Mantém o fluxo
+                // de abrir normalmente mesmo com `focus_if_open=true`.
                 if let Err(e) = opener.open_path(path, open_with.as_deref()) {
                     outcome.failures.push((path.clone(), e));
                 }
             }
             Item::App { name, .. } => {
+                // Plano 24 — tenta focar app já em execução antes de spawnar.
+                if tab.focus_if_open {
+                    match opener.try_focus_app(name) {
+                        Ok(true) => continue,
+                        Ok(false) => {}
+                        Err(e) => eprintln!("[launcher] try_focus_app falhou: {} ({})", name, e),
+                    }
+                }
                 if let Err(e) = opener.spawn_app(name) {
                     outcome.failures.push((name.clone(), e));
                 }
@@ -307,11 +355,11 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
             let Some(flag) = flag else {
                 return self.open_url(url, Some(browser));
             };
-            return Command::new("open")
+            Command::new("open")
                 .args(["-na", browser, "--args", flag, url])
                 .spawn()
                 .map(|_| ())
-                .map_err(|e| e.to_string());
+                .map_err(|e| e.to_string())
         }
         #[cfg(target_os = "windows")]
         {
@@ -417,6 +465,43 @@ impl<'a, R: tauri::Runtime> Opener for TauriOpener<'a, R> {
     fn warp_cursor_to_monitor(&self, monitor_index: u32) -> Result<(), String> {
         crate::cursor_warp::warp_to_monitor(self.app, monitor_index).map_err(|e| format!("{e:?}"))
     }
+
+    fn try_focus_app(&self, name: &str) -> Result<bool, String> {
+        // Plano 24 — delega pro backend OS-específico. Cada um retorna
+        // `Ok(false)` (em vez de Err) quando o app não está rodando,
+        // assim o caller sabe que pode cair no spawn normal.
+        #[cfg(target_os = "macos")]
+        {
+            focus_macos::try_focus_app(name)
+        }
+        #[cfg(target_os = "windows")]
+        {
+            focus_windows::try_focus_app(name)
+        }
+        #[cfg(target_os = "linux")]
+        {
+            focus_linux::try_focus_app(name)
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        {
+            let _ = name;
+            Ok(false)
+        }
+    }
+
+    fn try_focus_url(&self, url: &str, preferred_browser: Option<&str>) -> Result<bool, String> {
+        // Plano 24 — Fase 1: URL focus só no macOS (AppleScript). Win/Linux
+        // caem no fallback default (`Ok(false)` → caller spawna nova aba).
+        #[cfg(target_os = "macos")]
+        {
+            focus_macos::try_focus_url(url, preferred_browser)
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (url, preferred_browser);
+            Ok(false)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -449,6 +534,13 @@ mod tests {
         fail_apps: Vec<String>,
         fail_scripts: Vec<String>,
         fail_warps: Vec<u32>,
+        /// Plano 24 — apps/URLs cujo `try_focus_*` deve retornar `Ok(true)`
+        /// (simula "já está aberto"). Default vazio = nada foca, tudo cai
+        /// no spawn normal.
+        focusable_apps: Vec<String>,
+        focusable_urls: Vec<String>,
+        focus_app_calls: Mutex<Vec<String>>,
+        focus_url_calls: Mutex<Vec<(String, Option<String>)>>,
     }
 
     impl MockOpener {
@@ -466,11 +558,25 @@ mod tests {
                 fail_apps: vec![],
                 fail_scripts: vec![],
                 fail_warps: vec![],
+                focusable_apps: vec![],
+                focusable_urls: vec![],
+                focus_app_calls: Mutex::new(vec![]),
+                focus_url_calls: Mutex::new(vec![]),
             }
         }
 
         fn with_detected(mut self, browser: &str) -> Self {
             self.detected_browser = Some(browser.to_string());
+            self
+        }
+
+        fn with_focusable_app(mut self, name: &str) -> Self {
+            self.focusable_apps.push(name.to_string());
+            self
+        }
+
+        fn with_focusable_url(mut self, url: &str) -> Self {
+            self.focusable_urls.push(url.to_string());
             self
         }
     }
@@ -545,6 +651,23 @@ mod tests {
         fn detect_default_browser(&self) -> Option<String> {
             self.detected_browser.clone()
         }
+
+        fn try_focus_app(&self, name: &str) -> Result<bool, String> {
+            self.focus_app_calls.lock().unwrap().push(name.to_string());
+            Ok(self.focusable_apps.iter().any(|f| f == name))
+        }
+
+        fn try_focus_url(
+            &self,
+            url: &str,
+            preferred_browser: Option<&str>,
+        ) -> Result<bool, String> {
+            self.focus_url_calls
+                .lock()
+                .unwrap()
+                .push((url.to_string(), preferred_browser.map(str::to_string)));
+            Ok(self.focusable_urls.iter().any(|f| f == url))
+        }
     }
 
     fn tab_url(urls: &[&str]) -> Tab {
@@ -565,6 +688,7 @@ mod tests {
                 .collect(),
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         }
     }
 
@@ -578,6 +702,7 @@ mod tests {
             items,
             kind: TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         }
     }
 
@@ -1380,5 +1505,157 @@ mod tests {
         launch_tab(&tab, &opener, Uuid::new_v4(), None).unwrap();
         let calls = opener.script_calls.lock().unwrap();
         assert_eq!(calls.as_slice(), &[("ls".to_string(), None)]);
+    }
+
+    // ---------- Plano 24: focus_if_open ----------
+
+    fn tab_with_focus(items: Vec<Item>) -> Tab {
+        Tab {
+            id: Uuid::new_v4(),
+            name: Some("t".into()),
+            icon: None,
+            order: 0,
+            open_mode: OpenMode::ReuseOrNewWindow,
+            items,
+            kind: TabKind::Leaf,
+            children: vec![],
+            focus_if_open: true,
+        }
+    }
+
+    #[test]
+    fn focus_if_open_off_never_calls_try_focus() {
+        // Comportamento default (Plano-23): focus_if_open=false não dispara
+        // nenhum try_focus_*; tudo cai no spawn normal.
+        let opener = MockOpener::new()
+            .with_focusable_app("Firefox")
+            .with_focusable_url("https://x");
+        let tab = tab_with_items(vec![
+            Item::App {
+                monitor: None,
+                name: "Firefox".into(),
+            },
+            Item::Url {
+                monitor: None,
+                value: "https://x".into(),
+                open_with: None,
+                incognito: false,
+            },
+        ]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(opener.focus_app_calls.lock().unwrap().is_empty());
+        assert!(opener.focus_url_calls.lock().unwrap().is_empty());
+        assert_eq!(opener.app_calls.lock().unwrap().as_slice(), &["Firefox"]);
+        assert_eq!(url_values(&opener.url_calls), vec!["https://x"]);
+    }
+
+    #[test]
+    fn focus_if_open_on_focuses_open_app_and_skips_spawn() {
+        let opener = MockOpener::new().with_focusable_app("Firefox");
+        let tab = tab_with_focus(vec![Item::App {
+            monitor: None,
+            name: "Firefox".into(),
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert_eq!(
+            opener.focus_app_calls.lock().unwrap().as_slice(),
+            &["Firefox"]
+        );
+        // App estava aberto → spawn não acontece.
+        assert!(opener.app_calls.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn focus_if_open_falls_back_to_spawn_when_not_open() {
+        // App não está na lista focusable → try_focus_app retorna false →
+        // launcher cai no spawn_app normal.
+        let opener = MockOpener::new();
+        let tab = tab_with_focus(vec![Item::App {
+            monitor: None,
+            name: "VSCode".into(),
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert_eq!(
+            opener.focus_app_calls.lock().unwrap().as_slice(),
+            &["VSCode"]
+        );
+        assert_eq!(opener.app_calls.lock().unwrap().as_slice(), &["VSCode"]);
+    }
+
+    #[test]
+    fn focus_if_open_mixes_focused_and_spawned_per_item() {
+        // Cenário-chave da issue: alguns itens abertos, outros não.
+        // Os abertos ganham foco; os fechados abrem normalmente.
+        let opener = MockOpener::new()
+            .with_focusable_app("Firefox")
+            .with_focusable_url("https://github.com");
+        let tab = tab_with_focus(vec![
+            Item::App {
+                monitor: None,
+                name: "Firefox".into(),
+            },
+            Item::App {
+                monitor: None,
+                name: "VSCode".into(),
+            },
+            Item::Url {
+                monitor: None,
+                value: "https://github.com".into(),
+                open_with: None,
+                incognito: false,
+            },
+            Item::Url {
+                monitor: None,
+                value: "https://news.ycombinator.com".into(),
+                open_with: None,
+                incognito: false,
+            },
+        ]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        // App Firefox focado, VSCode spawnado:
+        assert_eq!(opener.app_calls.lock().unwrap().as_slice(), &["VSCode"]);
+        // URL github focada, HN aberta normalmente:
+        assert_eq!(
+            url_values(&opener.url_calls),
+            vec!["https://news.ycombinator.com"]
+        );
+    }
+
+    #[test]
+    fn focus_if_open_passes_preferred_browser_to_url_focus() {
+        let opener = MockOpener::new().with_focusable_url("https://x");
+        let tab = tab_with_focus(vec![Item::Url {
+            monitor: None,
+            value: "https://x".into(),
+            open_with: Some("Google Chrome".into()),
+            incognito: false,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        let calls = opener.focus_url_calls.lock().unwrap();
+        assert_eq!(
+            calls.as_slice(),
+            &[("https://x".to_string(), Some("Google Chrome".to_string()))]
+        );
+    }
+
+    #[test]
+    fn focus_if_open_ignores_incognito_urls() {
+        // Incognito é incompatível com focus: sessões anônimas são isoladas.
+        // Mesmo com focus_if_open=true, URL incognito vai pro path normal.
+        let opener = MockOpener::new()
+            .with_focusable_url("https://x")
+            .with_detected("Google Chrome");
+        let tab = tab_with_focus(vec![Item::Url {
+            monitor: None,
+            value: "https://x".into(),
+            open_with: None,
+            incognito: true,
+        }]);
+        launch_tab(&tab, &opener, Uuid::nil(), None).unwrap();
+        assert!(opener.focus_url_calls.lock().unwrap().is_empty());
+        assert_eq!(
+            opener.incognito_calls.lock().unwrap().as_slice(),
+            &[("https://x".to_string(), Some("Google Chrome".to_string()))]
+        );
     }
 }

@@ -21,6 +21,7 @@ const tab = (id: string, name: string, order: number): Tab => ({
   items: [],
   kind: "leaf",
   children: [],
+  focusIfOpen: false,
 });
 
 const group = (
@@ -37,6 +38,7 @@ const group = (
   items: [],
   kind: "group",
   children,
+  focusIfOpen: false,
 });
 
 const mockRect = (el: HTMLElement, top: number, height: number) => {

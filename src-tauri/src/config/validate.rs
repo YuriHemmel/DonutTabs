@@ -384,6 +384,7 @@ mod tests {
             items,
             kind: crate::config::schema::TabKind::Leaf,
             children: vec![],
+            focus_if_open: false,
         }
     }
 
@@ -1233,6 +1234,7 @@ mod tests {
             items: vec![],
             kind: crate::config::schema::TabKind::Group,
             children,
+            focus_if_open: false,
         }
     }
 

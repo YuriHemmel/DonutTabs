@@ -11,6 +11,7 @@ const leaf = (id: string, name = id): Tab => ({
   items: [{ kind: "url", value: "https://x", openWith: null, monitor: null , incognito: false}],
   kind: "leaf",
   children: [],
+  focusIfOpen: false,
 });
 
 const group = (id: string, children: Tab[], name = id): Tab => ({
@@ -22,6 +23,7 @@ const group = (id: string, children: Tab[], name = id): Tab => ({
   items: [],
   kind: "group",
   children,
+  focusIfOpen: false,
 });
 
 describe("findTabByPath", () => {
