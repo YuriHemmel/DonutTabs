@@ -128,6 +128,11 @@ pub struct Interaction {
     /// anteriores deserializam usando `default_search_shortcut`.
     #[serde(default = "default_search_shortcut")]
     pub search_shortcut: String,
+    /// Issue #66 — atalho global que abre a janela de Settings direto, sem
+    /// passar pelo donut/tray. Formato Tauri (`CommandOrControl+Shift+,`).
+    /// Configs anteriores deserializam usando `default_settings_shortcut`.
+    #[serde(default = "default_settings_shortcut")]
+    pub settings_shortcut: String,
     /// Plano 23 — quando `true` (default), o donut pinta gap angular
     /// entre slices vizinhos. Quando `false`, slices ficam coladas (look
     /// original Plano 16). Configs anteriores deserializam como `true`
@@ -146,6 +151,10 @@ pub struct Interaction {
 
 fn default_search_shortcut() -> String {
     "CommandOrControl+F".to_string()
+}
+
+fn default_settings_shortcut() -> String {
+    "CommandOrControl+Shift+,".to_string()
 }
 
 fn default_slice_gap_enabled() -> bool {
@@ -402,6 +411,7 @@ impl Default for Config {
                 selection_mode: SelectionMode::ClickOrRelease,
                 hover_hold_ms: 1200,
                 search_shortcut: default_search_shortcut(),
+                settings_shortcut: default_settings_shortcut(),
                 slice_gap_enabled: default_slice_gap_enabled(),
                 quick_mode: false,
             },
@@ -1043,6 +1053,7 @@ mod tests {
             selection_mode: SelectionMode::ClickOrRelease,
             hover_hold_ms: 1200,
             search_shortcut: "CommandOrControl+F".into(),
+            settings_shortcut: "CommandOrControl+Shift+,".into(),
             slice_gap_enabled: false,
             quick_mode: false,
         };
@@ -1076,6 +1087,7 @@ mod tests {
             selection_mode: SelectionMode::ClickOrRelease,
             hover_hold_ms: 1200,
             search_shortcut: "CommandOrControl+F".into(),
+            settings_shortcut: "CommandOrControl+Shift+,".into(),
             slice_gap_enabled: true,
             quick_mode: true,
         };
@@ -1095,6 +1107,49 @@ mod tests {
     fn default_config_enables_slice_gap() {
         let cfg = Config::default();
         assert!(cfg.interaction.slice_gap_enabled);
+    }
+
+    // ---------- Issue #66: Interaction.settings_shortcut ----------
+
+    #[test]
+    fn interaction_defaults_settings_shortcut_when_absent() {
+        // Configs anteriores ao #66 não têm o campo. Precisa virar o default.
+        let json = r#"{
+            "spawnPosition": "cursor",
+            "selectionMode": "clickOrRelease",
+            "hoverHoldMs": 1200,
+            "searchShortcut": "CommandOrControl+F",
+            "sliceGapEnabled": true,
+            "quickMode": false
+        }"#;
+        let i: Interaction = serde_json::from_str(json).unwrap();
+        assert_eq!(i.settings_shortcut, "CommandOrControl+Shift+,");
+    }
+
+    #[test]
+    fn interaction_round_trip_with_settings_shortcut() {
+        let i = Interaction {
+            spawn_position: SpawnPosition::Cursor,
+            selection_mode: SelectionMode::ClickOrRelease,
+            hover_hold_ms: 1200,
+            search_shortcut: "CommandOrControl+F".into(),
+            settings_shortcut: "CommandOrControl+Alt+S".into(),
+            slice_gap_enabled: true,
+            quick_mode: false,
+        };
+        let json = serde_json::to_string(&i).unwrap();
+        assert!(json.contains("\"settingsShortcut\":\"CommandOrControl+Alt+S\""));
+        let back: Interaction = serde_json::from_str(&json).unwrap();
+        assert_eq!(i, back);
+    }
+
+    #[test]
+    fn default_config_has_settings_shortcut_default() {
+        let cfg = Config::default();
+        assert_eq!(
+            cfg.interaction.settings_shortcut,
+            "CommandOrControl+Shift+,"
+        );
     }
 
     // ---------- Plano 22: SystemConfig.first_launch_completed ----------

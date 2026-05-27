@@ -85,6 +85,15 @@ export const ipc = {
     invoke<ImportResult>("import_config", { sourcePath }),
   setSearchShortcut: (combo: string) =>
     invoke<Config>("set_search_shortcut", { combo }),
+  /** Issue #66 — atalho global que abre Settings direto. Re-registra no
+   *  SO conflict-aware; combos inválidos voltam como `AppError`. */
+  setSettingsShortcut: (combo: string) =>
+    invoke<Config>("set_settings_shortcut", { combo }),
+  /** Issue #80 — sinaliza ao backend que algum `<ShortcutRecorder>` está
+   *  capturando teclas. Enquanto `true`, os handlers globais (donut +
+   *  settings) ignoram o press pra não abrir janela por cima do form. */
+  setRecordingShortcut: (recording: boolean) =>
+    invoke<void>("set_recording_shortcut", { recording }),
   /** Plano 23 — toggle do gap angular entre slices vizinhos no donut.
    *  Mora em `interaction.sliceGapEnabled` (global, não per-perfil). */
   setSliceGapEnabled: (enabled: boolean) =>

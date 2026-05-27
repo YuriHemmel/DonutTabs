@@ -20,6 +20,7 @@
       "themeRadiusOutOfRange": "Raio inválido em {{field}}: {{value}}. Fora dos limites permitidos.",
       "themeRadiusInverted": "Raio interno deve ser menor que raio externo.",
       "searchShortcutEmpty": "Atalho de busca não pode ser vazio.",
+      "settingsShortcutEmpty": "Atalho de configurações não pode ser vazio.",
       "noProfiles": "Configuração inválida: nenhum perfil cadastrado.",
       "activeProfileNotFound": "Perfil ativo não encontrado: {{activeProfileId}}",
       "duplicateProfileId": "ID de perfil duplicado: {{id}}",
@@ -265,7 +266,9 @@
       "reservedKey": "Tecla reservada: {{key}}",
       "noModifier": "Letra ou dígito sozinho ({{key}}) bloqueia a tecla em qualquer app. Adicione Ctrl/Alt/Shift/Super, ou use F1–F12.",
       "searchSectionTitle": "Atalho de busca",
-      "searchHint": "Atalho dentro do donut que abre a busca rápida de abas. Padrão: Ctrl+F."
+      "searchHint": "Atalho dentro do donut que abre a busca rápida de abas. Padrão: Ctrl+F.",
+      "settingsSectionTitle": "Atalho de configurações",
+      "settingsHint": "Atalho global que abre direto a janela de configurações, sem passar pelo donut. Padrão: Ctrl+Shift+,."
     },
     "tabs": {
       "sectionTitle": "Abas",

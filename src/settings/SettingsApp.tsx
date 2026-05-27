@@ -122,6 +122,7 @@ export const SettingsApp: React.FC = () => {
     reorderTabs,
     reorderProfiles,
     setSearchShortcut,
+    setSettingsShortcut,
     setProfileAllowScripts,
     setProfileThemeOverrides,
     setAutoCheckUpdates,
@@ -567,6 +568,10 @@ export const SettingsApp: React.FC = () => {
           searchShortcut={config.interaction.searchShortcut}
           onCaptureSearchShortcut={async (combo) => {
             await setSearchShortcut(combo);
+          }}
+          settingsShortcut={config.interaction.settingsShortcut}
+          onCaptureSettingsShortcut={async (combo) => {
+            await setSettingsShortcut(combo);
           }}
         />
       )}
