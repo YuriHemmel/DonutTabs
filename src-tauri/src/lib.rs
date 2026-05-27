@@ -13,7 +13,7 @@ mod shortcut;
 mod tray;
 mod updater;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 async fn run_startup_update_check<R: tauri::Runtime>(handle: tauri::AppHandle<R>) {
@@ -214,22 +214,13 @@ pub fn run() {
                 }
             }
 
-            // Plano 22 — onboarding visual: 1ª manual launch (sem
-            // `--autostart`) com `first_launch_completed = false` deixa o
-            // donut visível em vez de só pré-aquecer escondido. Donut lê
-            // `consume_onboarding_pending` na montagem pra renderizar o
-            // overlay de hint. Subsequentes launches voltam ao
-            // pré-aquecimento normal (oculto até o atalho).
-            let pending_onboarding = {
-                let state = app.state::<commands::AppState>();
-                let val = *state.pending_onboarding.read().unwrap();
-                val
-            };
+            // Pré-aquece o donut oculto (warmup do webview pra abertura instantânea
+            // ao primeiro atalho). Sempre escondido após o show — onboarding
+            // visual hoje é responsabilidade do Setup Wizard, que abre na
+            // Settings (ver bloco logo abaixo).
             let _ = donut_window::show(app.handle());
-            if !pending_onboarding {
-                if let Some(w) = app.get_webview_window("donut") {
-                    let _ = w.hide();
-                }
+            if let Some(w) = app.get_webview_window("donut") {
+                let _ = w.hide();
             }
 
             // Pré-aquece a janela Settings oculta. Criar janelas a partir de
@@ -241,6 +232,34 @@ pub fn run() {
                 eprintln!(
                     "[setup] settings window prewarm failed ({e:?}); first open may be slower"
                 );
+            }
+
+            // Issue #62 — Setup Wizard: 1ª manual launch (sem `--autostart`)
+            // com `first_launch_completed = false` dispara o wizard dentro da
+            // janela Settings. `pending_onboarding` é setado em `initial_load`
+            // e usado aqui pra emitir o intent `show-wizard`. Antes (Plano 22)
+            // o mesmo gate deixava o donut visível com overlay; agora o donut
+            // sempre prewarma oculto e o wizard ensina via Settings.
+            {
+                let pending = {
+                    let state = app.state::<commands::AppState>();
+                    let val = *state.pending_onboarding.read().unwrap();
+                    val
+                };
+                if pending {
+                    let state = app.state::<commands::AppState>();
+                    *state.pending_settings_intent.lock().unwrap() =
+                        Some("show-wizard".to_string());
+                    if let Err(e) = settings_window::show(app.handle()) {
+                        eprintln!("[setup] settings show for wizard failed ({e:?})");
+                    } else {
+                        let _ = app.emit_to(
+                            settings_window::SETTINGS_LABEL,
+                            commands::SETTINGS_INTENT_EVENT,
+                            "show-wizard",
+                        );
+                    }
+                }
             }
 
             Ok(())
@@ -287,7 +306,6 @@ pub fn run() {
             commands::clear_script_runs,
             commands::cancel_script_run,
             commands::set_script_history_enabled,
-            commands::consume_onboarding_pending,
             commands::set_first_launch_completed,
         ])
         .run(tauri::generate_context!())

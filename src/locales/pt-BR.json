@@ -163,8 +163,8 @@
       "spawnPositionHint": "Define o ponto inicial do donut quando você dispara o atalho global.",
       "quickModeLabel": "Modo rápido (segurar para mostrar, soltar para abrir)",
       "quickModeHint": "Enquanto ativado, o donut só fica visível enquanto o atalho global está pressionado. Solte a tecla com o cursor sobre uma aba para abri-la (ou sobre o ⚙ para abrir as configurações).",
-      "resetOnboardingButton": "Mostrar boas-vindas de novo",
-      "resetOnboardingHint": "O overlay de boas-vindas reaparece na próxima vez que você abrir o DonutTabs manualmente.",
+      "reopenWizardButton": "Reabrir tutorial",
+      "reopenWizardHint": "Abre novamente o tutorial guiado das configurações.",
       "importConfirm": "Importar substitui toda a configuração atual (perfis, abas, atalho, tema). Continuar?",
       "importShortcutWarning": "Configuração importada, mas o atalho global do novo perfil ativo não pôde ser registrado (provavelmente em uso por outro app). Reinicie o DonutTabs ou ajuste o atalho em Configurações.",
       "update": {
@@ -381,6 +381,92 @@
       "errorFetch": "Falha ao listar aplicativos: {{reason}}",
       "refresh": "Atualizar lista",
       "cancel": "Cancelar"
+    }
+  },
+  "wizard": {
+    "skip": "Pular tutorial",
+    "back": "Voltar",
+    "next": "Avançar",
+    "finish": "Concluir",
+    "confirmSkipTitle": "Pular o tutorial?",
+    "confirmSkipBody": "Você pode reabrir a qualquer momento em Configurações → Sistema.",
+    "confirmSkipYes": "Pular",
+    "confirmSkipNo": "Continuar tutorial",
+    "stepCounter": "Passo {{current}} de {{total}}",
+    "mediaPlaceholder": "Demo ilustrativo será adicionado em breve.",
+    "spawnPositionCursor": "Cursor",
+    "spawnPositionCenter": "Centro do monitor",
+    "quickModeOn": "Ativado",
+    "quickModeOff": "Desativado",
+    "openSettings": "Abrir configurações",
+    "steps": {
+      "welcome": {
+        "title": "Bem-vindo ao DonutTabs!",
+        "body": "Este tutorial rápido mostra como o app funciona e ajuda a configurar suas preferências iniciais. Você pode pular a qualquer momento."
+      },
+      "tabs": {
+        "title": "Abas",
+        "body": "Cada aba do donut é uma coleção de coisas que abrem juntas: URLs, arquivos, pastas, aplicativos ou scripts. Use o ícone ⚙ ou esta seção para criá-las."
+      },
+      "demoCreateTab": {
+        "title": "Criando uma aba",
+        "body": "Adicione URLs, arquivos, pastas, apps ou scripts em uma única aba. Tudo abre de uma vez quando você seleciona a aba no donut."
+      },
+      "demoSubdonuts": {
+        "title": "Grupos e sub-donuts",
+        "body": "Agrupe abas relacionadas em um grupo — ao clicar, abre um sub-donut com as abas filhas. Útil para organizar contextos."
+      },
+      "demoGroupInDonut": {
+        "title": "Grupos no donut",
+        "body": "Veja como os grupos aparecem no donut: a fatia ganha uma marcação e, ao clicar, o donut se transforma no sub-donut com as abas filhas. Pra voltar, clique no grupo selecionado."
+      },
+      "profiles": {
+        "title": "Perfis",
+        "body": "Crie múltiplos perfis (ex.: Trabalho, Pessoal, Estudos) com abas, atalho e tema próprios. Troque pelo centro do donut ou por esta tela de Configurações."
+      },
+      "demoProfileSwitch": {
+        "title": "Trocando de perfil",
+        "body": "Clique no ícone de perfil no centro do donut para ver todos os perfis em um anel. Selecione para ativar."
+      },
+      "appearance": {
+        "title": "Aparência",
+        "body": "Escolha tema claro/escuro/automático e personalize cores, opacidade e raios. Cada perfil pode ter sua própria aparência."
+      },
+      "shortcut": {
+        "title": "Atalho global",
+        "body": "Aperte o atalho global para abrir o donut em qualquer lugar do sistema. Você pode mudar pelo Settings → Atalho.",
+        "currentLabel": "Atalho atual:"
+      },
+      "demoQuickMode": {
+        "title": "Modo rápido (segurar e soltar)",
+        "body": "Com o modo rápido ativado, o donut só aparece enquanto o atalho está pressionado. Solte com o cursor sobre a aba desejada para abri-la — sem cliques.",
+        "quickModeLabel": "Habilitar modo rápido"
+      },
+      "demoSpawnPosition": {
+        "title": "Onde o donut aparece",
+        "body": "Escolha se o donut aparece na posição do cursor ou no centro do monitor ativo. Cada estilo tem um fluxo diferente — experimente.",
+        "spawnPositionLabel": "Posição inicial"
+      },
+      "system": {
+        "title": "Sistema",
+        "body": "Ajuste idioma, início automático com o sistema e permissão para executar scripts neste perfil.",
+        "languageLabel": "Idioma",
+        "autostartLabel": "Iniciar com o sistema",
+        "allowScriptsLabel": "Permitir scripts neste perfil",
+        "allowScriptsWarning": "Scripts têm acesso total à sua máquina e são executados conforme você os configurou. Habilite somente se você confia no que adicionou."
+      },
+      "demoSearchOverlay": {
+        "title": "Busca rápida no donut",
+        "body": "Pressione o atalho de busca (Ctrl+F por padrão) com o donut aberto para filtrar abas por nome em uma sobreposição rápida."
+      },
+      "about": {
+        "title": "Sobre",
+        "body": "Aqui você confere a versão atual e gerencia as atualizações automáticas. Também encontra o link do projeto no GitHub — ótimo pra acompanhar mudanças e reportar bugs — e a opção de apoiar o desenvolvimento via Ko-fi, se quiser ajudar a manter o projeto vivo."
+      },
+      "done": {
+        "title": "Tudo pronto!",
+        "body": "Obrigado por instalar e por usar o DonutTabs e espero que ele acelere o seu dia-a-dia!\nVocê pode reabrir este tutorial a qualquer momento em Configurações → Sistema.\nPressione o atalho global e bom uso! 🍩"
+      }
     }
   }
 }

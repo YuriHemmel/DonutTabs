@@ -49,7 +49,6 @@ vi.mock("../../core/ipc", () => ({
     reorderProfiles: vi.fn(),
     listMonitors: vi.fn().mockResolvedValue([]),
     listInstalledApps: vi.fn().mockResolvedValue([]),
-    consumeOnboardingPending: vi.fn().mockResolvedValue(false),
     setFirstLaunchCompleted: vi.fn(),
     setSliceGapEnabled: vi.fn(),
     setSpawnPosition: vi.fn(),

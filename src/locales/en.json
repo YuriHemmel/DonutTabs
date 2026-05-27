@@ -163,8 +163,8 @@
       "spawnPositionHint": "Sets the donut's starting point when you trigger the global shortcut.",
       "quickModeLabel": "Quick mode (hold to show, release to open)",
       "quickModeHint": "While enabled, the donut only stays visible while the global shortcut is held. Release the keys with the cursor over a tab to open it (or over the ⚙ to open settings).",
-      "resetOnboardingButton": "Show welcome again",
-      "resetOnboardingHint": "The welcome overlay reappears the next time you open DonutTabs manually.",
+      "reopenWizardButton": "Reopen tutorial",
+      "reopenWizardHint": "Reopens the guided settings tutorial.",
       "importConfirm": "Importing will replace your entire current configuration (profiles, tabs, shortcut, theme). Continue?",
       "importShortcutWarning": "Configuration imported, but the global shortcut for the new active profile could not be registered (likely already in use by another app). Restart DonutTabs or change the shortcut in Settings.",
       "update": {
@@ -381,6 +381,92 @@
       "errorFetch": "Failed to list applications: {{reason}}",
       "refresh": "Refresh list",
       "cancel": "Cancel"
+    }
+  },
+  "wizard": {
+    "skip": "Skip tutorial",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "confirmSkipTitle": "Skip the tutorial?",
+    "confirmSkipBody": "You can reopen it anytime in Settings → System.",
+    "confirmSkipYes": "Skip",
+    "confirmSkipNo": "Continue tutorial",
+    "stepCounter": "Step {{current}} of {{total}}",
+    "mediaPlaceholder": "Illustrative demo will be added soon.",
+    "spawnPositionCursor": "Cursor",
+    "spawnPositionCenter": "Center of monitor",
+    "quickModeOn": "Enabled",
+    "quickModeOff": "Disabled",
+    "openSettings": "Open settings",
+    "steps": {
+      "welcome": {
+        "title": "Welcome to DonutTabs!",
+        "body": "This quick tutorial shows how the app works and helps you configure your initial preferences. You can skip at any time."
+      },
+      "tabs": {
+        "title": "Tabs",
+        "body": "Each tab in the donut is a collection of things that open together: URLs, files, folders, apps, or scripts. Use the ⚙ icon or this section to create them."
+      },
+      "demoCreateTab": {
+        "title": "Creating a tab",
+        "body": "Add URLs, files, folders, apps, or scripts to a single tab. Everything opens at once when you select the tab in the donut."
+      },
+      "demoSubdonuts": {
+        "title": "Groups and sub-donuts",
+        "body": "Group related tabs in a group — clicking opens a sub-donut with the child tabs. Useful for organizing contexts."
+      },
+      "demoGroupInDonut": {
+        "title": "Groups in the donut",
+        "body": "See how groups appear in the donut: the slice gets a marker, and clicking morphs the donut into a sub-donut with the child tabs. Click the selected group to go back."
+      },
+      "profiles": {
+        "title": "Profiles",
+        "body": "Create multiple profiles (e.g., Work, Personal, Studies) with their own tabs, shortcut, and theme. Switch via the donut center or via this Settings screen."
+      },
+      "demoProfileSwitch": {
+        "title": "Switching profiles",
+        "body": "Click the profile icon at the center of the donut to see all profiles in a ring. Select one to activate."
+      },
+      "appearance": {
+        "title": "Appearance",
+        "body": "Pick light/dark/auto theme and customize colors, opacity, and radii. Each profile can have its own appearance."
+      },
+      "shortcut": {
+        "title": "Global shortcut",
+        "body": "Press the global shortcut to open the donut anywhere in the system. You can change it in Settings → Shortcut.",
+        "currentLabel": "Current shortcut:"
+      },
+      "demoQuickMode": {
+        "title": "Quick mode (hold and release)",
+        "body": "With quick mode enabled, the donut only appears while the shortcut is held. Release with the cursor over the desired tab to open it — no clicks.",
+        "quickModeLabel": "Enable quick mode"
+      },
+      "demoSpawnPosition": {
+        "title": "Where the donut appears",
+        "body": "Choose whether the donut appears at the cursor position or at the center of the active monitor. Each style has a different flow — try them out.",
+        "spawnPositionLabel": "Initial position"
+      },
+      "system": {
+        "title": "System",
+        "body": "Adjust language, auto-start with the system, and permission to run scripts in this profile.",
+        "languageLabel": "Language",
+        "autostartLabel": "Start with the system",
+        "allowScriptsLabel": "Allow scripts in this profile",
+        "allowScriptsWarning": "Scripts have full access to your machine and run exactly as you configured them. Enable only if you trust what you added."
+      },
+      "demoSearchOverlay": {
+        "title": "Quick search in the donut",
+        "body": "Press the search shortcut (Ctrl+F by default) with the donut open to filter tabs by name in a quick overlay."
+      },
+      "about": {
+        "title": "About",
+        "body": "Here you can see the current version and manage automatic updates. You'll also find the project's GitHub link — great for following changes and reporting bugs — and the option to support development via Ko-fi if you'd like to help keep the project going."
+      },
+      "done": {
+        "title": "All set!",
+        "body": "Thank you for installing and using DonutTabs — I hope it speeds up your day-to-day!\nYou can reopen this tutorial anytime in Settings → System.\nPress the global shortcut and enjoy! 🍩"
+      }
     }
   }
 }
