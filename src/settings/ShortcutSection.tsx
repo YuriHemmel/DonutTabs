@@ -8,6 +8,8 @@ export interface ShortcutSectionProps {
   onCapture: (combo: string) => Promise<void>;
   searchShortcut: string;
   onCaptureSearchShortcut: (combo: string) => Promise<void>;
+  settingsShortcut: string;
+  onCaptureSettingsShortcut: (combo: string) => Promise<void>;
 }
 
 export const ShortcutSection: React.FC<ShortcutSectionProps> = ({
@@ -15,10 +17,13 @@ export const ShortcutSection: React.FC<ShortcutSectionProps> = ({
   onCapture,
   searchShortcut,
   onCaptureSearchShortcut,
+  settingsShortcut,
+  onCaptureSettingsShortcut,
 }) => {
   const { t } = useTranslation();
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
   const handleCaptureGlobal = async (combo: string) => {
     setGlobalError(null);
@@ -35,6 +40,15 @@ export const ShortcutSection: React.FC<ShortcutSectionProps> = ({
       await onCaptureSearchShortcut(combo);
     } catch (err) {
       setSearchError(translateAppError(err, t));
+    }
+  };
+
+  const handleCaptureSettings = async (combo: string) => {
+    setSettingsError(null);
+    try {
+      await onCaptureSettingsShortcut(combo);
+    } catch (err) {
+      setSettingsError(translateAppError(err, t));
     }
   };
 
@@ -85,6 +99,36 @@ export const ShortcutSection: React.FC<ShortcutSectionProps> = ({
         {searchError && (
           <div role="alert" style={{ color: "var(--danger-fg)" }}>
             {searchError}
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          paddingTop: 16,
+          borderTop: "1px solid var(--input-border)",
+        }}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16 }}>
+            {t("settings.shortcut.settingsSectionTitle")}
+          </h3>
+          <small style={{ color: "var(--muted)" }}>
+            {t("settings.shortcut.settingsHint")}
+          </small>
+        </div>
+        <div data-testid="settings-shortcut-recorder">
+          <ShortcutRecorder
+            current={settingsShortcut}
+            onCapture={handleCaptureSettings}
+          />
+        </div>
+        {settingsError && (
+          <div role="alert" style={{ color: "var(--danger-fg)" }}>
+            {settingsError}
           </div>
         )}
       </div>

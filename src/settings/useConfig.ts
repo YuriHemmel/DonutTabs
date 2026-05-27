@@ -36,6 +36,7 @@ export interface UseConfig {
   ) => Promise<Config>;
   reorderProfiles: (orderedIds: string[]) => Promise<Config>;
   setSearchShortcut: (combo: string) => Promise<Config>;
+  setSettingsShortcut: (combo: string) => Promise<Config>;
   setScriptTrusted: (
     profileId: string,
     tabId: string,
@@ -178,6 +179,12 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setSettingsShortcut = useCallback(async (combo: string) => {
+    const next = await ipc.setSettingsShortcut(combo);
+    setConfig(next);
+    return next;
+  }, []);
+
   const setScriptTrusted = useCallback(
     async (
       profileId: string,
@@ -257,6 +264,7 @@ export function useConfig(): UseConfig {
     reorderTabs,
     reorderProfiles,
     setSearchShortcut,
+    setSettingsShortcut,
     setScriptTrusted,
     setProfileAllowScripts,
     setProfileThemeOverrides,

@@ -116,6 +116,10 @@ pub fn run() {
                     .map(|p| p.shortcut.clone())
                     .unwrap_or_else(|| "CommandOrControl+Shift+Space".into())
             };
+            let settings_shortcut_str = {
+                let cfg = state.config.read().unwrap();
+                cfg.interaction.settings_shortcut.clone()
+            };
             app.manage(state);
 
             tray::setup(app).map_err(|e| format!("tray: {e}"))?;
@@ -133,6 +137,18 @@ pub fn run() {
                 ) {
                     eprintln!(
                         "[setup] shortcut registration failed ({e:?}); the global shortcut will be unavailable until the app is restarted"
+                    );
+                }
+                // Issue #66 — segundo atalho global, abre Settings direto.
+                // Best-effort igual ao do donut: falha (combo em uso por outro
+                // app) loga e segue; user pode reconfigurar via Settings.
+                if let Err(e) = shortcut::register_settings_from_config(
+                    app.handle(),
+                    &state.active_settings_shortcut,
+                    &settings_shortcut_str,
+                ) {
+                    eprintln!(
+                        "[setup] settings shortcut registration failed ({e:?}); user can reconfigure in Settings"
                     );
                 }
             }
@@ -252,6 +268,8 @@ pub fn run() {
             commands::export_config,
             commands::import_config,
             commands::set_search_shortcut,
+            commands::set_settings_shortcut,
+            commands::set_recording_shortcut,
             commands::set_slice_gap_enabled,
             commands::set_quick_mode,
             commands::set_spawn_position,

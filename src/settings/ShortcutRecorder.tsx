@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { buildCombo } from "./buildCombo";
+import { ipc } from "../core/ipc";
 
 export interface ShortcutRecorderProps {
   current: string;
@@ -17,6 +18,11 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
 
   useEffect(() => {
     if (!recording) return;
+
+    // Issue #80 — sinaliza ao backend pra suprimir os handlers globais
+    // (donut/settings) enquanto o usuário está pressionando teclas.
+    // Cleanup garante reset mesmo em unmount/erro/Esc.
+    void ipc.setRecordingShortcut(true);
 
     const handler = (e: KeyboardEvent) => {
       e.preventDefault();
@@ -46,8 +52,18 @@ export const ShortcutRecorder: React.FC<ShortcutRecorderProps> = ({
       // pressionado). Espera a próxima tecla.
     };
 
+    // Reforço defensivo: se a janela perde foco (alt-tab, dock click, etc.)
+    // enquanto o user está gravando, sai do recording. Sem isso o flag
+    // backend ficaria stuck até unmount do componente.
+    const onBlur = () => setRecording(false);
+
     window.addEventListener("keydown", handler, { capture: true });
-    return () => window.removeEventListener("keydown", handler, { capture: true });
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", handler, { capture: true });
+      window.removeEventListener("blur", onBlur);
+      void ipc.setRecordingShortcut(false);
+    };
   }, [recording, t, onCapture]);
 
   const buttonStyle: React.CSSProperties = {

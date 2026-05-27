@@ -3,6 +3,15 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { createI18n } from "../../core/i18n";
+
+// ShortcutRecorder (used internally) calls ipc.setRecordingShortcut on
+// mount/cleanup. Stub it to avoid Tauri runtime calls during unit tests.
+vi.mock("../../core/ipc", () => ({
+  ipc: {
+    setRecordingShortcut: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import { ShortcutSection } from "../ShortcutSection";
 
 async function renderSection(
@@ -11,6 +20,8 @@ async function renderSection(
   overrides: {
     searchShortcut?: string;
     onCaptureSearchShortcut?: (c: string) => Promise<void>;
+    settingsShortcut?: string;
+    onCaptureSettingsShortcut?: (c: string) => Promise<void>;
   } = {},
 ) {
   const i18n = await createI18n("pt-BR");
@@ -22,6 +33,13 @@ async function renderSection(
         searchShortcut={overrides.searchShortcut ?? "CommandOrControl+F"}
         onCaptureSearchShortcut={
           overrides.onCaptureSearchShortcut ??
+          (async () => {
+            /* noop */
+          })
+        }
+        settingsShortcut={overrides.settingsShortcut ?? "CommandOrControl+Shift+,"}
+        onCaptureSettingsShortcut={
+          overrides.onCaptureSettingsShortcut ??
           (async () => {
             /* noop */
           })
@@ -100,5 +118,36 @@ describe("ShortcutSection", () => {
       /alt\+?s/i.test(el.textContent ?? ""),
     );
     expect(hasSearch).toBe(true);
+  });
+
+  it("forwards the captured combo to onCaptureSettingsShortcut (settings shortcut)", async () => {
+    // Issue #66 — third recorder is the Settings shortcut.
+    const onCaptureSettingsShortcut = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    await renderSection(vi.fn(), undefined, { onCaptureSettingsShortcut });
+
+    const recordButtons = screen.getAllByRole("button", {
+      name: /gravar novo atalho/i,
+    });
+    expect(recordButtons).toHaveLength(3);
+    await user.click(recordButtons[2]);
+    fireEvent.keyDown(window, { key: "K", ctrlKey: true, shiftKey: true });
+
+    await waitFor(() =>
+      expect(onCaptureSettingsShortcut).toHaveBeenCalledWith(
+        "CommandOrControl+Shift+K",
+      ),
+    );
+  });
+
+  it("renders the settings shortcut current value in its recorder", async () => {
+    await renderSection(vi.fn(), undefined, {
+      settingsShortcut: "Ctrl+Alt+P",
+    });
+    const recorders = screen.getAllByText(/ctrl/i);
+    const hasSettings = recorders.some((el) =>
+      /alt\+?p/i.test(el.textContent ?? ""),
+    );
+    expect(hasSettings).toBe(true);
   });
 });

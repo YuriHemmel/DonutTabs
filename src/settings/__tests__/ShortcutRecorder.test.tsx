@@ -1,9 +1,21 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { createI18n } from "../../core/i18n";
+
+vi.mock("../../core/ipc", () => ({
+  ipc: {
+    setRecordingShortcut: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+import { ipc } from "../../core/ipc";
 import { ShortcutRecorder } from "../ShortcutRecorder";
+
+beforeEach(() => {
+  vi.mocked(ipc.setRecordingShortcut).mockClear();
+});
 
 async function renderRecorder(overrides: Partial<{
   current: string;
@@ -105,5 +117,48 @@ describe("ShortcutRecorder", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(props.onCapture).not.toHaveBeenCalled();
     expect(screen.getByText(/pressione a combinação/i)).toBeTruthy();
+  });
+
+  // Issue #80 — gating do donut/settings shortcut enquanto user grava.
+  it("calls setRecordingShortcut(true) when entering recording", async () => {
+    const user = userEvent.setup();
+    await renderRecorder();
+    await user.click(screen.getByRole("button", { name: /gravar novo atalho/i }));
+
+    expect(ipc.setRecordingShortcut).toHaveBeenCalledWith(true);
+  });
+
+  it("calls setRecordingShortcut(false) on capture (cleanup runs)", async () => {
+    const user = userEvent.setup();
+    await renderRecorder();
+    await user.click(screen.getByRole("button", { name: /gravar novo atalho/i }));
+
+    vi.mocked(ipc.setRecordingShortcut).mockClear();
+    fireEvent.keyDown(window, { key: "D", ctrlKey: true, shiftKey: true });
+
+    expect(ipc.setRecordingShortcut).toHaveBeenCalledWith(false);
+  });
+
+  it("calls setRecordingShortcut(false) on Escape cancel", async () => {
+    const user = userEvent.setup();
+    await renderRecorder();
+    await user.click(screen.getByRole("button", { name: /gravar novo atalho/i }));
+
+    vi.mocked(ipc.setRecordingShortcut).mockClear();
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(ipc.setRecordingShortcut).toHaveBeenCalledWith(false);
+  });
+
+  it("exits recording on window blur (defense-in-depth)", async () => {
+    const user = userEvent.setup();
+    await renderRecorder();
+    await user.click(screen.getByRole("button", { name: /gravar novo atalho/i }));
+
+    vi.mocked(ipc.setRecordingShortcut).mockClear();
+    fireEvent.blur(window);
+
+    expect(screen.queryByText(/pressione a combinação/i)).toBeNull();
+    expect(ipc.setRecordingShortcut).toHaveBeenCalledWith(false);
   });
 });

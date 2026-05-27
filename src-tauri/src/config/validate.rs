@@ -27,6 +27,11 @@ pub fn validate(config: &Config) -> AppResult<()> {
     }
     shortcut::validate_combo(&config.interaction.search_shortcut)?;
 
+    if config.interaction.settings_shortcut.trim().is_empty() {
+        return Err(AppError::config("settings_shortcut_empty", &[]));
+    }
+    shortcut::validate_combo(&config.interaction.settings_shortcut)?;
+
     if config.profiles.is_empty() {
         return Err(AppError::config("no_profiles", &[]));
     }
@@ -820,6 +825,30 @@ mod tests {
         let mut cfg = base_config();
         cfg.interaction.search_shortcut = "garbage".into();
         // `validate_combo` propaga `shortcut_parse_failed`.
+        match validate(&cfg).unwrap_err() {
+            AppError::Shortcut { code, .. } => assert_eq!(code, "shortcut_parse_failed"),
+            other => panic!("expected Shortcut error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn settings_shortcut_empty_is_rejected() {
+        let mut cfg = base_config();
+        cfg.interaction.settings_shortcut = "".into();
+        assert_config_code(validate(&cfg).unwrap_err(), "settings_shortcut_empty");
+    }
+
+    #[test]
+    fn settings_shortcut_whitespace_is_rejected() {
+        let mut cfg = base_config();
+        cfg.interaction.settings_shortcut = "   ".into();
+        assert_config_code(validate(&cfg).unwrap_err(), "settings_shortcut_empty");
+    }
+
+    #[test]
+    fn settings_shortcut_garbage_is_rejected() {
+        let mut cfg = base_config();
+        cfg.interaction.settings_shortcut = "lkj".into();
         match validate(&cfg).unwrap_err() {
             AppError::Shortcut { code, .. } => assert_eq!(code, "shortcut_parse_failed"),
             other => panic!("expected Shortcut error, got {other:?}"),

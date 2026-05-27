@@ -10,6 +10,12 @@ export type Interaction = { spawnPosition: SpawnPosition, selectionMode: Selecti
  */
 searchShortcut: string, 
 /**
+ * Issue #66 — atalho global que abre a janela de Settings direto, sem
+ * passar pelo donut/tray. Formato Tauri (`CommandOrControl+Shift+,`).
+ * Configs anteriores deserializam usando `default_settings_shortcut`.
+ */
+settingsShortcut: string, 
+/**
  * Plano 23 — quando `true` (default), o donut pinta gap angular
  * entre slices vizinhos. Quando `false`, slices ficam coladas (look
  * original Plano 16). Configs anteriores deserializam como `true`

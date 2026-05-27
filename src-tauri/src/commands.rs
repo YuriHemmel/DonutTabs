@@ -9,11 +9,12 @@ use crate::launcher::{launch_tab, ScriptCaptureExecutor, TauriOpener};
 use crate::script_history::{
     ScriptHistory, ScriptRun, ScriptRunSummary, ScriptStatus, ScriptStream,
 };
-use crate::shortcut::{self, ActiveShortcut};
+use crate::shortcut::{self, ActiveSettingsShortcut, ActiveShortcut};
 use crate::updater::{self, UpdateSummary};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use tauri::{Emitter, Manager};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
@@ -46,6 +47,14 @@ pub struct AppState {
     pub pending_settings_intent: Mutex<Option<String>>,
     /// Atalho global atualmente registrado.
     pub active_shortcut: ActiveShortcut,
+    /// Issue #66 — atalho global que abre Settings direto.
+    pub active_settings_shortcut: ActiveSettingsShortcut,
+    /// Issue #80 — `true` enquanto algum `<ShortcutRecorder>` no Settings
+    /// está capturando keys. Gates os handlers globais (donut + settings)
+    /// pra evitar abrir janelas por cima do form de captura. Transiente,
+    /// não persiste em disco. Atomic permite leitura lock-free dentro do
+    /// callback do plugin-global-shortcut.
+    pub recording_shortcut: AtomicBool,
     /// Plano 18 — populated pelo task de startup quando há update
     /// pendente. Frontend lê via `get_pending_update`.
     pub pending_update: RwLock<Option<UpdateSummary>>,
@@ -681,6 +690,51 @@ pub fn set_search_shortcut<R: tauri::Runtime>(
     };
     let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
     Ok(snapshot)
+}
+
+/// Issue #66 — atualiza o atalho global que abre Settings. Re-registra
+/// conflict-aware (registra novo antes de desregistrar antigo) e persiste
+/// com rollback (se save_atomic falhar, restaura o atalho anterior tanto
+/// em memória quanto no SO).
+#[tauri::command]
+pub fn set_settings_shortcut<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    combo: String,
+) -> Result<Config, AppError> {
+    if combo.trim().is_empty() {
+        return Err(AppError::config("settings_shortcut_empty", &[]));
+    }
+    crate::shortcut::set_settings_from_config(&app, &state.active_settings_shortcut, &combo)?;
+
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let old = cfg.interaction.settings_shortcut.clone();
+        cfg.interaction.settings_shortcut = combo;
+        if let Err(e) = save_atomic(&state.config_path, &cfg) {
+            // Rollback duplo: memória + SO. Se o SO falhar no rollback,
+            // ainda assim retornamos o erro original do save_atomic.
+            cfg.interaction.settings_shortcut = old.clone();
+            let _ = crate::shortcut::set_settings_from_config(
+                &app,
+                &state.active_settings_shortcut,
+                &old,
+            );
+            return Err(e);
+        }
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Issue #80 — sinaliza ao backend que algum `<ShortcutRecorder>` está
+/// ativo. Enquanto `true`, os handlers globais de atalho (donut e Settings)
+/// fazem early-return em vez de abrir janela. Estado transiente (não
+/// persiste), atomic pra leitura lock-free no callback.
+#[tauri::command]
+pub fn set_recording_shortcut(state: tauri::State<'_, AppState>, recording: bool) {
+    state.recording_shortcut.store(recording, Ordering::Relaxed);
 }
 
 /// Plano 23 — toggle do gap angular entre slices vizinhos no donut.
@@ -1329,6 +1383,8 @@ pub fn initial_load(config_path: PathBuf) -> AppResult<AppState> {
         config_path,
         pending_settings_intent: Mutex::new(None),
         active_shortcut: ActiveShortcut::default(),
+        active_settings_shortcut: ActiveSettingsShortcut::default(),
+        recording_shortcut: AtomicBool::new(false),
         pending_update: RwLock::new(None),
         script_history: Arc::new(ScriptHistory::new()),
         script_children: Arc::new(Mutex::new(HashMap::new())),

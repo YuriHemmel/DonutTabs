@@ -1,5 +1,7 @@
 use crate::donut_window;
 use crate::errors::{AppError, AppResult};
+use crate::settings_window;
+use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
@@ -17,6 +19,17 @@ pub struct ActiveShortcut(pub Mutex<Option<Shortcut>>);
 impl Default for ActiveShortcut {
     fn default() -> Self {
         ActiveShortcut(Mutex::new(None))
+    }
+}
+
+/// Issue #66 — atalho global que abre direto a janela de Settings. Vive em
+/// `AppState` junto com `ActiveShortcut` do donut e segue o mesmo padrão
+/// conflict-aware via `set_settings_from_config`.
+pub struct ActiveSettingsShortcut(pub Mutex<Option<Shortcut>>);
+
+impl Default for ActiveSettingsShortcut {
+    fn default() -> Self {
+        ActiveSettingsShortcut(Mutex::new(None))
     }
 }
 
@@ -109,6 +122,12 @@ fn bind<R: Runtime>(app: &AppHandle<R>, sc: &Shortcut) -> AppResult<()> {
     app.global_shortcut()
         .on_shortcut(*sc, move |_app, _sc, event| match event.state() {
             ShortcutState::Pressed => {
+                // Issue #80 — quando o usuário está gravando um atalho no
+                // Settings, suprimir o donut. Sem isso a tecla pressionada
+                // abriria o donut por cima do form de captura.
+                if is_recording(&app_for_handler) {
+                    return;
+                }
                 let _ = donut_window::show(&app_for_handler);
             }
             ShortcutState::Released => {
@@ -117,6 +136,9 @@ fn bind<R: Runtime>(app: &AppHandle<R>, sc: &Shortcut) -> AppResult<()> {
                 // state (cenário raro de setup parcial) é silenciada — o
                 // atalho já funcionou no Pressed, soltar sem efeito é
                 // fail-safe.
+                if is_recording(&app_for_handler) {
+                    return;
+                }
                 let state: tauri::State<'_, crate::commands::AppState> = app_for_handler.state();
                 let quick_mode = state.config.read().unwrap().interaction.quick_mode;
                 if quick_mode {
@@ -130,4 +152,69 @@ fn bind<R: Runtime>(app: &AppHandle<R>, sc: &Shortcut) -> AppResult<()> {
                 &[("combo", format!("{sc:?}")), ("reason", e.to_string())],
             )
         })
+}
+
+/// Issue #66 — registra o atalho global que abre Settings. Espelha
+/// `register_from_config` (donut) mas com handler que chama
+/// `settings_window::show` e sem evento de release (Settings é decorated,
+/// não tem comportamento quick_mode).
+pub fn register_settings_from_config<R: Runtime>(
+    app: &AppHandle<R>,
+    active: &ActiveSettingsShortcut,
+    shortcut_str: &str,
+) -> AppResult<()> {
+    let shortcut = parse(shortcut_str)?;
+    bind_settings(app, &shortcut)?;
+    *active.0.lock().unwrap() = Some(shortcut);
+    Ok(())
+}
+
+/// Issue #66 — swap conflict-aware do atalho de Settings. Mesma semântica
+/// do `set_from_config` (donut): registra o novo antes de desregistrar o
+/// antigo, então uma falha não derruba o atalho atual.
+pub fn set_settings_from_config<R: Runtime>(
+    app: &AppHandle<R>,
+    active: &ActiveSettingsShortcut,
+    new_combo: &str,
+) -> AppResult<()> {
+    let new_sc = parse(new_combo)?;
+    {
+        let slot = active.0.lock().unwrap();
+        if slot.as_ref() == Some(&new_sc) {
+            return Ok(());
+        }
+    }
+    bind_settings(app, &new_sc)?;
+    let mut slot = active.0.lock().unwrap();
+    if let Some(old) = slot.take() {
+        let _ = app.global_shortcut().unregister(old);
+    }
+    *slot = Some(new_sc);
+    Ok(())
+}
+
+fn bind_settings<R: Runtime>(app: &AppHandle<R>, sc: &Shortcut) -> AppResult<()> {
+    let app_for_handler = app.clone();
+    app.global_shortcut()
+        .on_shortcut(*sc, move |_app, _sc, event| {
+            if event.state() != ShortcutState::Pressed {
+                return;
+            }
+            // Issue #80 — gate igual ao do donut handler.
+            if is_recording(&app_for_handler) {
+                return;
+            }
+            let _ = settings_window::show(&app_for_handler);
+        })
+        .map_err(|e| {
+            AppError::shortcut(
+                "shortcut_registration_failed",
+                &[("combo", format!("{sc:?}")), ("reason", e.to_string())],
+            )
+        })
+}
+
+fn is_recording<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let state: tauri::State<'_, crate::commands::AppState> = app.state();
+    state.recording_shortcut.load(Ordering::Relaxed)
 }
