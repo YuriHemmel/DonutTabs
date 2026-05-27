@@ -47,6 +47,15 @@ winreg = "0.52"
 # real do shortcut (caminho do .exe). Sem isto, picker passa o path do .lnk
 # pro launcher e algumas apps falham em rotear via ShellExecute.
 parselnk = "0.1"
+# Plano 24 — FindWindow/EnumWindows/SetForegroundWindow pra dar foco a app
+# já em execução. `windows-sys` é o binding oficial Microsoft (mais leve
+# que o `windows` crate, sem wrappers high-level que não usamos aqui).
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Bindings tipados pra CoreFoundation (CFString, CFURL). FFI ergonomic pra

@@ -26,6 +26,8 @@ pub fn migrate_to_v2(v1: ConfigV1) -> Config {
                 // Plano 16: configs v1 são sempre leaf (não conheciam sub-donuts).
                 kind: TabKind::Leaf,
                 children: vec![],
+                // Plano 24: configs v1 não conheciam o toggle.
+                focus_if_open: false,
             })
             .collect(),
         // Plano 14: kill-switch default-closed. Configs v1 não conheciam

@@ -16,6 +16,7 @@ function tab(id: string, name: string, icon: string | null = null): Tab {
     items: [],
     kind: "leaf",
     children: [],
+    focusIfOpen: false,
   } as Tab;
 }
 

@@ -49,6 +49,9 @@ interface FormState {
   openMode: OpenMode;
   items: ItemDraft[];
   kind: TabKind;
+  /** Plano 24 — quando true, o launcher tenta focar apps/URLs já abertos
+   *  antes de cair no fluxo de abrir novo. */
+  focusIfOpen: boolean;
 }
 
 function randomUuid(): string {
@@ -130,6 +133,19 @@ function draftToItem(d: ItemDraft): Item {
   };
 }
 
+/** Plano 24 — Firefox no macOS não expõe abas via AppleScript, então
+ *  `try_focus_url` ignora qualquer URL com openWith=Firefox e cai no
+ *  fallback (abre nova aba). Detectamos isso aqui pra mostrar warning
+ *  inline quando user combina focus_if_open=true + openWith referindo
+ *  Firefox. Match em substring case-insensitive cobre variantes que o
+ *  user pode digitar ("Firefox", "firefox", "firefox-nightly", etc.). */
+export function hasFirefoxUrlItem(items: { kind: ItemDraft["kind"]; openWith: string }[]): boolean {
+  return items.some(
+    (it) =>
+      it.kind === "url" && it.openWith.trim().toLowerCase().includes("firefox"),
+  );
+}
+
 function fromTab(tab: Tab | null, initialKind: TabKind = "leaf"): FormState {
   if (!tab) {
     return {
@@ -139,6 +155,7 @@ function fromTab(tab: Tab | null, initialKind: TabKind = "leaf"): FormState {
       openMode: "reuseOrNewWindow",
       items: [{ kind: "url", value: "", openWith: "", monitor: null }],
       kind: initialKind,
+      focusIfOpen: false,
     };
   }
   // Plano 16: kind explícito vence; só caímos no fallback (children-non-empty)
@@ -154,6 +171,10 @@ function fromTab(tab: Tab | null, initialKind: TabKind = "leaf"): FormState {
       ? tab.items.map(itemToDraft)
       : [{ kind: "url", value: "", openWith: "" }],
     kind,
+    // Plano 24: configs Plano-23 e anteriores não têm o campo; ?? false
+    // cobre o caso (ts-rs marca como boolean sem nullable, mas runtime
+    // pode receber undefined em JSONs antigos).
+    focusIfOpen: tab.focusIfOpen ?? false,
   };
 }
 
@@ -243,6 +264,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       // leaf nunca persiste children; group preserva os existentes ou
       // inicia vazio (user adiciona depois via "+ Adicionar aba").
       children: state.kind === "group" ? initial?.children ?? [] : [],
+      // Plano 24 — toggle por aba lido pelo launcher em runtime.
+      focusIfOpen: state.focusIfOpen,
     };
 
     setSaving(true);
@@ -338,6 +361,40 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         onClose={() => setPickerOpen(false)}
         onSelect={(icon) => setState((s) => ({ ...s, icon }))}
       />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            data-testid="tab-focus-if-open"
+            checked={state.focusIfOpen}
+            onChange={(e) => setState({ ...state, focusIfOpen: e.target.checked })}
+          />
+          <span>{t("settings.editor.focusIfOpen.label")}</span>
+        </label>
+        <small style={{ color: "var(--muted)" }}>
+          {t("settings.editor.focusIfOpen.hint")}
+        </small>
+        {state.focusIfOpen &&
+          state.kind === "leaf" &&
+          hasFirefoxUrlItem(state.items) && (
+            <div
+              role="alert"
+              data-testid="tab-focus-firefox-warning"
+              style={{
+                marginTop: 4,
+                padding: 8,
+                border: "1px solid var(--warning-border, var(--input-border))",
+                borderRadius: 4,
+                background: "var(--warning-bg, transparent)",
+                color: "var(--warning-fg, var(--fg))",
+                fontSize: "0.9em",
+              }}
+            >
+              {t("settings.editor.focusIfOpen.firefoxWarning")}
+            </div>
+          )}
+      </div>
 
       {mode === "new" && (
         <fieldset

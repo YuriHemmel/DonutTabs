@@ -11,6 +11,7 @@ const tab = (id: string): Tab => ({
   items: [],
   kind: "leaf",
   children: [],
+  focusIfOpen: false,
 });
 
 describe("paginate", () => {
