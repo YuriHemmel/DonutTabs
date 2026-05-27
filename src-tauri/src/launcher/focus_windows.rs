@@ -51,9 +51,10 @@ mod imp {
     use windows_sys::Win32::System::Threading::{
         GetCurrentThreadId, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
     };
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::AttachThreadInput;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        AttachThreadInput, EnumWindows, GetForegroundWindow, GetWindowThreadProcessId,
-        IsWindowVisible, SetForegroundWindow, ShowWindow, SW_RESTORE,
+        EnumWindows, GetForegroundWindow, GetWindowThreadProcessId, IsWindowVisible,
+        SetForegroundWindow, ShowWindow, SW_RESTORE,
     };
 
     thread_local! {
