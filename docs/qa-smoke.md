@@ -22,6 +22,12 @@ Rodar este checklist antes de considerar o Plano 1 concluído. Repetir em cada S
 - [ ] **Tray → Abrir donut**: abre donut (no cursor atual).
 - [ ] **Tray → Sair**: app encerra limpamente. Atalho global deixa de responder.
 
+## Issue #81 — atalho com dead key (macOS Option+letra)
+
+- [ ] **macOS**: Settings → Atalho global → "Gravar novo atalho" → segurar `Option` e pressionar `C`. Combo gravada deve aparecer como `Alt+C` (não `…+Ç`) e ser registrada com sucesso (sem toast de erro do muda). Reabrir o app: atalho continua funcional.
+- [ ] **macOS**: repetir com Option+E (dead key acute), Option+N (tilde) e Option+Shift+8 — todas devem gravar a tecla física, sem composição diacrítica.
+- [ ] **Linux/Windows AltGr**: gravar AltGr+E (em layouts onde isso compõe `€` ou similar) deve resultar em `CommandOrControl+Alt+E` (tecla física), sem erro do parser.
+
 ## Issue #74 — autostart refresh em todo startup
 
 > Pré-requisito: build/install real (`npm run tauri build` + instalar bundle), não dev. Autostart entry só é registrado pelo plugin em release.
