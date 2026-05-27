@@ -49,9 +49,9 @@ mod imp {
     use windows_sys::Win32::Foundation::{BOOL, FALSE, HMODULE, HWND, LPARAM, MAX_PATH, TRUE};
     use windows_sys::Win32::System::ProcessStatus::GetModuleBaseNameW;
     use windows_sys::Win32::System::Threading::{
-        GetCurrentThreadId, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
+        AttachThreadInput, GetCurrentThreadId, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        PROCESS_VM_READ,
     };
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::AttachThreadInput;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         EnumWindows, GetForegroundWindow, GetWindowThreadProcessId, IsWindowVisible,
         SetForegroundWindow, ShowWindow, SW_RESTORE,
