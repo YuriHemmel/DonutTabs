@@ -351,7 +351,8 @@
       "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas.",
       "focusIfOpen": {
         "label": "Focar se já estiver aberto",
-        "hint": "Apps e abas já abertos ganham foco; os demais abrem normalmente. URLs no macOS: Chrome, Safari, Edge, Arc, Brave, Vivaldi. Firefox não é suportado (limitação do AppleScript no Firefox).",
+        "hint": "Apps e abas já abertos ganham foco; os demais abrem normalmente.",
+        "hintMac": "No macOS, o foco em URLs já abertas funciona com: Chrome, Safari, Edge, Arc, Brave, Vivaldi.\nEm outros navegadores, a URL pode abrir como nova aba.",
         "firefoxWarning": "Uma ou mais URLs usam Firefox como navegador. O Firefox no macOS não expõe abas via AppleScript, então essas URLs abrirão sempre como nova aba. Para foco de aba, use Chrome, Safari, Edge, Arc, Brave ou Vivaldi."
       }
     },

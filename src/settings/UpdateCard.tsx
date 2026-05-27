@@ -8,6 +8,7 @@ import {
 } from "../core/ipc";
 import type { UpdateSummary } from "../core/types/UpdateSummary";
 import { translateAppError } from "../core/errors";
+import { Switch } from "./Switch";
 
 export interface UpdateCardProps {
   autoCheckUpdates: boolean;
@@ -107,11 +108,10 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
       <label
         style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
       >
-        <input
-          type="checkbox"
+        <Switch
           data-testid="auto-check-updates-toggle"
           checked={autoCheckUpdates}
-          onChange={(e) => onAutoCheckUpdatesChange(e.target.checked)}
+          onChange={onAutoCheckUpdatesChange}
         />
         {t("settings.system.update.autoCheckLabel")}
       </label>

@@ -52,8 +52,8 @@ describe("SystemSection", () => {
 
   it("autostart checkbox reflects the current value", async () => {
     await renderSection({ autostart: true });
-    const cb = screen.getByTestId("autostart-toggle") as HTMLInputElement;
-    expect(cb.checked).toBe(true);
+    const cb = screen.getByTestId("autostart-toggle");
+    expect(cb.getAttribute("aria-checked")).toBe("true");
   });
 
   it("calls onAutostartChange when the checkbox is toggled", async () => {
@@ -92,8 +92,8 @@ describe("SystemSection", () => {
       scriptHistoryEnabled: true,
       onScriptHistoryEnabledChange: vi.fn(),
     });
-    const cb = screen.getByTestId("script-history-toggle") as HTMLInputElement;
-    expect(cb.checked).toBe(true);
+    const cb = screen.getByTestId("script-history-toggle");
+    expect(cb.getAttribute("aria-checked")).toBe("true");
   });
 
   it("Issue #54 (rev) — toggling the script-history checkbox calls the handler", async () => {
@@ -113,8 +113,8 @@ describe("SystemSection", () => {
 
   it("Issue #71 — quick-mode toggle reflects current value", async () => {
     await renderSection({ quickMode: true, onQuickModeChange: vi.fn() });
-    const cb = screen.getByTestId("quick-mode-toggle") as HTMLInputElement;
-    expect(cb.checked).toBe(true);
+    const cb = screen.getByTestId("quick-mode-toggle");
+    expect(cb.getAttribute("aria-checked")).toBe("true");
   });
 
   it("Issue #71 — toggling the quick-mode checkbox calls the handler", async () => {

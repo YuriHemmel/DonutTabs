@@ -6,6 +6,7 @@ import { translateAppError } from "../core/errors";
 import { graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
 import { IconField } from "./IconField";
+import { Switch } from "./Switch";
 import type { Tab } from "../core/types/Tab";
 import type { Item } from "../core/types/Item";
 import type { OpenMode } from "../core/types/OpenMode";
@@ -13,6 +14,11 @@ import type { TabKind as SchemaTabKind } from "../core/types/TabKind";
 
 const LUCIDE_PREFIX = "lucide:";
 const isLucideToken = (s: string) => s.startsWith(LUCIDE_PREFIX);
+
+const isMacPlatform = (): boolean => {
+  if (typeof navigator === "undefined") return false;
+  return /Mac/i.test(navigator.platform);
+};
 
 /** Plano 16 / Issue #39: alinhado com `MAX_TAB_DEPTH` em `validate.rs`.
  *  Reduzido de 3 pra 2 pra encolher a janela do donut. */
@@ -264,8 +270,9 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       // leaf nunca persiste children; group preserva os existentes ou
       // inicia vazio (user adiciona depois via "+ Adicionar aba").
       children: state.kind === "group" ? initial?.children ?? [] : [],
-      // Plano 24 — toggle por aba lido pelo launcher em runtime.
-      focusIfOpen: state.focusIfOpen,
+      // Plano 24 — toggle por aba lido pelo launcher em runtime. Grupos
+      // não usam essa lógica (sem items), então sempre persistimos `false`.
+      focusIfOpen: state.kind === "leaf" ? state.focusIfOpen : false,
     };
 
     setSaving(true);
@@ -362,22 +369,28 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         onSelect={(icon) => setState((s) => ({ ...s, icon }))}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            data-testid="tab-focus-if-open"
-            checked={state.focusIfOpen}
-            onChange={(e) => setState({ ...state, focusIfOpen: e.target.checked })}
-          />
-          <span>{t("settings.editor.focusIfOpen.label")}</span>
-        </label>
-        <small style={{ color: "var(--muted)" }}>
-          {t("settings.editor.focusIfOpen.hint")}
-        </small>
-        {state.focusIfOpen &&
-          state.kind === "leaf" &&
-          hasFirefoxUrlItem(state.items) && (
+      {state.kind === "leaf" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Switch
+              data-testid="tab-focus-if-open"
+              checked={state.focusIfOpen}
+              onChange={(next) => setState({ ...state, focusIfOpen: next })}
+            />
+            <span>{t("settings.editor.focusIfOpen.label")}</span>
+          </label>
+          <small style={{ color: "var(--muted)" }}>
+            {t("settings.editor.focusIfOpen.hint")}
+          </small>
+          {isMacPlatform() && (
+            <small
+              data-testid="tab-focus-mac-hint"
+              style={{ color: "var(--muted)", whiteSpace: "pre-line" }}
+            >
+              {t("settings.editor.focusIfOpen.hintMac")}
+            </small>
+          )}
+          {state.focusIfOpen && hasFirefoxUrlItem(state.items) && (
             <div
               role="alert"
               data-testid="tab-focus-firefox-warning"
@@ -394,7 +407,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
               {t("settings.editor.focusIfOpen.firefoxWarning")}
             </div>
           )}
-      </div>
+        </div>
+      )}
 
       {mode === "new" && (
         <fieldset

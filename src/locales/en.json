@@ -351,7 +351,8 @@
       "groupNewHint": "Save the group first. Then reopen it from the list or click the donut's \"+\" to add tabs.",
       "focusIfOpen": {
         "label": "Focus if already open",
-        "hint": "Apps and tabs already open get focused; others open normally. URLs on macOS: Chrome, Safari, Edge, Arc, Brave, Vivaldi. Firefox is not supported (AppleScript limitation in Firefox).",
+        "hint": "Apps and tabs already open get focused; others open normally.",
+        "hintMac": "On macOS, focusing already-open URLs works with: Chrome, Safari, Edge, Arc, Brave, Vivaldi.\nIn other browsers, the URL may open as a new tab.",
         "firefoxWarning": "One or more URLs use Firefox as the browser. Firefox on macOS doesn't expose tabs via AppleScript, so those URLs will always open as a new tab. For tab focus, use Chrome, Safari, Edge, Arc, Brave, or Vivaldi."
       }
     },

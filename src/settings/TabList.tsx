@@ -92,20 +92,21 @@ const NodeRow: React.FC<NodeRowProps> = ({
               toggle(tab.id);
             }}
             style={{
-              width: 18,
+              width: 22,
               height: 22,
               background: "transparent",
               border: 0,
               color: "var(--muted)",
               cursor: "pointer",
-              fontSize: 11,
+              fontSize: 16,
               padding: 0,
+              lineHeight: 1,
             }}
           >
             {isOpen ? "▾" : "▸"}
           </button>
         ) : (
-          <span style={{ width: 18 }} aria-hidden="true" />
+          <span style={{ width: 22 }} aria-hidden="true" />
         )}
         <button
           type="button"
@@ -228,28 +229,12 @@ const GroupBody: React.FC<GroupBodyProps> = ({
         gap: 4,
       }}
     >
-      {ordered.map((child) => (
-        <NodeRow
-          key={child.id}
-          tab={child}
-          parentPath={myPath}
-          depth={myDepth}
-          maxDepth={maxDepth}
-          selectedId={selectedId}
-          expanded={expanded}
-          toggle={toggle}
-          onSelect={onSelect}
-          onAdd={onAdd}
-          onReorder={onReorder}
-          dragProps={getItemProps(child.id)}
-        />
-      ))}
       <li
         style={{
           display: "flex",
           gap: 6,
           paddingLeft: indentPx,
-          marginTop: 4,
+          marginBottom: 4,
         }}
       >
         <button
@@ -287,6 +272,22 @@ const GroupBody: React.FC<GroupBodyProps> = ({
           </button>
         )}
       </li>
+      {ordered.map((child) => (
+        <NodeRow
+          key={child.id}
+          tab={child}
+          parentPath={myPath}
+          depth={myDepth}
+          maxDepth={maxDepth}
+          selectedId={selectedId}
+          expanded={expanded}
+          toggle={toggle}
+          onSelect={onSelect}
+          onAdd={onAdd}
+          onReorder={onReorder}
+          dragProps={getItemProps(child.id)}
+        />
+      ))}
     </ul>
   );
 };

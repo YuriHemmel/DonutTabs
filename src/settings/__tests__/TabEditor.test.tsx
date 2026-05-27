@@ -434,8 +434,8 @@ describe("TabEditor", () => {
       initial: tabWithTrustedScript,
     });
     expect(
-      (screen.getByTestId("item-script-trusted-0") as HTMLInputElement).checked,
-    ).toBe(true);
+      screen.getByTestId("item-script-trusted-0").getAttribute("aria-checked"),
+    ).toBe("true");
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.items).toEqual([
@@ -506,8 +506,8 @@ describe("TabEditor", () => {
   it("defaults focus_if_open to false in new tab and submits it", async () => {
     const user = userEvent.setup();
     const { props } = await renderEditor();
-    const checkbox = screen.getByTestId("tab-focus-if-open") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const checkbox = screen.getByTestId("tab-focus-if-open");
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
     await user.type(screen.getByLabelText(/nome/i), "Foo");
     await user.type(screen.getByLabelText(/url 1/i), "https://ok.test");
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
@@ -518,10 +518,10 @@ describe("TabEditor", () => {
   it("toggling focus_if_open propagates to the save payload", async () => {
     const user = userEvent.setup();
     const { props } = await renderEditor({ mode: "edit", initial: existing });
-    const checkbox = screen.getByTestId("tab-focus-if-open") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const checkbox = screen.getByTestId("tab-focus-if-open");
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
     await user.click(checkbox);
-    expect(checkbox.checked).toBe(true);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
     await user.click(screen.getByRole("button", { name: /^salvar$/i }));
     const payload = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as Tab;
     expect(payload.focusIfOpen).toBe(true);
@@ -530,8 +530,8 @@ describe("TabEditor", () => {
   it("hydrates focus_if_open from initial tab when editing", async () => {
     const focused: Tab = { ...existing, focusIfOpen: true };
     await renderEditor({ mode: "edit", initial: focused });
-    const checkbox = screen.getByTestId("tab-focus-if-open") as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
+    const checkbox = screen.getByTestId("tab-focus-if-open");
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
   });
 
   it("shows Firefox warning when focus_if_open=true and a URL uses openWith=Firefox", async () => {

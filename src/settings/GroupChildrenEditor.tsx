@@ -31,6 +31,47 @@ export const GroupChildrenEditor: React.FC<GroupChildrenEditorProps> = ({
       style={{ display: "flex", flexDirection: "column", gap: 8 }}
     >
       <span>{t("settings.editor.groupChildrenLabel")}</span>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          data-testid="add-child-leaf"
+          onClick={onAddChildLeaf}
+          style={{
+            background: "transparent",
+            color: "var(--fg)",
+            border: "1px solid var(--ghost-border)",
+            borderRadius: 4,
+            padding: "6px 12px",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          {t("settings.editor.addChildTab")}
+        </button>
+        {canAddSubgroup && onAddChildGroup && (
+          <button
+            type="button"
+            data-testid="add-child-group"
+            onClick={onAddChildGroup}
+            style={{
+              background: "transparent",
+              color: "var(--fg)",
+              border: "1px solid var(--ghost-border)",
+              borderRadius: 4,
+              padding: "6px 12px",
+              cursor: "pointer",
+              font: "inherit",
+            }}
+          >
+            {t("settings.editor.addChildGroup")}
+          </button>
+        )}
+        {!canAddSubgroup && (
+          <small style={{ color: "var(--muted)", alignSelf: "center" }}>
+            {t("settings.editor.maxDepthHint")}
+          </small>
+        )}
+      </div>
       {children.length === 0 ? (
         <small style={{ color: "var(--muted)" }}>
           {t("settings.editor.groupChildrenEmpty")}
@@ -84,47 +125,6 @@ export const GroupChildrenEditor: React.FC<GroupChildrenEditorProps> = ({
           ))}
         </ul>
       )}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          data-testid="add-child-leaf"
-          onClick={onAddChildLeaf}
-          style={{
-            background: "transparent",
-            color: "var(--fg)",
-            border: "1px solid var(--ghost-border)",
-            borderRadius: 4,
-            padding: "6px 12px",
-            cursor: "pointer",
-            font: "inherit",
-          }}
-        >
-          {t("settings.editor.addChildTab")}
-        </button>
-        {canAddSubgroup && onAddChildGroup && (
-          <button
-            type="button"
-            data-testid="add-child-group"
-            onClick={onAddChildGroup}
-            style={{
-              background: "transparent",
-              color: "var(--fg)",
-              border: "1px solid var(--ghost-border)",
-              borderRadius: 4,
-              padding: "6px 12px",
-              cursor: "pointer",
-              font: "inherit",
-            }}
-          >
-            {t("settings.editor.addChildGroup")}
-          </button>
-        )}
-        {!canAddSubgroup && (
-          <small style={{ color: "var(--muted)", alignSelf: "center" }}>
-            {t("settings.editor.maxDepthHint")}
-          </small>
-        )}
-      </div>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Language } from "../core/types/Language";
 import type { SpawnPosition } from "../core/types/SpawnPosition";
 import { groupStyle, legendStyle } from "./fieldsetStyles";
+import { Switch } from "./Switch";
 
 export interface SystemSectionProps {
   language: Language;
@@ -104,11 +105,10 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
           <label
             style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
           >
-            <input
-              type="checkbox"
+            <Switch
               data-testid="autostart-toggle"
               checked={autostart}
-              onChange={(e) => onAutostartChange(e.target.checked)}
+              onChange={onAutostartChange}
             />
             {t("settings.system.autostart")}
           </label>
@@ -164,11 +164,10 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
               <label
                 style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
               >
-                <input
-                  type="checkbox"
+                <Switch
                   data-testid="quick-mode-toggle"
                   checked={quickMode}
-                  onChange={(e) => onQuickModeChange(e.target.checked)}
+                  onChange={onQuickModeChange}
                 />
                 {t("settings.system.quickModeLabel")}
               </label>
@@ -191,11 +190,10 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
               <label
                 style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
               >
-                <input
-                  type="checkbox"
+                <Switch
                   data-testid="allow-scripts-toggle"
                   checked={allowScripts}
-                  onChange={(e) => onAllowScriptsChange(e.target.checked)}
+                  onChange={onAllowScriptsChange}
                 />
                 {t("settings.system.allowScriptsLabel")}
               </label>
@@ -210,11 +208,10 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
               <label
                 style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
               >
-                <input
-                  type="checkbox"
+                <Switch
                   data-testid="script-history-toggle"
                   checked={scriptHistoryEnabled}
-                  onChange={(e) => onScriptHistoryEnabledChange(e.target.checked)}
+                  onChange={onScriptHistoryEnabledChange}
                 />
                 {t("settings.system.scriptHistoryLabel")}
               </label>
