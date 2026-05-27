@@ -125,4 +125,41 @@ describe("buildCombo", () => {
       error: null,
     });
   });
+
+  // Issue #81 — dead-key composition on Mac (Option+letter) and AltGr on
+  // Linux/Windows produce composed characters in `e.key` that the muda
+  // parser rejects. The fix is to prefer `e.code` (physical key) over
+  // `e.key` (composed character).
+  it("Mac Option+C: e.key='Ç' but e.code='KeyC' resolves to Alt+C", () => {
+    expect(
+      buildCombo(fake({ altKey: true, key: "Ç", code: "KeyC" })),
+    ).toMatchObject({ combo: "Alt+C", error: null });
+  });
+
+  it("Mac Option+E (dead key): e.key='Dead'/'´' with e.code='KeyE' → Alt+E", () => {
+    expect(
+      buildCombo(fake({ altKey: true, key: "Dead", code: "KeyE" })),
+    ).toMatchObject({ combo: "Alt+E", error: null });
+    expect(
+      buildCombo(fake({ altKey: true, key: "´", code: "KeyE" })),
+    ).toMatchObject({ combo: "Alt+E", error: null });
+  });
+
+  it("Mac Option+Shift+8: e.key='°' but e.code='Digit8' → Alt+Shift+8", () => {
+    expect(
+      buildCombo(fake({ altKey: true, shiftKey: true, key: "°", code: "Digit8" })),
+    ).toMatchObject({ combo: "Alt+Shift+8", error: null });
+  });
+
+  it("Linux AltGr+E: e.key='€' with e.code='KeyE' (ctrlKey+altKey) → CommandOrControl+Alt+E", () => {
+    expect(
+      buildCombo(fake({ ctrlKey: true, altKey: true, key: "€", code: "KeyE" })),
+    ).toMatchObject({ combo: "CommandOrControl+Alt+E", error: null });
+  });
+
+  it("regression: Ctrl+A with empty e.code still uses e.key path", () => {
+    expect(
+      buildCombo(fake({ ctrlKey: true, key: "a", code: "" })),
+    ).toMatchObject({ combo: "CommandOrControl+A", error: null });
+  });
 });
