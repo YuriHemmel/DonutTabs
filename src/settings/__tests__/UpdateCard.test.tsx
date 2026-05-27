@@ -173,10 +173,8 @@ describe("UpdateCard", () => {
     vi.mocked(ipc.getPendingUpdate).mockResolvedValue(null);
     const { onAutoChange } = await renderCard(true);
     const user = userEvent.setup();
-    const cb = screen.getByTestId(
-      "auto-check-updates-toggle",
-    ) as HTMLInputElement;
-    expect(cb.checked).toBe(true);
+    const cb = screen.getByTestId("auto-check-updates-toggle");
+    expect(cb.getAttribute("aria-checked")).toBe("true");
     await user.click(cb);
     expect(onAutoChange).toHaveBeenCalledWith(false);
   });

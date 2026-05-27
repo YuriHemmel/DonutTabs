@@ -110,10 +110,8 @@ describe("AboutSection", () => {
     await waitFor(() => {
       expect(screen.getByTestId("update-card")).toBeTruthy();
     });
-    const cb = screen.getByTestId(
-      "auto-check-updates-toggle",
-    ) as HTMLInputElement;
-    expect(cb.checked).toBe(true);
+    const cb = screen.getByTestId("auto-check-updates-toggle");
+    expect(cb.getAttribute("aria-checked")).toBe("true");
   });
 
   it("propagates auto-check toggle changes to the callback", async () => {

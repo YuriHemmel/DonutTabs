@@ -417,9 +417,9 @@ describe("ItemListEditor", () => {
     // o checkbox e impedisse o user de marcar trust antes de salvar. Agora
     // renderiza sempre que kind === "script", tratando undefined como unchecked.
     await renderEditor([{ kind: "script", value: "ls", openWith: "" }]);
-    const cb = screen.getByTestId("item-script-trusted-0") as HTMLInputElement;
+    const cb = screen.getByTestId("item-script-trusted-0");
     expect(cb).toBeTruthy();
-    expect(cb.checked).toBe(false);
+    expect(cb.getAttribute("aria-checked")).toBe("false");
   });
 
   it("app row shows the app picker button; selecting an app fills the value", async () => {

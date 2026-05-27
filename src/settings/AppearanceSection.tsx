@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Theme } from "../core/types/Theme";
 import type { ThemeOverrides } from "../core/types/ThemeOverrides";
 import { ThemeCustomizer } from "./ThemeCustomizer";
+import { Switch } from "./Switch";
 
 export interface AppearanceSectionProps {
   theme: Theme;
@@ -81,11 +82,10 @@ export const AppearanceSection: React.FC<AppearanceSectionProps> = ({
           <label
             style={{ display: "flex", gap: 6, alignItems: "center", padding: 4 }}
           >
-            <input
-              type="checkbox"
+            <Switch
               data-testid="slice-gap-toggle"
               checked={sliceGapEnabled}
-              onChange={(e) => onSliceGapEnabledChange(e.target.checked)}
+              onChange={onSliceGapEnabledChange}
             />
             {t("settings.appearance.sliceGapLabel")}
           </label>

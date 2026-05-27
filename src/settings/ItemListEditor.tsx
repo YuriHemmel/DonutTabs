@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { dialog, ipc } from "../core/ipc";
 import { AppPicker } from "./AppPicker";
 import { ScriptHelpModal } from "./ScriptHelpModal";
+import { Switch } from "./Switch";
 import type { InstalledApp } from "../core/types/InstalledApp";
 import type { MonitorInfo } from "../core/types/MonitorInfo";
 
@@ -457,11 +458,10 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
                 }}
                 title={t("settings.editor.incognitoHint")}
               >
-                <input
-                  type="checkbox"
+                <Switch
                   data-testid={`item-incognito-${i}`}
                   checked={!!it.incognito}
-                  onChange={(e) => updateAt(i, { incognito: e.target.checked })}
+                  onChange={(next) => updateAt(i, { incognito: next })}
                 />
                 {t("settings.editor.incognitoLabel")}
               </label>
@@ -489,11 +489,10 @@ export const ItemListEditor: React.FC<ItemListEditorProps> = ({
               }}
             >
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input
-                  type="checkbox"
+                <Switch
                   data-testid={`item-script-trusted-${i}`}
                   checked={!!it.trusted}
-                  onChange={(e) => updateAt(i, { trusted: e.target.checked })}
+                  onChange={(next) => updateAt(i, { trusted: next })}
                 />
                 {t("settings.editor.scriptTrustedLabel")}
               </label>
