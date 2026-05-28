@@ -286,7 +286,7 @@
     },
     "editor": {
       "newTabTitle": "New tab",
-      "newTabInGroupSubtitle": "Creating tab inside the “{{groupName}}” group.",
+      "newTabInGroupAria": "Creating tab inside the “{{groupName}}” group.",
       "name": "Name",
       "namePlaceholder": "Work",
       "icon": "Icon",

@@ -286,7 +286,7 @@
     },
     "editor": {
       "newTabTitle": "新規タブ",
-      "newTabInGroupSubtitle": "「{{groupName}}」グループ内にタブを作成しています。",
+      "newTabInGroupAria": "「{{groupName}}」グループ内にタブを作成しています。",
       "name": "名前",
       "namePlaceholder": "仕事",
       "icon": "アイコン",

@@ -286,7 +286,7 @@
     },
     "editor": {
       "newTabTitle": "Nuova scheda",
-      "newTabInGroupSubtitle": "Creazione di una scheda nel gruppo “{{groupName}}”.",
+      "newTabInGroupAria": "Creazione di una scheda nel gruppo “{{groupName}}”.",
       "name": "Nome",
       "namePlaceholder": "Lavoro",
       "icon": "Icona",

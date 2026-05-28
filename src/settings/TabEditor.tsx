@@ -6,6 +6,7 @@ import { translateAppError } from "../core/errors";
 import { graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
 import { IconField } from "./IconField";
+import { IconDisplay } from "./IconDisplay";
 import { Switch } from "./Switch";
 import type { Tab } from "../core/types/Tab";
 import type { Item } from "../core/types/Item";
@@ -46,9 +47,10 @@ export interface TabEditorProps {
   /** Plano 16 — pré-seleciona o radio "Aba" / "Grupo" no modo new.
    *  Ignorado em mode=edit (kind é deduzido de `initial.children`). */
   initialKind?: TabKind;
-  /** Issue #103 — nome do grupo-pai quando criando uma aba dentro de um grupo
-   *  (mode=new + currentDepth > 1). Exibido como subtítulo; `null` no root. */
-  parentGroupName?: string | null;
+  /** Issue #103 — grupo-pai quando criando uma aba dentro de um grupo
+   *  (mode=new + currentDepth > 1). Renderizado como cabeçalho (ícone + nome)
+   *  acima do título "Nova aba"; `null` no root. */
+  parentGroup?: { name: string | null; icon: string | null } | null;
 }
 
 interface FormState {
@@ -197,7 +199,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   onSelectChild,
   onAddChild,
   initialKind = "leaf",
-  parentGroupName = null,
+  parentGroup = null,
 }) => {
   const { t } = useTranslation();
   // Issue #103 — dentro de um grupo (currentDepth > 1) só é possível criar
@@ -331,15 +333,25 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         overflow: "auto",
       }}
     >
-      <h2 style={{ margin: 0 }}>{title}</h2>
-      {mode === "new" && parentGroupName && (
-        <p
-          data-testid="new-tab-in-group-subtitle"
-          style={{ margin: 0, color: "var(--muted)" }}
+      {mode === "new" && parentGroup && (
+        <div
+          data-testid="new-tab-in-group-header"
+          aria-label={t("settings.editor.newTabInGroupAria", {
+            groupName: parentGroup.name ?? parentGroup.icon ?? "",
+          })}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontWeight: 600,
+            fontSize: "1.1em",
+          }}
         >
-          {t("settings.editor.newTabInGroupSubtitle", { groupName: parentGroupName })}
-        </p>
+          {parentGroup.icon && <IconDisplay icon={parentGroup.icon} size={22} />}
+          {parentGroup.name && <span>{parentGroup.name}</span>}
+        </div>
       )}
+      <h2 style={{ margin: 0 }}>{title}</h2>
 
       <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span>{t("settings.editor.name")}</span>

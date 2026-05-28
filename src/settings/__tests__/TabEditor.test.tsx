@@ -410,16 +410,21 @@ describe("TabEditor", () => {
     expect(screen.queryByTestId("group-new-hint")).toBeNull();
   });
 
-  it("shows a subtitle naming the parent group when creating inside it", async () => {
-    // Issue #103 — indicação visual de qual grupo está recebendo a aba.
-    await renderEditor({ mode: "new", currentDepth: 2, parentGroupName: "Trabalho" });
-    const subtitle = screen.getByTestId("new-tab-in-group-subtitle");
-    expect(subtitle.textContent).toContain("Trabalho");
+  it("shows a header naming the parent group when creating inside it", async () => {
+    // Issue #103 — indicação visual (ícone + nome) de qual grupo recebe a aba,
+    // renderizada acima do título "Nova aba".
+    await renderEditor({
+      mode: "new",
+      currentDepth: 2,
+      parentGroup: { name: "Trabalho", icon: "💼" },
+    });
+    const header = screen.getByTestId("new-tab-in-group-header");
+    expect(header.textContent).toContain("Trabalho");
   });
 
-  it("does not show the group subtitle at root level", async () => {
+  it("does not show the group header at root level", async () => {
     await renderEditor({ mode: "new", currentDepth: 1 });
-    expect(screen.queryByTestId("new-tab-in-group-subtitle")).toBeNull();
+    expect(screen.queryByTestId("new-tab-in-group-header")).toBeNull();
   });
 
   it("preserves kind=group when re-editing an empty group (regression)", async () => {
