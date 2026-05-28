@@ -286,6 +286,7 @@
     },
     "editor": {
       "newTabTitle": "Nueva pestaña",
+      "newTabInGroupSubtitle": "Creando pestaña dentro del grupo “{{groupName}}”.",
       "name": "Nombre",
       "namePlaceholder": "Trabajo",
       "icon": "Icono",

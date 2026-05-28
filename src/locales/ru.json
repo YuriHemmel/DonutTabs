@@ -286,6 +286,7 @@
     },
     "editor": {
       "newTabTitle": "Новая вкладка",
+      "newTabInGroupSubtitle": "Создание вкладки внутри группы «{{groupName}}».",
       "name": "Имя",
       "namePlaceholder": "Работа",
       "icon": "Значок",

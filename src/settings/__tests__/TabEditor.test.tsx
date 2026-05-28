@@ -393,6 +393,35 @@ describe("TabEditor", () => {
     expect(payload.children).toEqual([]);
   });
 
+  it("shows the kind radio at root level (currentDepth=1)", async () => {
+    // Issue #103 — no root o usuário ainda escolhe Aba vs Grupo.
+    await renderEditor({ mode: "new", currentDepth: 1 });
+    expect(screen.queryByTestId("tab-kind-leaf")).toBeTruthy();
+    expect(screen.queryByTestId("tab-kind-group")).toBeTruthy();
+  });
+
+  it("hides the kind radio inside a group (currentDepth>1) and renders the leaf item editor", async () => {
+    // Issue #103 — dentro de um grupo só é possível criar aba (leaf); o tipo
+    // "Grupo" some e o ItemListEditor (leaf) é renderizado direto.
+    await renderEditor({ mode: "new", currentDepth: 2 });
+    expect(screen.queryByTestId("tab-kind-leaf")).toBeNull();
+    expect(screen.queryByTestId("tab-kind-group")).toBeNull();
+    expect(screen.getByLabelText(/url 1/i)).toBeTruthy();
+    expect(screen.queryByTestId("group-new-hint")).toBeNull();
+  });
+
+  it("shows a subtitle naming the parent group when creating inside it", async () => {
+    // Issue #103 — indicação visual de qual grupo está recebendo a aba.
+    await renderEditor({ mode: "new", currentDepth: 2, parentGroupName: "Trabalho" });
+    const subtitle = screen.getByTestId("new-tab-in-group-subtitle");
+    expect(subtitle.textContent).toContain("Trabalho");
+  });
+
+  it("does not show the group subtitle at root level", async () => {
+    await renderEditor({ mode: "new", currentDepth: 1 });
+    expect(screen.queryByTestId("new-tab-in-group-subtitle")).toBeNull();
+  });
+
   it("preserves kind=group when re-editing an empty group (regression)", async () => {
     const emptyGroup: Tab = {
       id: "22222222-2222-2222-2222-222222222222",

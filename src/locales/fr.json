@@ -286,6 +286,7 @@
     },
     "editor": {
       "newTabTitle": "Nouvel onglet",
+      "newTabInGroupSubtitle": "Création d’un onglet dans le groupe « {{groupName}} ».",
       "name": "Nom",
       "namePlaceholder": "Travail",
       "icon": "Icône",
