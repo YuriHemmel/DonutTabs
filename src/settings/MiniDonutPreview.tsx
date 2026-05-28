@@ -1,5 +1,5 @@
 import React from "react";
-import { arcPath, sliceAngleRange } from "../donut/geometry";
+import { arcPath, OUTER_SLICE_GAP_PX, slicePaintAngles } from "../donut/geometry";
 import type { ThemeTokens } from "../core/themeTokens";
 
 export interface MiniDonutPreviewProps {
@@ -35,10 +35,21 @@ export const MiniDonutPreview: React.FC<MiniDonutPreviewProps> = ({
       viewBox={`0 0 ${size} ${size}`}
     >
       {DUMMY_LABELS.map((label, i) => {
-        const { start, end } = sliceAngleRange(i, total);
-        const d = arcPath({ cx, cy, innerR, outerR, startAngle: start, endAngle: end });
+        const angles = slicePaintAngles(i, total, OUTER_SLICE_GAP_PX, innerR, outerR);
+        const d = arcPath({
+          cx,
+          cy,
+          innerR,
+          outerR,
+          startAngle: angles.outerStart,
+          endAngle: angles.outerEnd,
+          innerStartAngle: angles.innerStart,
+          innerEndAngle: angles.innerEnd,
+          outerStartAngle: angles.outerStart,
+          outerEndAngle: angles.outerEnd,
+        });
         const isHighlighted = i === 0;
-        const mid = (start + end) / 2;
+        const mid = (angles.outerStart + angles.outerEnd) / 2;
         const labelR = (innerR + outerR) / 2;
         const lx = cx + labelR * Math.cos(mid);
         const ly = cy + labelR * Math.sin(mid);
