@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Tab } from "../core/types/Tab";
 import { searchTabs } from "./searchTabs";
+import { findTabByPath } from "./findTab";
 import { IconRenderer } from "./IconRenderer";
 import { isGroup, tabInitial } from "./tabUtils";
 
@@ -19,14 +20,41 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [path, setPath] = useState<Tab[]>([]);
+  // Ids dos grupos drillados (mais externo primeiro), NÃO snapshots de Tab.
+  // Re-resolvemos a árvore em todo render via `findTabByPath` pra que uma
+  // mudança em `tabs` (config-changed após edição em Settings) reflita na
+  // hora: rename de grupo, child novo/removido e delete do grupo drillado.
+  // Espelha o padrão de `useRingStack`.
+  const [path, setPath] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const currentTabs = useMemo<Tab[]>(() => {
-    if (path.length === 0) return tabs;
-    const last = path[path.length - 1];
-    return last.children ?? [];
+  const resolved = useMemo(() => findTabByPath(tabs, path), [tabs, path]);
+  const currentTabs = resolved.tabs;
+
+  // Se o path ficou órfão (grupo drillado foi deletado/virou leaf em outra
+  // janela), reseta pra raiz silenciosamente — mesmo comportamento de
+  // `useRingStack`.
+  useEffect(() => {
+    if (!resolved.valid && path.length > 0) {
+      setPath([]);
+      setQuery("");
+      setSelectedIndex(0);
+    }
+  }, [resolved.valid, path.length]);
+
+  // Labels do breadcrumb resolvidos contra a árvore atual (não snapshots),
+  // pra que renames apareçam na hora. Trunca no primeiro id que sumir.
+  const crumbs = useMemo<{ id: string; label: string }[]>(() => {
+    const out: { id: string; label: string }[] = [];
+    for (let i = 0; i < path.length; i++) {
+      const parent = findTabByPath(tabs, path.slice(0, i));
+      if (!parent.valid) break;
+      const node = parent.tabs.find((tab) => tab.id === path[i]);
+      if (!node) break;
+      out.push({ id: node.id, label: node.name ?? node.icon ?? node.id });
+    }
+    return out;
   }, [tabs, path]);
 
   const filtered = useMemo(
@@ -56,15 +84,15 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
     }
   }, [selectedIndex, filtered.length]);
 
-  const drillInto = (group: Tab) => {
-    setPath((p) => [...p, group]);
+  const drillInto = (groupId: string) => {
+    setPath((p) => [...p, groupId]);
     setQuery("");
     setSelectedIndex(0);
   };
 
   const handlePick = (tab: Tab) => {
     if (isGroup(tab)) {
-      drillInto(tab);
+      drillInto(tab.id);
     } else {
       onSelect(tab.id);
     }
@@ -168,7 +196,7 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
       aria-label={t("donut.search.placeholder")}
     >
       <div style={dialogStyle}>
-        {path.length > 0 && (
+        {crumbs.length > 0 && (
           <div data-testid="search-breadcrumb" style={breadcrumbStyle}>
             <button
               type="button"
@@ -178,11 +206,11 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
             >
               {t("donut.search.breadcrumbRoot")}
             </button>
-            {path.map((group, i) => {
-              const isLast = i === path.length - 1;
-              const label = group.name ?? group.icon ?? group.id;
+            {crumbs.map((crumb, i) => {
+              const isLast = i === crumbs.length - 1;
+              const label = crumb.label;
               return (
-                <React.Fragment key={group.id}>
+                <React.Fragment key={crumb.id}>
                   <span style={crumbSepStyle} aria-hidden>
                     /
                   </span>

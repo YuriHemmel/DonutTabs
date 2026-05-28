@@ -239,5 +239,94 @@ describe("TabSearchOverlay", () => {
       expect(screen.getByTestId("search-row-0").textContent).toContain("Rust");
       expect(screen.getByTestId("search-row-2").textContent).toContain("Cursos");
     });
+
+    describe("re-resolves against the live tabs prop", () => {
+      async function renderWithRerender(tabs: Tab[]) {
+        const onSelect = vi.fn();
+        const onClose = vi.fn();
+        const i18n = await createI18n("pt-BR");
+        const utils = render(
+          <I18nextProvider i18n={i18n}>
+            <TabSearchOverlay tabs={tabs} onSelect={onSelect} onClose={onClose} />
+          </I18nextProvider>,
+        );
+        const rerenderWith = (next: Tab[]) =>
+          utils.rerender(
+            <I18nextProvider i18n={i18n}>
+              <TabSearchOverlay tabs={next} onSelect={onSelect} onClose={onClose} />
+            </I18nextProvider>,
+          );
+        return { ...utils, rerenderWith, onSelect, onClose };
+      }
+
+      it("shows children added to the drilled group after a tabs update", async () => {
+        const { rerenderWith } = await renderWithRerender(NESTED);
+        fireEvent.click(screen.getByTestId("search-row-1")); // enter "Estudos"
+        // Settings adds a new child to the drilled group.
+        const updated: Tab[] = [
+          tab("leaf-root", "Trabalho"),
+          group("g1", "Estudos", [
+            tab("rust", "Rust"),
+            tab("react", "React"),
+            group("g2", "Cursos", [tab("udemy", "Udemy")]),
+            tab("go", "Go"),
+          ]),
+        ];
+        rerenderWith(updated);
+        expect(screen.getByTestId("search-row-3").textContent).toContain("Go");
+      });
+
+      it("reflects a rename of the drilled group in the breadcrumb", async () => {
+        const { rerenderWith } = await renderWithRerender(NESTED);
+        fireEvent.click(screen.getByTestId("search-row-1")); // enter "Estudos"
+        expect(screen.getByTestId("search-breadcrumb-0").textContent).toContain(
+          "Estudos",
+        );
+        const renamed: Tab[] = [
+          tab("leaf-root", "Trabalho"),
+          group("g1", "Aprendizado", [
+            tab("rust", "Rust"),
+            tab("react", "React"),
+            group("g2", "Cursos", [tab("udemy", "Udemy")]),
+          ]),
+        ];
+        rerenderWith(renamed);
+        expect(screen.getByTestId("search-breadcrumb-0").textContent).toContain(
+          "Aprendizado",
+        );
+      });
+
+      it("resets to root when the drilled group is deleted", async () => {
+        const { rerenderWith } = await renderWithRerender(NESTED);
+        fireEvent.click(screen.getByTestId("search-row-1")); // enter "Estudos"
+        expect(screen.getByTestId("search-breadcrumb")).toBeTruthy();
+        // Settings deletes the drilled group entirely.
+        const afterDelete: Tab[] = [tab("leaf-root", "Trabalho")];
+        rerenderWith(afterDelete);
+        expect(screen.queryByTestId("search-breadcrumb")).toBeNull();
+        expect(screen.getByTestId("search-row-0").textContent).toContain(
+          "Trabalho",
+        );
+      });
+
+      it("does not call onSelect for a leaf removed while drilled", async () => {
+        const { rerenderWith, onSelect } = await renderWithRerender(NESTED);
+        fireEvent.click(screen.getByTestId("search-row-1")); // enter "Estudos"
+        // The group survives but loses the "rust" leaf.
+        const trimmed: Tab[] = [
+          tab("leaf-root", "Trabalho"),
+          group("g1", "Estudos", [
+            tab("react", "React"),
+            group("g2", "Cursos", [tab("udemy", "Udemy")]),
+          ]),
+        ];
+        rerenderWith(trimmed);
+        // Row 0 is now "React"; there is no stale "Rust" row to mis-select.
+        expect(screen.getByTestId("search-row-0").textContent).toContain("React");
+        fireEvent.click(screen.getByTestId("search-row-0"));
+        expect(onSelect).toHaveBeenCalledWith("react");
+        expect(onSelect).not.toHaveBeenCalledWith("rust");
+      });
+    });
   });
 });
