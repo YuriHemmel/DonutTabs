@@ -110,6 +110,7 @@
     "title": "设置",
     "sections": {
       "tabs": "标签页",
+      "organization": "整理",
       "profiles": "配置文件",
       "appearance": "外观",
       "shortcut": "快捷键",
@@ -390,6 +391,15 @@
       "errorFetch": "无法列出应用程序：{{reason}}",
       "refresh": "刷新列表",
       "cancel": "取消"
+    },
+    "organization": {
+      "title": "标签页整理",
+      "crossRingHint": "拖动扇区可重新排序并在页面之间移动。拖动仅在同一层级（根或某个分组）内有效，不能跨不同分组。",
+      "itemsPerPageLabel": "每页项目数",
+      "itemsPerPageHint": "适用于所有配置文件",
+      "pageLabel": "第 {{n}} 页",
+      "groupLabel": "分组：{{name}}",
+      "empty": "此配置文件还没有可整理的标签页。"
     }
   },
   "wizard": {

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { TabList } from "./TabList";
 import { TabEditor } from "./TabEditor";
+import { OrganizationSection } from "./OrganizationSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutSection } from "./ShortcutSection";
 import { SystemSection } from "./SystemSection";
@@ -141,6 +142,7 @@ export const SettingsApp: React.FC = () => {
     setScriptHistoryEnabled,
     setSpawnPosition,
     setQuickMode,
+    setItemsPerPage,
   } = useConfig();
   const [section, setSection] = useState<Section>("tabs");
   const [selection, setSelection] = useState<Selection>({ mode: "empty" });
@@ -454,6 +456,23 @@ export const SettingsApp: React.FC = () => {
             </section>
           )}
         </div>
+      )}
+
+      {section === "organization" && (
+        <OrganizationSection
+          profile={selectedProfile}
+          itemsPerPage={config.pagination.itemsPerPage}
+          onSetItemsPerPage={(n) => {
+            void setItemsPerPage(n).catch((err) => {
+              window.alert(translateAppError(err, t));
+            });
+          }}
+          onReorderTabs={(profileId, orderedIds, parentPath) => {
+            reorderTabs(profileId, orderedIds, parentPath).catch((e) => {
+              console.error("reorderTabs failed", e);
+            });
+          }}
+        />
       )}
 
       {section === "profiles" && (

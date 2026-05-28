@@ -110,6 +110,7 @@
     "title": "Configurações",
     "sections": {
       "tabs": "Abas",
+      "organization": "Organização",
       "profiles": "Perfis",
       "appearance": "Aparência",
       "shortcut": "Atalho",
@@ -390,6 +391,15 @@
       "errorFetch": "Falha ao listar aplicativos: {{reason}}",
       "refresh": "Atualizar lista",
       "cancel": "Cancelar"
+    },
+    "organization": {
+      "title": "Organização das abas",
+      "crossRingHint": "Arraste as fatias para reordenar e movê-las entre páginas. O arrasto funciona dentro do mesmo nível (raiz ou um grupo), não entre grupos diferentes.",
+      "itemsPerPageLabel": "Itens por página",
+      "itemsPerPageHint": "Vale para todos os perfis",
+      "pageLabel": "Página {{n}}",
+      "groupLabel": "Grupo: {{name}}",
+      "empty": "Este perfil ainda não tem abas para organizar."
     }
   },
   "wizard": {

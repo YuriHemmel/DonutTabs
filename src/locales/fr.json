@@ -110,6 +110,7 @@
     "title": "Paramètres",
     "sections": {
       "tabs": "Onglets",
+      "organization": "Organisation",
       "profiles": "Profils",
       "appearance": "Apparence",
       "shortcut": "Raccourci",
@@ -390,6 +391,15 @@
       "errorFetch": "Échec du listage des applications : {{reason}}",
       "refresh": "Actualiser la liste",
       "cancel": "Annuler"
+    },
+    "organization": {
+      "title": "Organisation des onglets",
+      "crossRingHint": "Faites glisser les segments pour les réordonner et les déplacer entre les pages. Le glisser-déposer fonctionne au sein d'un même niveau (racine ou groupe), pas entre groupes différents.",
+      "itemsPerPageLabel": "Éléments par page",
+      "itemsPerPageHint": "S'applique à tous les profils",
+      "pageLabel": "Page {{n}}",
+      "groupLabel": "Groupe : {{name}}",
+      "empty": "Ce profil n'a pas encore d'onglets à organiser."
     }
   },
   "wizard": {
