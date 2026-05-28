@@ -1,0 +1,479 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage は 4 から 8 の間でなければなりません（現在 {{got}}）",
+      "hoverHoldMsZero": "hoverHoldMs は 0 より大きくなければなりません",
+      "tabMissingNameAndIcon": "タブ {{id}} には名前またはアイコンが必要です",
+      "invalidUrl": "タブ {{tabId}} の URL が無効です：{{reason}}",
+      "duplicateTabId": "タブ ID が重複しています：{{id}}",
+      "tabLeafHasChildren": "タブ {{tabId}} はリーフのため、サブ項目を持てません。",
+      "tabGroupHasItems": "タブ {{tabId}} はグループのため、直接の URL/ファイルを持てません。",
+      "tabTooDeep": "タブ {{tabId}} の深さ（{{depth}}）が上限（{{maxDepth}}）を超えています。",
+      "tabMixedLeafAndGroup": "タブ {{tabId}} は項目とサブ項目を混在できません。",
+      "pathEmpty": "タブ {{tabId}} の {{kind}} パスは空にできません。",
+      "openWithEmpty": "タブ {{tabId}}（{{kind}} 項目）の起動プログラムは空にできません。",
+      "appNameEmpty": "タブ {{tabId}} のアプリ名は空にできません。",
+      "scriptCommandEmpty": "タブ {{tabId}} のスクリプトコマンドは空にできません。",
+      "scriptShellInvalid": "無効なスクリプトシェル：{{value}}。cmd、powershell、pwsh、wsl、bash、sh、zsh のいずれかを使用してください。",
+      "themeColorInvalid": "{{field}} の色が無効です：{{value}}。#RRGGBB 形式を使用してください。",
+      "themeAlphaOutOfRange": "{{field}} の透明度が無効です：0 から 1 の間でなければなりません。",
+      "themeRadiusOutOfRange": "{{field}} の半径が無効です：{{value}}。許容範囲外です。",
+      "themeRadiusInverted": "内側の半径は外側の半径より小さくなければなりません。",
+      "searchShortcutEmpty": "検索ショートカットは空にできません。",
+      "settingsShortcutEmpty": "設定ショートカットは空にできません。",
+      "noProfiles": "無効な設定：プロファイルが定義されていません。",
+      "activeProfileNotFound": "アクティブなプロファイルが見つかりません：{{activeProfileId}}",
+      "duplicateProfileId": "プロファイル ID が重複しています：{{id}}",
+      "profileNameEmpty": "プロファイル名は空にできません。",
+      "profileShortcutEmpty": "プロファイルのショートカットは空にできません。",
+      "profileNotFound": "プロファイルが見つかりません：{{profileId}}",
+      "cannotDeleteLastProfile": "最後のプロファイルは削除できません。",
+      "reorderMismatch": "並べ替えに失敗しました：項目セットが一致しません（{{scope}}）。",
+      "jsonParse": "設定ファイルの形式が不正です：{{reason}}",
+      "unknown": "設定エラー：{{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "{{total}} 件のリンクをいずれも開けませんでした",
+      "partialFailure": "{{total}} 件中 {{failed}} 件のリンクを開けませんでした",
+      "tabNotFound": "タブ {{id}} が見つかりません",
+      "scriptBlocked": "スクリプトが承認されていません — 実行前に確認してください。",
+      "scriptsDisabled": "このプロファイルではスクリプトが無効になっています。",
+      "scriptCommandMismatch": "確認後にスクリプトが変更されました — タブを再度開いて確認してください。",
+      "itemKindMismatch": "項目の種類が一致しません（{{got}} ≠ {{expected}}）。",
+      "itemIndexOutOfRange": "項目のインデックスが範囲外です：{{itemIndex}}。",
+      "scriptCancelFailed": "実行をキャンセルできませんでした：{{reason}}",
+      "unknown": "タブを開けませんでした：{{code}}"
+    },
+    "shortcut": {
+      "shortcutRegistrationFailed": "ショートカットを登録できませんでした：{{reason}}",
+      "shortcutParseFailed": "無効な組み合わせ：{{reason}}",
+      "unknown": "ショートカットエラー：{{code}}"
+    },
+    "window": {
+      "windowHideFailed": "ウィンドウを非表示にできませんでした：{{reason}}",
+      "unknown": "ウィンドウエラー：{{code}}"
+    },
+    "io": {
+      "ioGeneric": "I/O エラー：{{reason}}",
+      "autostartFailed": "自動起動の設定を変更できませんでした：{{reason}}",
+      "faviconFetch": "サイトのアイコンを取得できませんでした（{{url}}）。",
+      "faviconParse": "無効な favicon URL：{{reason}}",
+      "unknown": "I/O エラー：{{code}}"
+    },
+    "updater": {
+      "updaterCheckFailed": "更新の確認に失敗しました：{{reason}}",
+      "updaterInstallFailed": "更新のインストールに失敗しました：{{reason}}",
+      "updaterSignatureInvalid": "更新の署名が無効です。更新をキャンセルしました。",
+      "updaterNetworkUnavailable": "更新を確認するネットワーク接続がありません。",
+      "updaterNoEndpoints": "更新エンドポイントが設定されていません。",
+      "unknown": "更新エラー：{{code}}"
+    },
+    "fallback": "予期しないエラーが発生しました（{{kind}}）"
+  },
+  "donut": {
+    "toastDismiss": "閉じる",
+    "onboarding": {
+      "title": "DonutTabs へようこそ！",
+      "body": "いつでも {{shortcut}} を押すとこのメニューが開きます。ESC で閉じます。",
+      "dismiss": "了解"
+    },
+    "hoverHold": {
+      "edit": "編集",
+      "delete": "削除",
+      "yes": "削除を確認",
+      "no": "キャンセル"
+    },
+    "contextMenu": {
+      "openAll": "すべて開く",
+      "edit": "編集",
+      "delete": "削除",
+      "confirmDelete": "タブ「{{label}}」を削除しますか？この操作は取り消せません。"
+    },
+    "search": {
+      "placeholder": "タブを検索…",
+      "empty": "一致するタブがありません",
+      "shortcutHint": "↑↓ 移動 · Enter 開く · Esc 閉じる"
+    },
+    "scriptModal": {
+      "title": "スクリプトを実行しますか？",
+      "commandLabel": "コマンド：",
+      "warning": "スクリプトはファイルや設定への完全なアクセス権を持ちます。認識できるコマンドのみ実行してください。",
+      "trustLabel": "このタブを信頼する（次回から確認しない）",
+      "run": "実行",
+      "cancel": "キャンセル"
+    },
+    "confirmCascadeDelete": "グループ「{{label}}」を削除しますか？{{count}} 件のサブ項目が削除されます。"
+  },
+  "settings": {
+    "title": "設定",
+    "sections": {
+      "tabs": "タブ",
+      "profiles": "プロファイル",
+      "appearance": "外観",
+      "shortcut": "ショートカット",
+      "system": "システム",
+      "history": "履歴",
+      "about": "情報"
+    },
+    "profile": {
+      "label": "プロファイル：",
+      "new": "新規",
+      "edit": "プロファイルを編集",
+      "delete": "プロファイルを削除",
+      "activate": "アクティブなプロファイルに設定",
+      "activeMarker": "（アクティブ）",
+      "activeBadge": "アクティブ",
+      "editingMarker": "編集中",
+      "sectionTitle": "プロファイル",
+      "addProfile": "プロファイルを追加",
+      "selectPrompt": "編集するプロファイルを選択するか、「+ プロファイルを追加」をクリックしてください。",
+      "confirmDelete": "プロファイル「{{name}}」を削除しますか？そのタブと設定は失われます。",
+      "newTitle": "新規プロファイル",
+      "editTitle": "プロファイルを編集",
+      "nameLabel": "名前",
+      "namePlaceholder": "仕事",
+      "iconLabel": "アイコン",
+      "iconPlaceholder": "例：🚀",
+      "iconHint": "絵文字または短い文字。任意です。",
+      "create": "作成",
+      "validationNameRequired": "プロファイル名は必須です。",
+      "validationIconTooLong": "アイコンは1文字または1つの絵文字にしてください。"
+    },
+    "system": {
+      "title": "システム",
+      "autostart": "システム起動時に自動的に開始",
+      "autostartHint": "有効にすると、DonutTabs はシステム起動時にトレイで開始します。",
+      "exportButton": "設定をエクスポート…",
+      "importButton": "設定をインポート…",
+      "exportImportHint": "マシン間で同期するために config.json をバックアップ/復元します。",
+      "exportSuccess": "設定を {{path}} にエクスポートしました。",
+      "groups": {
+        "general": "一般",
+        "donut": "ドーナツ",
+        "scripts": "スクリプト",
+        "backupAndTutorial": "バックアップとチュートリアル"
+      },
+      "allowScriptsLabel": "このプロファイルでスクリプトを許可",
+      "allowScriptsHint": "シェルスクリプトは初回実行時に必ず確認を求められます。このプロファイルのすべてのスクリプトをブロックするには無効にしてください。",
+      "scriptHistoryLabel": "スクリプト履歴ページを有効にする",
+      "scriptHistoryHint": "有効にすると、設定に「履歴」タブが表示され、各スクリプト実行の stdout/stderr 出力をそこで確認できます（メモリ内に保存、アプリ終了時に消去）。無効にすると、スクリプトは実行されますが出力はキャプチャされません。",
+      "spawnPositionLegend": "ドーナツが表示される位置",
+      "spawnPositionCursor": "マウスの位置に",
+      "spawnPositionCenter": "アクティブなモニターの中央に",
+      "spawnPositionHint": "グローバルショートカットを起動したときのドーナツの開始位置を設定します。",
+      "quickModeLabel": "クイックモード（押している間表示、離すと開く）",
+      "quickModeHint": "有効にすると、ドーナツはグローバルショートカットを押している間だけ表示されます。カーソルをタブに合わせてキーを離すとそのタブを開きます（⚙ に合わせて離すと設定を開きます）。",
+      "reopenWizardButton": "チュートリアルを再度開く",
+      "reopenWizardHint": "ガイド付き設定チュートリアルを再度開きます。",
+      "importConfirm": "インポートすると、現在のすべての設定（プロファイル、タブ、ショートカット、テーマ）が置き換えられます。続行しますか？",
+      "importShortcutWarning": "設定はインポートされましたが、新しいアクティブプロファイルのグローバルショートカットを登録できませんでした（おそらく別のアプリで既に使用中）。DonutTabs を再起動するか、設定でショートカットを変更してください。",
+      "update": {
+        "currentVersion": "現在のバージョン：v{{version}}",
+        "autoCheckLabel": "起動時に自動的に更新を確認",
+        "autoCheckHint": "有効にすると、アプリは起動時に1回確認し、新しいバージョンを通知します。",
+        "checkNow": "今すぐ確認",
+        "checking": "確認中…",
+        "upToDate": "最新バージョンを使用しています。",
+        "available": "バージョン {{version}} が利用可能です",
+        "releaseNotes": "リリースノート",
+        "installNow": "インストールして再起動",
+        "installing": "インストール中… {{progress}}%",
+        "downloading": "ダウンロード中… {{progress}}%",
+        "dismissedHint": "このバージョンについては既に通知済みです。次の更新まで再度アラートは表示されません。"
+      }
+    },
+    "history": {
+      "heading": "最近の実行",
+      "empty": "まだスクリプトは実行されていません。",
+      "disabled": "出力のキャプチャはシステム環境設定で無効になっています。",
+      "clearAll": "すべてクリア",
+      "clearConfirm": "{{count}} 件の実行をすべて削除しますか？出力は復元できません。",
+      "status": {
+        "running": "実行中",
+        "succeeded": "成功",
+        "failed": "失敗",
+        "interrupted": "中断",
+        "cancelled": "キャンセル"
+      },
+      "detail": {
+        "metadata": "メタデータ",
+        "profile": "プロファイル",
+        "tab": "タブ",
+        "exitCode": "終了コード",
+        "startedAt": "開始時刻",
+        "finishedAt": "終了時刻",
+        "duration": "所要時間",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "出力が切り詰められました（上限に達しました）。すべて確認するには、スクリプトの出力をファイルにリダイレクトしてください。",
+        "cancel": "実行をキャンセル",
+        "copy": "コピー"
+      }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "お気に入りのサイト、アプリ、ファイルをショートカットで—カーソルのすぐそばから開きます。",
+      "version": "バージョン",
+      "versionValue": "v{{version}}",
+      "author": "作者",
+      "repository": "🔗 GitHub リポジトリ",
+      "updates": "更新",
+      "support": "プロジェクトを支援",
+      "supportBody": "DonutTabs が日々の役に立っているなら、プロジェクトの支援をご検討ください。いただいた寄付は開発を活発に保つのに役立ちます。",
+      "kofiButton": "☕ Ko-fi で支援"
+    },
+    "icon": {
+      "modalTitle": "アイコンを選択",
+      "pickButton": "🎨 選択",
+      "tabEmoji": "絵文字",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "アイコンを検索…",
+      "clear": "アイコンをクリア",
+      "changeChip": "アイコンを変更"
+    },
+    "appearance": {
+      "sectionTitle": "外観",
+      "theme": "テーマ",
+      "themeDark": "ダーク",
+      "themeLight": "ライト",
+      "themeAuto": "システム",
+      "language": "言語",
+      "languageAuto": "システム",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English",
+      "languageEs": "Español",
+      "languageZh": "中文",
+      "languageJa": "日本語",
+      "languageRu": "Русский",
+      "languageFr": "Français",
+      "languageIt": "Italiano",
+      "themeCustomTitle": "テーマをカスタマイズ",
+      "themeCustomHint": "選択したプリセットの上に適用する調整。このプロファイルにのみ適用されます。",
+      "colorSliceFill": "スライスの色",
+      "colorSliceHighlight": "ハイライトの色",
+      "colorSliceStroke": "枠線の色",
+      "colorCenterFill": "中央の色",
+      "colorText": "テキストの色",
+      "alphaOverlay": "背景の透明度",
+      "dimensionInnerRatio": "内半径",
+      "dimensionOuterRatio": "外半径",
+      "themeReset": "デフォルトに戻す",
+      "themePreviewLabel": "プレビュー",
+      "sliceGapLabel": "隣接するタブ間の間隔",
+      "sliceGapHint": "有効にすると、隣接するスライス間に小さな角度の間隔が表示されます。"
+    },
+    "shortcut": {
+      "sectionTitle": "グローバルショートカット",
+      "current": "現在のショートカット：",
+      "record": "新しいショートカットを記録",
+      "recording": "キーの組み合わせを押してください…",
+      "cancel": "キャンセル",
+      "hint": "Ctrl/Alt/Shift/Super を含む組み合わせ、または F12、スペース、矢印キーなどの単独キーを押してください（Enter/Esc/Tab は拒否されます）。",
+      "reservedKey": "予約済みキー：{{key}}",
+      "noModifier": "単独の文字または数字（{{key}}）はすべてのアプリでそのキーを乗っ取ってしまいます。Ctrl/Alt/Shift/Super を追加するか、F1〜F12 を使用してください。",
+      "searchSectionTitle": "検索ショートカット",
+      "searchHint": "ドーナツ内でタブのクイック検索を開くウィンドウレベルのショートカット。デフォルト：Ctrl+F。",
+      "settingsSectionTitle": "設定ショートカット",
+      "settingsHint": "ドーナツを介さず設定ウィンドウを直接開くグローバルショートカット。デフォルト：Ctrl+Shift+,。"
+    },
+    "tabs": {
+      "sectionTitle": "タブ",
+      "addTab": "タブを追加",
+      "empty": "まだタブがありません。「タブを追加」をクリックして始めましょう。",
+      "selectPrompt": "編集するタブを選択するか、「タブを追加」をクリックしてください。"
+    },
+    "editor": {
+      "newTabTitle": "新規タブ",
+      "name": "名前",
+      "namePlaceholder": "仕事",
+      "icon": "アイコン",
+      "iconPlaceholder": "例：🚀",
+      "iconHint": "絵文字または短い文字。名前またはアイコンが必要です。",
+      "openMode": "開き方",
+      "openModeReuseOrNewWindow": "再利用または新規ウィンドウ",
+      "openModeNewWindow": "新規ウィンドウ",
+      "openModeNewTab": "新規タブ",
+      "items": "項目",
+      "itemKindUrl": "URL",
+      "itemKindFile": "ファイル",
+      "itemKindFolder": "フォルダ",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\path\\to\\file.pdf",
+      "itemPlaceholderFolder": "C:\\path\\to\\folder",
+      "addItemUrl": "URL を追加",
+      "addItemFile": "ファイルを追加",
+      "addItemFolder": "フォルダを追加",
+      "browse": "参照…",
+      "itemKindApp": "アプリ",
+      "itemKindScript": "スクリプト",
+      "itemPlaceholderApp": "例：firefox、code",
+      "itemPlaceholderScript": "例：git pull && cargo test",
+      "addItemApp": "アプリを追加",
+      "addItemScript": "スクリプトを追加",
+      "scriptTrustedLabel": "信頼する（確認なしで実行）",
+      "scriptShellLabel": "シェル",
+      "scriptShellDefault": "システムのデフォルト",
+      "scriptShellOptionCmd": "cmd",
+      "scriptShellOptionPowerShell": "PowerShell",
+      "scriptShellOptionPwsh": "pwsh",
+      "scriptShellOptionWsl": "WSL",
+      "scriptShellOptionBash": "bash",
+      "scriptShellOptionSh": "sh",
+      "scriptShellOptionZsh": "zsh",
+      "scriptHelpButton": "?",
+      "scriptHelpAria": "スクリプトのヘルプ",
+      "incognitoLabel": "プライベート",
+      "incognitoHint": "プライベート/シークレットモードで開きます。「開くアプリ」で選択したブラウザを使用します。「システムのデフォルト」の場合、アプリが OS の既定ブラウザを検出します。",
+      "openWithLabel": "開くアプリ",
+      "openWithPlaceholder": "例：firefox、code",
+      "openWithHint": "OS のプログラム/ハンドラ。空 = システムのデフォルト。",
+      "openWithDefault": "システムのデフォルト",
+      "openWithCustom": "カスタム：{{value}}",
+      "removeItem": "項目を削除",
+      "save": "保存",
+      "saving": "保存中…",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "confirmDelete": "タブ「{{label}}」を削除しますか？この操作は取り消せません。",
+      "validationNameOrIcon": "名前またはアイコンを指定してください。",
+      "validationIconTooLong": "アイコンは1文字または1つの絵文字にしてください。",
+      "validationAtLeastOneItem": "少なくとも1つの項目（URL、ファイル、またはフォルダ）を追加してください。",
+      "validationInvalidUrl": "無効な URL：{{value}}",
+      "appPickerButton": "📋 アプリを参照",
+      "appPickerHint": "システムがインストール・検出したアプリケーションを一覧表示します。",
+      "monitorLabel": "画面",
+      "monitorDefault": "デフォルト",
+      "monitorPrimarySuffix": "（メイン）",
+      "monitorHint": "開く前にカーソルを選択した画面に移動します。既存のウィンドウを再利用するアプリはこれを無視する場合があります。",
+      "tabKindLeaf": "タブ（リンク）",
+      "tabKindGroup": "グループ（サブドーナツ）",
+      "kindLabel": "種類",
+      "headerValue": "値",
+      "groupChildrenLabel": "グループの内容",
+      "groupChildrenEmpty": "まだ項目がありません。タブまたはサブグループを追加してください。",
+      "addChildTab": "+ タブを追加",
+      "addChildGroup": "+ サブグループを追加",
+      "maxDepthHint": "最大の深さに達しました — ここにこれ以上サブグループを追加できません。",
+      "groupNewHint": "まずグループを保存してください。その後、一覧から再度開くか、ドーナツの「+」をクリックしてタブを追加してください。",
+      "focusIfOpen": {
+        "label": "既に開いている場合はフォーカス",
+        "hint": "既に開いているアプリやタブはフォーカスされ、それ以外は通常どおり開きます。",
+        "hintMac": "macOS では、既に開いている URL のフォーカスは次で動作します：Chrome、Safari、Edge、Arc、Brave、Vivaldi。\n他のブラウザでは、URL が新規タブとして開く場合があります。",
+        "firefoxWarning": "1つ以上の URL がブラウザに Firefox を使用しています。macOS の Firefox は AppleScript 経由でタブを公開しないため、これらの URL は常に新規タブとして開きます。タブのフォーカスには Chrome、Safari、Edge、Arc、Brave、Vivaldi を使用してください。"
+      }
+    },
+    "scriptHelp": {
+      "title": "スクリプトの使い方",
+      "howItWorksTitle": "仕組み",
+      "howItWorksBody": "コマンドはその行の「シェル」セレクターで選択したシェルで実行されます。プラットフォームのデフォルト：{{defaultShell}}。",
+      "chainingTitle": "連結",
+      "chainingBody": "&&、||、| などの演算子やリダイレクト（> >> <）はターミナルと同じように動作します — 文字列全体が -c/-Command/C 経由でシェルに渡されます。",
+      "outputTitle": "出力",
+      "outputBody": "「システム」で有効にすると、stdout と stderr が設定の「履歴」タブに表示されます。キャプチャしない場合、スクリプトはファイア・アンド・フォーゲットで実行されます（表示されません）。",
+      "securityTitle": "セキュリティ",
+      "securityBody": "信頼されていないスクリプトは初回実行時に確認が必要です。プロファイルごとの「スクリプトを許可」のキルスイッチは、信頼の有無にかかわらずすべてのスクリプト実行をブロックします。",
+      "examplesTitle": "例",
+      "close": "閉じる"
+    },
+    "tree": {
+      "groupBadge": "グループ",
+      "childCount_one": "{{count}} 個のタブ",
+      "childCount_other": "{{count}} 個のタブ"
+    },
+    "appPicker": {
+      "title": "アプリケーションを選択",
+      "loading": "アプリケーションを読み込み中…",
+      "empty": "アプリケーションが検出されませんでした。フィールドに名前を手動で入力してください。",
+      "searchPlaceholder": "アプリケーションを検索…",
+      "errorFetch": "アプリケーションを一覧表示できませんでした：{{reason}}",
+      "refresh": "一覧を更新",
+      "cancel": "キャンセル"
+    }
+  },
+  "wizard": {
+    "skip": "チュートリアルをスキップ",
+    "back": "戻る",
+    "next": "次へ",
+    "finish": "完了",
+    "confirmSkipTitle": "チュートリアルをスキップしますか？",
+    "confirmSkipBody": "設定 → システム でいつでも再度開けます。",
+    "confirmSkipYes": "スキップ",
+    "confirmSkipNo": "チュートリアルを続ける",
+    "stepCounter": "ステップ {{current}} / {{total}}",
+    "mediaPlaceholder": "説明用のデモは近日追加予定です。",
+    "spawnPositionCursor": "カーソル",
+    "spawnPositionCenter": "モニターの中央",
+    "quickModeOn": "有効",
+    "quickModeOff": "無効",
+    "openSettings": "設定を開く",
+    "steps": {
+      "welcome": {
+        "title": "DonutTabs へようこそ！",
+        "body": "このクイックチュートリアルでは、アプリの仕組みを紹介し、初期設定の構成をお手伝いします。いつでもスキップできます。"
+      },
+      "tabs": {
+        "title": "タブ",
+        "body": "ドーナツ内の各タブは、一緒に開くものの集まりです：URL、ファイル、フォルダ、アプリ、スクリプト。⚙ アイコンまたはこのセクションから作成してください。"
+      },
+      "demoCreateTab": {
+        "title": "タブの作成",
+        "body": "URL、ファイル、フォルダ、アプリ、スクリプトを1つのタブに追加します。ドーナツでそのタブを選択すると、すべてが一度に開きます。"
+      },
+      "demoSubdonuts": {
+        "title": "グループとサブドーナツ",
+        "body": "関連するタブをグループにまとめると、クリックで子タブを含むサブドーナツが開きます。コンテキストの整理に便利です。"
+      },
+      "demoGroupInDonut": {
+        "title": "ドーナツ内のグループ",
+        "body": "グループがドーナツでどのように表示されるかをご覧ください：スライスにマーカーが付き、クリックするとドーナツが子タブを含むサブドーナツに変形します。選択したグループをクリックすると戻ります。"
+      },
+      "profiles": {
+        "title": "プロファイル",
+        "body": "独自のタブ、ショートカット、テーマを持つ複数のプロファイル（例：仕事、個人、学習）を作成できます。ドーナツの中央またはこの設定画面から切り替えます。"
+      },
+      "demoProfileSwitch": {
+        "title": "プロファイルの切り替え",
+        "body": "ドーナツ中央のプロファイルアイコンをクリックすると、すべてのプロファイルがリング状に表示されます。1つ選択して有効化します。"
+      },
+      "appearance": {
+        "title": "外観",
+        "body": "ライト/ダーク/自動テーマを選択し、色、不透明度、半径をカスタマイズします。プロファイルごとに独自の外観を持てます。"
+      },
+      "shortcut": {
+        "title": "グローバルショートカット",
+        "body": "グローバルショートカットを押すと、システムのどこでもドーナツを開けます。設定 → ショートカット で変更できます。",
+        "currentLabel": "現在のショートカット："
+      },
+      "demoQuickMode": {
+        "title": "クイックモード（押して離す）",
+        "body": "クイックモードを有効にすると、ショートカットを押している間だけドーナツが表示されます。目的のタブにカーソルを合わせて離すと開きます — クリック不要です。",
+        "quickModeLabel": "クイックモードを有効にする"
+      },
+      "demoSpawnPosition": {
+        "title": "ドーナツが表示される位置",
+        "body": "ドーナツをカーソルの位置に表示するか、アクティブなモニターの中央に表示するかを選びます。それぞれ操作の流れが異なります — お試しください。",
+        "spawnPositionLabel": "初期位置"
+      },
+      "system": {
+        "title": "システム",
+        "body": "言語、システム起動時の自動開始、このプロファイルでのスクリプト実行許可を調整します。",
+        "languageLabel": "言語",
+        "autostartLabel": "システム起動時に開始",
+        "allowScriptsLabel": "このプロファイルでスクリプトを許可",
+        "allowScriptsWarning": "スクリプトはマシンへの完全なアクセス権を持ち、設定したとおりに正確に実行されます。追加した内容を信頼できる場合のみ有効にしてください。"
+      },
+      "demoSearchOverlay": {
+        "title": "ドーナツ内のクイック検索",
+        "body": "ドーナツを開いた状態で検索ショートカット（デフォルトは Ctrl+F）を押すと、クイックオーバーレイで名前によりタブを絞り込めます。"
+      },
+      "about": {
+        "title": "情報",
+        "body": "ここでは現在のバージョンを確認し、自動更新を管理できます。プロジェクトの GitHub リンク（変更の追跡やバグ報告に最適）や、プロジェクトの継続を支援したい場合の Ko-fi での支援オプションもあります。"
+      },
+      "done": {
+        "title": "準備完了！",
+        "body": "DonutTabs をインストールしてご利用いただきありがとうございます — 日々の作業がはかどることを願っています！\nこのチュートリアルは 設定 → システム でいつでも再度開けます。\nグローバルショートカットを押してお楽しみください！🍩"
+      }
+    }
+  }
+}

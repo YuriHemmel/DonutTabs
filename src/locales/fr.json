@@ -1,0 +1,479 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage doit être compris entre 4 et 8 (valeur reçue : {{got}})",
+      "hoverHoldMsZero": "hoverHoldMs doit être supérieur à 0",
+      "tabMissingNameAndIcon": "L'onglet {{id}} a besoin d'un nom ou d'une icône",
+      "invalidUrl": "URL invalide dans l'onglet {{tabId}} : {{reason}}",
+      "duplicateTabId": "Id d'onglet en double : {{id}}",
+      "tabLeafHasChildren": "L'onglet {{tabId}} est une feuille et ne peut pas avoir de sous-éléments.",
+      "tabGroupHasItems": "L'onglet {{tabId}} est un groupe et ne peut pas avoir d'URL/fichiers directs.",
+      "tabTooDeep": "La profondeur de l'onglet {{tabId}} ({{depth}}) dépasse la limite ({{maxDepth}}).",
+      "tabMixedLeafAndGroup": "L'onglet {{tabId}} ne peut pas mélanger éléments et sous-éléments.",
+      "pathEmpty": "Le chemin {{kind}} ne peut pas être vide dans l'onglet {{tabId}}.",
+      "openWithEmpty": "Le programme d'ouverture ne peut pas être vide dans l'onglet {{tabId}} (élément {{kind}}).",
+      "appNameEmpty": "Le nom de l'application ne peut pas être vide dans l'onglet {{tabId}}.",
+      "scriptCommandEmpty": "La commande du script ne peut pas être vide dans l'onglet {{tabId}}.",
+      "scriptShellInvalid": "Shell de script invalide : {{value}}. Utilisez cmd, powershell, pwsh, wsl, bash, sh ou zsh.",
+      "themeColorInvalid": "Couleur invalide dans {{field}} : {{value}}. Utilisez le format #RRGGBB.",
+      "themeAlphaOutOfRange": "Transparence invalide dans {{field}} : doit être comprise entre 0 et 1.",
+      "themeRadiusOutOfRange": "Rayon invalide dans {{field}} : {{value}}. Hors de la plage autorisée.",
+      "themeRadiusInverted": "Le rayon intérieur doit être inférieur au rayon extérieur.",
+      "searchShortcutEmpty": "Le raccourci de recherche ne peut pas être vide.",
+      "settingsShortcutEmpty": "Le raccourci des paramètres ne peut pas être vide.",
+      "noProfiles": "Configuration invalide : aucun profil défini.",
+      "activeProfileNotFound": "Profil actif introuvable : {{activeProfileId}}",
+      "duplicateProfileId": "Id de profil en double : {{id}}",
+      "profileNameEmpty": "Le nom du profil ne peut pas être vide.",
+      "profileShortcutEmpty": "Le raccourci du profil ne peut pas être vide.",
+      "profileNotFound": "Profil introuvable : {{profileId}}",
+      "cannotDeleteLastProfile": "Impossible de supprimer le dernier profil.",
+      "reorderMismatch": "Réorganisation échouée : l'ensemble d'éléments ne correspond pas ({{scope}}).",
+      "jsonParse": "Fichier de configuration mal formé : {{reason}}",
+      "unknown": "Erreur de configuration : {{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "Aucun des {{total}} liens n'a pu être ouvert",
+      "partialFailure": "{{failed}} liens sur {{total}} n'ont pas pu être ouverts",
+      "tabNotFound": "Onglet {{id}} introuvable",
+      "scriptBlocked": "Script non autorisé — confirmez avant d'exécuter.",
+      "scriptsDisabled": "Les scripts sont désactivés dans ce profil.",
+      "scriptCommandMismatch": "Le script a changé depuis votre confirmation — rouvrez l'onglet pour vérifier.",
+      "itemKindMismatch": "Type d'élément incompatible ({{got}} ≠ {{expected}}).",
+      "itemIndexOutOfRange": "Index d'élément hors limites : {{itemIndex}}.",
+      "scriptCancelFailed": "Impossible d'annuler l'exécution : {{reason}}",
+      "unknown": "Échec de l'ouverture de l'onglet : {{code}}"
+    },
+    "shortcut": {
+      "shortcutRegistrationFailed": "Impossible d'enregistrer le raccourci : {{reason}}",
+      "shortcutParseFailed": "Combinaison invalide : {{reason}}",
+      "unknown": "Erreur de raccourci : {{code}}"
+    },
+    "window": {
+      "windowHideFailed": "Impossible de masquer la fenêtre : {{reason}}",
+      "unknown": "Erreur de fenêtre : {{code}}"
+    },
+    "io": {
+      "ioGeneric": "Erreur d'E/S : {{reason}}",
+      "autostartFailed": "Impossible de modifier le paramètre de démarrage automatique : {{reason}}",
+      "faviconFetch": "Impossible de récupérer l'icône du site ({{url}}).",
+      "faviconParse": "URL de favicon invalide : {{reason}}",
+      "unknown": "Erreur d'E/S : {{code}}"
+    },
+    "updater": {
+      "updaterCheckFailed": "Échec de la recherche de mises à jour : {{reason}}",
+      "updaterInstallFailed": "Échec de l'installation de la mise à jour : {{reason}}",
+      "updaterSignatureInvalid": "Signature de mise à jour invalide. Mise à jour annulée.",
+      "updaterNetworkUnavailable": "Aucune connexion réseau pour rechercher les mises à jour.",
+      "updaterNoEndpoints": "Point de terminaison de mise à jour non configuré.",
+      "unknown": "Erreur de mise à jour : {{code}}"
+    },
+    "fallback": "Une erreur inattendue s'est produite ({{kind}})"
+  },
+  "donut": {
+    "toastDismiss": "Fermer",
+    "onboarding": {
+      "title": "Bienvenue dans DonutTabs !",
+      "body": "Appuyez sur {{shortcut}} à tout moment pour ouvrir ce menu. Appuyez sur ÉCHAP pour fermer.",
+      "dismiss": "Compris"
+    },
+    "hoverHold": {
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "yes": "Confirmer la suppression",
+      "no": "Annuler"
+    },
+    "contextMenu": {
+      "openAll": "Tout ouvrir",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer l'onglet « {{label}} » ? Cette action est irréversible."
+    },
+    "search": {
+      "placeholder": "Rechercher un onglet…",
+      "empty": "Aucun onglet correspondant",
+      "shortcutHint": "↑↓ naviguer · Entrée ouvrir · Échap fermer"
+    },
+    "scriptModal": {
+      "title": "Exécuter le script ?",
+      "commandLabel": "Commande :",
+      "warning": "Les scripts ont un accès complet à vos fichiers et paramètres. N'exécutez que des commandes que vous reconnaissez.",
+      "trustLabel": "Faire confiance à cet onglet (ne plus demander)",
+      "run": "Exécuter",
+      "cancel": "Annuler"
+    },
+    "confirmCascadeDelete": "Supprimer le groupe « {{label}} » ? {{count}} sous-éléments seront supprimés."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "sections": {
+      "tabs": "Onglets",
+      "profiles": "Profils",
+      "appearance": "Apparence",
+      "shortcut": "Raccourci",
+      "system": "Système",
+      "history": "Historique",
+      "about": "À propos"
+    },
+    "profile": {
+      "label": "Profil :",
+      "new": "Nouveau",
+      "edit": "Modifier le profil",
+      "delete": "Supprimer le profil",
+      "activate": "Définir comme profil actif",
+      "activeMarker": "(actif)",
+      "activeBadge": "Actif",
+      "editingMarker": "Modification",
+      "sectionTitle": "Profils",
+      "addProfile": "Ajouter un profil",
+      "selectPrompt": "Sélectionnez un profil à modifier ou cliquez sur « + Ajouter un profil ».",
+      "confirmDelete": "Supprimer le profil « {{name}} » ? Ses onglets et paramètres seront perdus.",
+      "newTitle": "Nouveau profil",
+      "editTitle": "Modifier le profil",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Travail",
+      "iconLabel": "Icône",
+      "iconPlaceholder": "ex. 🚀",
+      "iconHint": "Un emoji ou un caractère court. Facultatif.",
+      "create": "Créer",
+      "validationNameRequired": "Le nom du profil est obligatoire.",
+      "validationIconTooLong": "L'icône doit être un seul caractère ou emoji."
+    },
+    "system": {
+      "title": "Système",
+      "autostart": "Démarrer automatiquement avec le système",
+      "autostartHint": "Lorsque activé, DonutTabs démarre dans la zone de notification au démarrage du système.",
+      "exportButton": "Exporter la configuration…",
+      "importButton": "Importer la configuration…",
+      "exportImportHint": "Sauvegarder / restaurer le config.json pour synchroniser entre machines.",
+      "exportSuccess": "Configuration exportée vers {{path}}.",
+      "groups": {
+        "general": "Général",
+        "donut": "Donut",
+        "scripts": "Scripts",
+        "backupAndTutorial": "Sauvegarde et tutoriel"
+      },
+      "allowScriptsLabel": "Autoriser les scripts dans ce profil",
+      "allowScriptsHint": "Les scripts shell exigent toujours une confirmation lors de la première exécution. Désactivez pour bloquer tous les scripts de ce profil.",
+      "scriptHistoryLabel": "Activer la page d'historique des scripts",
+      "scriptHistoryHint": "Lorsque activé, l'onglet « Historique » apparaît dans les Paramètres et la sortie stdout/stderr de chaque exécution de script y est visible (en mémoire ; effacée à la fermeture de l'app). Lorsque désactivé, les scripts s'exécutent toujours mais leur sortie n'est pas capturée.",
+      "spawnPositionLegend": "Où apparaît le donut",
+      "spawnPositionCursor": "À la position de la souris",
+      "spawnPositionCenter": "Centré sur le moniteur actif",
+      "spawnPositionHint": "Définit le point de départ du donut lorsque vous déclenchez le raccourci global.",
+      "quickModeLabel": "Mode rapide (maintenir pour afficher, relâcher pour ouvrir)",
+      "quickModeHint": "Lorsqu'il est activé, le donut ne reste visible que tant que le raccourci global est maintenu. Relâchez les touches avec le curseur sur un onglet pour l'ouvrir (ou sur le ⚙ pour ouvrir les paramètres).",
+      "reopenWizardButton": "Rouvrir le tutoriel",
+      "reopenWizardHint": "Rouvre le tutoriel guidé des paramètres.",
+      "importConfirm": "L'importation remplacera toute votre configuration actuelle (profils, onglets, raccourci, thème). Continuer ?",
+      "importShortcutWarning": "Configuration importée, mais le raccourci global du nouveau profil actif n'a pas pu être enregistré (probablement déjà utilisé par une autre app). Redémarrez DonutTabs ou changez le raccourci dans les Paramètres.",
+      "update": {
+        "currentVersion": "Version actuelle : v{{version}}",
+        "autoCheckLabel": "Rechercher les mises à jour automatiquement au lancement",
+        "autoCheckHint": "Lorsque activé, l'app vérifie une fois au lancement et vous avertit des nouvelles versions.",
+        "checkNow": "Vérifier maintenant",
+        "checking": "Vérification…",
+        "upToDate": "Vous avez la dernière version.",
+        "available": "Version {{version}} disponible",
+        "releaseNotes": "Notes de version",
+        "installNow": "Installer et redémarrer",
+        "installing": "Installation… {{progress}}%",
+        "downloading": "Téléchargement… {{progress}}%",
+        "dismissedHint": "Vous avez déjà été averti de cette version. Nous ne réafficherons pas l'alerte avant la prochaine mise à jour."
+      }
+    },
+    "history": {
+      "heading": "Exécutions récentes",
+      "empty": "Aucun script n'a encore été exécuté.",
+      "disabled": "La capture de sortie est désactivée dans les préférences Système.",
+      "clearAll": "Tout effacer",
+      "clearConfirm": "Supprimer les {{count}} exécutions ? La sortie ne peut pas être récupérée.",
+      "status": {
+        "running": "En cours",
+        "succeeded": "Réussi",
+        "failed": "Échoué",
+        "interrupted": "Interrompu",
+        "cancelled": "Annulé"
+      },
+      "detail": {
+        "metadata": "Métadonnées",
+        "profile": "Profil",
+        "tab": "Onglet",
+        "exitCode": "Code de sortie",
+        "startedAt": "Démarré à",
+        "finishedAt": "Terminé à",
+        "duration": "Durée",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "Sortie tronquée (limite atteinte). Pour tout voir, redirigez la sortie du script vers un fichier.",
+        "cancel": "Annuler l'exécution",
+        "copy": "Copier"
+      }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "Ouvrez vos sites, apps et fichiers favoris d'un raccourci — directement depuis votre curseur.",
+      "version": "Version",
+      "versionValue": "v{{version}}",
+      "author": "Auteur",
+      "repository": "🔗 Dépôt GitHub",
+      "updates": "Mises à jour",
+      "support": "Soutenir le projet",
+      "supportBody": "Si DonutTabs vous aide au quotidien, envisagez de soutenir le projet. Chaque don aide à maintenir le développement actif.",
+      "kofiButton": "☕ Soutenir sur Ko-fi"
+    },
+    "icon": {
+      "modalTitle": "Choisir une icône",
+      "pickButton": "🎨 Choisir",
+      "tabEmoji": "Emoji",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "Rechercher une icône…",
+      "clear": "Effacer l'icône",
+      "changeChip": "Changer l'icône"
+    },
+    "appearance": {
+      "sectionTitle": "Apparence",
+      "theme": "Thème",
+      "themeDark": "Sombre",
+      "themeLight": "Clair",
+      "themeAuto": "Système",
+      "language": "Langue",
+      "languageAuto": "Système",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English",
+      "languageEs": "Español",
+      "languageZh": "中文",
+      "languageJa": "日本語",
+      "languageRu": "Русский",
+      "languageFr": "Français",
+      "languageIt": "Italiano",
+      "themeCustomTitle": "Personnaliser le thème",
+      "themeCustomHint": "Ajustements par-dessus le préréglage sélectionné. Ne s'appliquent qu'à ce profil.",
+      "colorSliceFill": "Couleur de la part",
+      "colorSliceHighlight": "Couleur de surbrillance",
+      "colorSliceStroke": "Couleur de la bordure",
+      "colorCenterFill": "Couleur du centre",
+      "colorText": "Couleur du texte",
+      "alphaOverlay": "Transparence du fond",
+      "dimensionInnerRatio": "Rayon intérieur",
+      "dimensionOuterRatio": "Rayon extérieur",
+      "themeReset": "Restaurer les valeurs par défaut",
+      "themePreviewLabel": "Aperçu",
+      "sliceGapLabel": "Espace entre onglets adjacents",
+      "sliceGapHint": "Lorsque activé, les parts adjacentes affichent un petit espace angulaire entre elles."
+    },
+    "shortcut": {
+      "sectionTitle": "Raccourci global",
+      "current": "Raccourci actuel :",
+      "record": "Enregistrer un nouveau raccourci",
+      "recording": "Appuyez sur la combinaison de touches…",
+      "cancel": "Annuler",
+      "hint": "Appuyez sur une combinaison avec Ctrl/Alt/Maj/Super, ou une touche unique comme F12, Espace ou les flèches (Entrée/Échap/Tab sont rejetées).",
+      "reservedKey": "Touche réservée : {{key}}",
+      "noModifier": "Une lettre ou un chiffre unique ({{key}}) accaparerait la touche dans toutes les apps. Ajoutez Ctrl/Alt/Maj/Super, ou utilisez F1–F12.",
+      "searchSectionTitle": "Raccourci de recherche",
+      "searchHint": "Raccourci au niveau de la fenêtre qui ouvre la recherche rapide d'onglets dans le donut. Par défaut : Ctrl+F.",
+      "settingsSectionTitle": "Raccourci des paramètres",
+      "settingsHint": "Raccourci global qui ouvre directement la fenêtre des Paramètres, sans passer par le donut. Par défaut : Ctrl+Maj+,."
+    },
+    "tabs": {
+      "sectionTitle": "Onglets",
+      "addTab": "Ajouter un onglet",
+      "empty": "Aucun onglet pour l'instant. Cliquez sur « Ajouter un onglet » pour commencer.",
+      "selectPrompt": "Sélectionnez un onglet à modifier, ou cliquez sur « Ajouter un onglet »."
+    },
+    "editor": {
+      "newTabTitle": "Nouvel onglet",
+      "name": "Nom",
+      "namePlaceholder": "Travail",
+      "icon": "Icône",
+      "iconPlaceholder": "ex. 🚀",
+      "iconHint": "Un emoji ou un caractère court. Un nom ou une icône est requis.",
+      "openMode": "Mode d'ouverture",
+      "openModeReuseOrNewWindow": "Réutiliser ou nouvelle fenêtre",
+      "openModeNewWindow": "Nouvelle fenêtre",
+      "openModeNewTab": "Nouvel onglet",
+      "items": "Éléments",
+      "itemKindUrl": "URL",
+      "itemKindFile": "Fichier",
+      "itemKindFolder": "Dossier",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\chemin\\vers\\fichier.pdf",
+      "itemPlaceholderFolder": "C:\\chemin\\vers\\dossier",
+      "addItemUrl": "Ajouter une URL",
+      "addItemFile": "Ajouter un fichier",
+      "addItemFolder": "Ajouter un dossier",
+      "browse": "Parcourir…",
+      "itemKindApp": "App",
+      "itemKindScript": "Script",
+      "itemPlaceholderApp": "ex. firefox, code",
+      "itemPlaceholderScript": "ex. git pull && cargo test",
+      "addItemApp": "Ajouter une app",
+      "addItemScript": "Ajouter un script",
+      "scriptTrustedLabel": "Faire confiance (exécuter sans confirmation)",
+      "scriptShellLabel": "Shell",
+      "scriptShellDefault": "Par défaut du système",
+      "scriptShellOptionCmd": "cmd",
+      "scriptShellOptionPowerShell": "PowerShell",
+      "scriptShellOptionPwsh": "pwsh",
+      "scriptShellOptionWsl": "WSL",
+      "scriptShellOptionBash": "bash",
+      "scriptShellOptionSh": "sh",
+      "scriptShellOptionZsh": "zsh",
+      "scriptHelpButton": "?",
+      "scriptHelpAria": "Aide sur les scripts",
+      "incognitoLabel": "Privé",
+      "incognitoHint": "Ouvre en mode privé/navigation privée. Utilise le navigateur choisi dans « Ouvrir avec » ; avec « Par défaut du système », l'app détecte le navigateur par défaut du SE.",
+      "openWithLabel": "Ouvrir avec",
+      "openWithPlaceholder": "ex. firefox, code",
+      "openWithHint": "Programme/gestionnaire du SE. Vide = par défaut du système.",
+      "openWithDefault": "Par défaut du système",
+      "openWithCustom": "Personnalisé : {{value}}",
+      "removeItem": "Supprimer l'élément",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer l'onglet « {{label}} » ? Cette action est irréversible.",
+      "validationNameOrIcon": "Indiquez un nom ou une icône.",
+      "validationIconTooLong": "L'icône doit être un seul caractère ou emoji.",
+      "validationAtLeastOneItem": "Ajoutez au moins un élément (URL, fichier ou dossier).",
+      "validationInvalidUrl": "URL invalide : {{value}}",
+      "appPickerButton": "📋 Parcourir les apps",
+      "appPickerHint": "Liste les applications installées et détectées par le système.",
+      "monitorLabel": "Écran",
+      "monitorDefault": "Par défaut",
+      "monitorPrimarySuffix": " (principal)",
+      "monitorHint": "Déplace le curseur vers l'écran choisi avant l'ouverture. Les apps qui réutilisent des fenêtres existantes peuvent l'ignorer.",
+      "tabKindLeaf": "Onglet (liens)",
+      "tabKindGroup": "Groupe (sous-donut)",
+      "kindLabel": "Type",
+      "headerValue": "Valeur",
+      "groupChildrenLabel": "Contenu du groupe",
+      "groupChildrenEmpty": "Aucun élément pour l'instant. Ajoutez des onglets ou des sous-groupes.",
+      "addChildTab": "+ Ajouter un onglet",
+      "addChildGroup": "+ Ajouter un sous-groupe",
+      "maxDepthHint": "Profondeur maximale atteinte — impossible d'ajouter d'autres sous-groupes ici.",
+      "groupNewHint": "Enregistrez d'abord le groupe. Rouvrez-le ensuite depuis la liste ou cliquez sur le « + » du donut pour ajouter des onglets.",
+      "focusIfOpen": {
+        "label": "Mettre au premier plan si déjà ouvert",
+        "hint": "Les apps et onglets déjà ouverts sont mis au premier plan ; les autres s'ouvrent normalement.",
+        "hintMac": "Sur macOS, mettre au premier plan les URLs déjà ouvertes fonctionne avec : Chrome, Safari, Edge, Arc, Brave, Vivaldi.\nDans d'autres navigateurs, l'URL peut s'ouvrir comme un nouvel onglet.",
+        "firefoxWarning": "Une ou plusieurs URLs utilisent Firefox comme navigateur. Firefox sur macOS n'expose pas les onglets via AppleScript, donc ces URLs s'ouvriront toujours comme un nouvel onglet. Pour la mise au premier plan, utilisez Chrome, Safari, Edge, Arc, Brave ou Vivaldi."
+      }
+    },
+    "scriptHelp": {
+      "title": "Comment utiliser les scripts",
+      "howItWorksTitle": "Comment ça marche",
+      "howItWorksBody": "La commande s'exécute via le shell choisi dans le sélecteur « Shell » de la ligne. Par défaut selon la plateforme : {{defaultShell}}.",
+      "chainingTitle": "Enchaînement",
+      "chainingBody": "Les opérateurs comme &&, ||, | et les redirections (> >> <) fonctionnent comme dans le terminal — toute la chaîne est passée au shell via -c/-Command/C.",
+      "outputTitle": "Sortie",
+      "outputBody": "stdout et stderr apparaissent dans l'onglet « Historique » des Paramètres lorsqu'il est activé sous « Système ». Sans capture, les scripts s'exécutent en mode fire-and-forget (non visibles).",
+      "securityTitle": "Sécurité",
+      "securityBody": "Les scripts non approuvés exigent une confirmation lors de la première exécution. L'interrupteur « Autoriser les scripts » par profil bloque toute exécution de scripts, indépendamment de la confiance.",
+      "examplesTitle": "Exemples",
+      "close": "Fermer"
+    },
+    "tree": {
+      "groupBadge": "Groupe",
+      "childCount_one": "{{count}} onglet",
+      "childCount_other": "{{count}} onglets"
+    },
+    "appPicker": {
+      "title": "Sélectionner une application",
+      "loading": "Chargement des applications…",
+      "empty": "Aucune application détectée. Saisissez le nom manuellement dans le champ.",
+      "searchPlaceholder": "Rechercher une application…",
+      "errorFetch": "Échec du listage des applications : {{reason}}",
+      "refresh": "Actualiser la liste",
+      "cancel": "Annuler"
+    }
+  },
+  "wizard": {
+    "skip": "Passer le tutoriel",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer",
+    "confirmSkipTitle": "Passer le tutoriel ?",
+    "confirmSkipBody": "Vous pouvez le rouvrir à tout moment dans Paramètres → Système.",
+    "confirmSkipYes": "Passer",
+    "confirmSkipNo": "Continuer le tutoriel",
+    "stepCounter": "Étape {{current}} sur {{total}}",
+    "mediaPlaceholder": "Une démonstration illustrative sera bientôt ajoutée.",
+    "spawnPositionCursor": "Curseur",
+    "spawnPositionCenter": "Centre du moniteur",
+    "quickModeOn": "Activé",
+    "quickModeOff": "Désactivé",
+    "openSettings": "Ouvrir les paramètres",
+    "steps": {
+      "welcome": {
+        "title": "Bienvenue dans DonutTabs !",
+        "body": "Ce tutoriel rapide montre comment l'app fonctionne et vous aide à configurer vos préférences initiales. Vous pouvez le passer à tout moment."
+      },
+      "tabs": {
+        "title": "Onglets",
+        "body": "Chaque onglet du donut est une collection de choses qui s'ouvrent ensemble : URLs, fichiers, dossiers, apps ou scripts. Utilisez l'icône ⚙ ou cette section pour les créer."
+      },
+      "demoCreateTab": {
+        "title": "Créer un onglet",
+        "body": "Ajoutez des URLs, fichiers, dossiers, apps ou scripts à un seul onglet. Tout s'ouvre d'un coup lorsque vous sélectionnez l'onglet dans le donut."
+      },
+      "demoSubdonuts": {
+        "title": "Groupes et sous-donuts",
+        "body": "Regroupez les onglets associés dans un groupe — cliquer ouvre un sous-donut avec les onglets enfants. Utile pour organiser les contextes."
+      },
+      "demoGroupInDonut": {
+        "title": "Groupes dans le donut",
+        "body": "Voyez comment les groupes apparaissent dans le donut : la part reçoit un marqueur, et cliquer transforme le donut en sous-donut avec les onglets enfants. Cliquez sur le groupe sélectionné pour revenir."
+      },
+      "profiles": {
+        "title": "Profils",
+        "body": "Créez plusieurs profils (ex. Travail, Personnel, Études) avec leurs propres onglets, raccourci et thème. Changez via le centre du donut ou via cet écran des Paramètres."
+      },
+      "demoProfileSwitch": {
+        "title": "Changer de profil",
+        "body": "Cliquez sur l'icône de profil au centre du donut pour voir tous les profils en anneau. Sélectionnez-en un pour l'activer."
+      },
+      "appearance": {
+        "title": "Apparence",
+        "body": "Choisissez le thème clair/sombre/auto et personnalisez les couleurs, l'opacité et les rayons. Chaque profil peut avoir sa propre apparence."
+      },
+      "shortcut": {
+        "title": "Raccourci global",
+        "body": "Appuyez sur le raccourci global pour ouvrir le donut n'importe où dans le système. Vous pouvez le changer dans Paramètres → Raccourci.",
+        "currentLabel": "Raccourci actuel :"
+      },
+      "demoQuickMode": {
+        "title": "Mode rapide (maintenir et relâcher)",
+        "body": "Avec le mode rapide activé, le donut n'apparaît que tant que le raccourci est maintenu. Relâchez avec le curseur sur l'onglet souhaité pour l'ouvrir — sans clic.",
+        "quickModeLabel": "Activer le mode rapide"
+      },
+      "demoSpawnPosition": {
+        "title": "Où apparaît le donut",
+        "body": "Choisissez si le donut apparaît à la position du curseur ou au centre du moniteur actif. Chaque style a un flux différent — essayez-les.",
+        "spawnPositionLabel": "Position initiale"
+      },
+      "system": {
+        "title": "Système",
+        "body": "Réglez la langue, le démarrage automatique avec le système et l'autorisation d'exécuter des scripts dans ce profil.",
+        "languageLabel": "Langue",
+        "autostartLabel": "Démarrer avec le système",
+        "allowScriptsLabel": "Autoriser les scripts dans ce profil",
+        "allowScriptsWarning": "Les scripts ont un accès complet à votre machine et s'exécutent exactement comme vous les avez configurés. N'activez que si vous faites confiance à ce que vous avez ajouté."
+      },
+      "demoSearchOverlay": {
+        "title": "Recherche rapide dans le donut",
+        "body": "Appuyez sur le raccourci de recherche (Ctrl+F par défaut) avec le donut ouvert pour filtrer les onglets par nom dans une couche rapide."
+      },
+      "about": {
+        "title": "À propos",
+        "body": "Ici, vous pouvez voir la version actuelle et gérer les mises à jour automatiques. Vous trouverez aussi le lien GitHub du projet — idéal pour suivre les changements et signaler des bugs — et l'option de soutenir le développement via Ko-fi si vous souhaitez aider à faire vivre le projet."
+      },
+      "done": {
+        "title": "Tout est prêt !",
+        "body": "Merci d'avoir installé et utilisé DonutTabs — j'espère qu'il accélérera votre quotidien !\nVous pouvez rouvrir ce tutoriel à tout moment dans Paramètres → Système.\nAppuyez sur le raccourci global et profitez-en ! 🍩"
+      }
+    }
+  }
+}

@@ -1,0 +1,479 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage deve essere compreso tra 4 e 8 (ricevuto {{got}})",
+      "hoverHoldMsZero": "hoverHoldMs deve essere maggiore di 0",
+      "tabMissingNameAndIcon": "La scheda {{id}} richiede un nome o un'icona",
+      "invalidUrl": "URL non valido nella scheda {{tabId}}: {{reason}}",
+      "duplicateTabId": "Id scheda duplicato: {{id}}",
+      "tabLeafHasChildren": "La scheda {{tabId}} è una foglia e non può avere sotto-elementi.",
+      "tabGroupHasItems": "La scheda {{tabId}} è un gruppo e non può avere URL/file diretti.",
+      "tabTooDeep": "La profondità della scheda {{tabId}} ({{depth}}) supera il limite ({{maxDepth}}).",
+      "tabMixedLeafAndGroup": "La scheda {{tabId}} non può mescolare elementi e sotto-elementi.",
+      "pathEmpty": "Il percorso {{kind}} non può essere vuoto nella scheda {{tabId}}.",
+      "openWithEmpty": "Il programma di apertura non può essere vuoto nella scheda {{tabId}} (elemento {{kind}}).",
+      "appNameEmpty": "Il nome dell'applicazione non può essere vuoto nella scheda {{tabId}}.",
+      "scriptCommandEmpty": "Il comando dello script non può essere vuoto nella scheda {{tabId}}.",
+      "scriptShellInvalid": "Shell dello script non valida: {{value}}. Usa cmd, powershell, pwsh, wsl, bash, sh o zsh.",
+      "themeColorInvalid": "Colore non valido in {{field}}: {{value}}. Usa il formato #RRGGBB.",
+      "themeAlphaOutOfRange": "Trasparenza non valida in {{field}}: deve essere compresa tra 0 e 1.",
+      "themeRadiusOutOfRange": "Raggio non valido in {{field}}: {{value}}. Fuori dall'intervallo consentito.",
+      "themeRadiusInverted": "Il raggio interno deve essere minore del raggio esterno.",
+      "searchShortcutEmpty": "La scorciatoia di ricerca non può essere vuota.",
+      "settingsShortcutEmpty": "La scorciatoia delle impostazioni non può essere vuota.",
+      "noProfiles": "Configurazione non valida: nessun profilo definito.",
+      "activeProfileNotFound": "Profilo attivo non trovato: {{activeProfileId}}",
+      "duplicateProfileId": "Id profilo duplicato: {{id}}",
+      "profileNameEmpty": "Il nome del profilo non può essere vuoto.",
+      "profileShortcutEmpty": "La scorciatoia del profilo non può essere vuota.",
+      "profileNotFound": "Profilo non trovato: {{profileId}}",
+      "cannotDeleteLastProfile": "Impossibile eliminare l'ultimo profilo.",
+      "reorderMismatch": "Riordinamento non riuscito: l'insieme di elementi non corrisponde ({{scope}}).",
+      "jsonParse": "File di configurazione malformato: {{reason}}",
+      "unknown": "Errore di configurazione: {{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "Nessuno dei {{total}} link è stato aperto",
+      "partialFailure": "{{failed}} link su {{total}} non sono stati aperti",
+      "tabNotFound": "Scheda {{id}} non trovata",
+      "scriptBlocked": "Script non autorizzato — conferma prima di eseguire.",
+      "scriptsDisabled": "Gli script sono disabilitati in questo profilo.",
+      "scriptCommandMismatch": "Lo script è cambiato dopo la conferma — riapri la scheda per controllare.",
+      "itemKindMismatch": "Tipo di elemento incompatibile ({{got}} ≠ {{expected}}).",
+      "itemIndexOutOfRange": "Indice dell'elemento fuori intervallo: {{itemIndex}}.",
+      "scriptCancelFailed": "Impossibile annullare l'esecuzione: {{reason}}",
+      "unknown": "Impossibile aprire la scheda: {{code}}"
+    },
+    "shortcut": {
+      "shortcutRegistrationFailed": "Impossibile registrare la scorciatoia: {{reason}}",
+      "shortcutParseFailed": "Combinazione non valida: {{reason}}",
+      "unknown": "Errore di scorciatoia: {{code}}"
+    },
+    "window": {
+      "windowHideFailed": "Impossibile nascondere la finestra: {{reason}}",
+      "unknown": "Errore della finestra: {{code}}"
+    },
+    "io": {
+      "ioGeneric": "Errore di I/O: {{reason}}",
+      "autostartFailed": "Impossibile modificare l'impostazione di avvio automatico: {{reason}}",
+      "faviconFetch": "Impossibile recuperare l'icona del sito ({{url}}).",
+      "faviconParse": "URL del favicon non valido: {{reason}}",
+      "unknown": "Errore di I/O: {{code}}"
+    },
+    "updater": {
+      "updaterCheckFailed": "Impossibile verificare gli aggiornamenti: {{reason}}",
+      "updaterInstallFailed": "Impossibile installare l'aggiornamento: {{reason}}",
+      "updaterSignatureInvalid": "Firma dell'aggiornamento non valida. Aggiornamento annullato.",
+      "updaterNetworkUnavailable": "Nessuna connessione di rete per verificare gli aggiornamenti.",
+      "updaterNoEndpoints": "Endpoint di aggiornamento non configurato.",
+      "unknown": "Errore di aggiornamento: {{code}}"
+    },
+    "fallback": "Si è verificato un errore imprevisto ({{kind}})"
+  },
+  "donut": {
+    "toastDismiss": "Chiudi",
+    "onboarding": {
+      "title": "Benvenuto in DonutTabs!",
+      "body": "Premi {{shortcut}} in qualsiasi momento per aprire questo menu. Premi ESC per chiudere.",
+      "dismiss": "Capito"
+    },
+    "hoverHold": {
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "yes": "Conferma eliminazione",
+      "no": "Annulla"
+    },
+    "contextMenu": {
+      "openAll": "Apri tutto",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "confirmDelete": "Eliminare la scheda «{{label}}»? L'operazione non può essere annullata."
+    },
+    "search": {
+      "placeholder": "Cerca scheda…",
+      "empty": "Nessuna scheda corrispondente",
+      "shortcutHint": "↑↓ naviga · Invio apri · Esc chiudi"
+    },
+    "scriptModal": {
+      "title": "Eseguire lo script?",
+      "commandLabel": "Comando:",
+      "warning": "Gli script hanno pieno accesso ai tuoi file e impostazioni. Esegui solo comandi che riconosci.",
+      "trustLabel": "Fidati di questa scheda (non chiedere più)",
+      "run": "Esegui",
+      "cancel": "Annulla"
+    },
+    "confirmCascadeDelete": "Eliminare il gruppo «{{label}}»? Verranno rimossi {{count}} sotto-elementi."
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "sections": {
+      "tabs": "Schede",
+      "profiles": "Profili",
+      "appearance": "Aspetto",
+      "shortcut": "Scorciatoia",
+      "system": "Sistema",
+      "history": "Cronologia",
+      "about": "Informazioni"
+    },
+    "profile": {
+      "label": "Profilo:",
+      "new": "Nuovo",
+      "edit": "Modifica profilo",
+      "delete": "Elimina profilo",
+      "activate": "Imposta come profilo attivo",
+      "activeMarker": "(attivo)",
+      "activeBadge": "Attivo",
+      "editingMarker": "In modifica",
+      "sectionTitle": "Profili",
+      "addProfile": "Aggiungi profilo",
+      "selectPrompt": "Seleziona un profilo da modificare o fai clic su «+ Aggiungi profilo».",
+      "confirmDelete": "Eliminare il profilo «{{name}}»? Le sue schede e impostazioni andranno perse.",
+      "newTitle": "Nuovo profilo",
+      "editTitle": "Modifica profilo",
+      "nameLabel": "Nome",
+      "namePlaceholder": "Lavoro",
+      "iconLabel": "Icona",
+      "iconPlaceholder": "es. 🚀",
+      "iconHint": "Un'emoji o un carattere breve. Facoltativo.",
+      "create": "Crea",
+      "validationNameRequired": "Il nome del profilo è obbligatorio.",
+      "validationIconTooLong": "L'icona deve essere un singolo carattere o emoji."
+    },
+    "system": {
+      "title": "Sistema",
+      "autostart": "Avvia automaticamente con il sistema",
+      "autostartHint": "Quando è attivo, DonutTabs si avvia nella barra delle applicazioni all'accensione del sistema.",
+      "exportButton": "Esporta configurazione…",
+      "importButton": "Importa configurazione…",
+      "exportImportHint": "Backup / ripristino del config.json per sincronizzare tra macchine.",
+      "exportSuccess": "Configurazione esportata in {{path}}.",
+      "groups": {
+        "general": "Generale",
+        "donut": "Donut",
+        "scripts": "Script",
+        "backupAndTutorial": "Backup e tutorial"
+      },
+      "allowScriptsLabel": "Consenti gli script in questo profilo",
+      "allowScriptsHint": "Gli script shell richiedono sempre conferma alla prima esecuzione. Disattiva per bloccare tutti gli script di questo profilo.",
+      "scriptHistoryLabel": "Abilita la pagina di cronologia degli script",
+      "scriptHistoryHint": "Quando è attiva, la scheda «Cronologia» appare nelle Impostazioni e lì è visibile l'output stdout/stderr di ogni esecuzione di script (in memoria; cancellato alla chiusura dell'app). Quando è disattivata, gli script vengono comunque eseguiti ma il loro output non viene catturato.",
+      "spawnPositionLegend": "Dove appare il donut",
+      "spawnPositionCursor": "Nella posizione del mouse",
+      "spawnPositionCenter": "Centrato sul monitor attivo",
+      "spawnPositionHint": "Imposta il punto di partenza del donut quando attivi la scorciatoia globale.",
+      "quickModeLabel": "Modalità rapida (tieni premuto per mostrare, rilascia per aprire)",
+      "quickModeHint": "Quando è attiva, il donut resta visibile solo mentre la scorciatoia globale è tenuta premuta. Rilascia i tasti con il cursore su una scheda per aprirla (o sul ⚙ per aprire le impostazioni).",
+      "reopenWizardButton": "Riapri tutorial",
+      "reopenWizardHint": "Riapre il tutorial guidato delle impostazioni.",
+      "importConfirm": "L'importazione sostituirà tutta la configurazione attuale (profili, schede, scorciatoia, tema). Continuare?",
+      "importShortcutWarning": "Configurazione importata, ma la scorciatoia globale del nuovo profilo attivo non è stata registrata (probabilmente già in uso da un'altra app). Riavvia DonutTabs o cambia la scorciatoia nelle Impostazioni.",
+      "update": {
+        "currentVersion": "Versione attuale: v{{version}}",
+        "autoCheckLabel": "Verifica automaticamente gli aggiornamenti all'avvio",
+        "autoCheckHint": "Quando è attivo, l'app verifica una volta all'avvio e ti avvisa delle nuove versioni.",
+        "checkNow": "Verifica ora",
+        "checking": "Verifica…",
+        "upToDate": "Hai l'ultima versione.",
+        "available": "Versione {{version}} disponibile",
+        "releaseNotes": "Note di rilascio",
+        "installNow": "Installa e riavvia",
+        "installing": "Installazione… {{progress}}%",
+        "downloading": "Download… {{progress}}%",
+        "dismissedHint": "Sei già stato avvisato di questa versione. Non mostreremo di nuovo l'avviso fino al prossimo aggiornamento."
+      }
+    },
+    "history": {
+      "heading": "Esecuzioni recenti",
+      "empty": "Nessuno script è stato ancora eseguito.",
+      "disabled": "La cattura dell'output è disabilitata nelle preferenze di Sistema.",
+      "clearAll": "Cancella tutto",
+      "clearConfirm": "Eliminare tutte le {{count}} esecuzioni? L'output non può essere recuperato.",
+      "status": {
+        "running": "In esecuzione",
+        "succeeded": "Riuscito",
+        "failed": "Fallito",
+        "interrupted": "Interrotto",
+        "cancelled": "Annullato"
+      },
+      "detail": {
+        "metadata": "Metadati",
+        "profile": "Profilo",
+        "tab": "Scheda",
+        "exitCode": "Codice di uscita",
+        "startedAt": "Avviato alle",
+        "finishedAt": "Terminato alle",
+        "duration": "Durata",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "Output troncato (limite raggiunto). Per vedere tutto, reindirizza l'output dello script in un file.",
+        "cancel": "Annulla esecuzione",
+        "copy": "Copia"
+      }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "Apri i tuoi siti, app e file preferiti con una scorciatoia — direttamente dal cursore.",
+      "version": "Versione",
+      "versionValue": "v{{version}}",
+      "author": "Autore",
+      "repository": "🔗 Repository GitHub",
+      "updates": "Aggiornamenti",
+      "support": "Sostieni il progetto",
+      "supportBody": "Se DonutTabs ti aiuta ogni giorno, valuta di sostenere il progetto. Ogni donazione aiuta a mantenere attivo lo sviluppo.",
+      "kofiButton": "☕ Sostieni su Ko-fi"
+    },
+    "icon": {
+      "modalTitle": "Scegli un'icona",
+      "pickButton": "🎨 Scegli",
+      "tabEmoji": "Emoji",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "Cerca icona…",
+      "clear": "Rimuovi icona",
+      "changeChip": "Cambia icona"
+    },
+    "appearance": {
+      "sectionTitle": "Aspetto",
+      "theme": "Tema",
+      "themeDark": "Scuro",
+      "themeLight": "Chiaro",
+      "themeAuto": "Sistema",
+      "language": "Lingua",
+      "languageAuto": "Sistema",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English",
+      "languageEs": "Español",
+      "languageZh": "中文",
+      "languageJa": "日本語",
+      "languageRu": "Русский",
+      "languageFr": "Français",
+      "languageIt": "Italiano",
+      "themeCustomTitle": "Personalizza tema",
+      "themeCustomHint": "Regolazioni sopra il preset selezionato. Si applicano solo a questo profilo.",
+      "colorSliceFill": "Colore della fetta",
+      "colorSliceHighlight": "Colore di evidenziazione",
+      "colorSliceStroke": "Colore del bordo",
+      "colorCenterFill": "Colore del centro",
+      "colorText": "Colore del testo",
+      "alphaOverlay": "Trasparenza dello sfondo",
+      "dimensionInnerRatio": "Raggio interno",
+      "dimensionOuterRatio": "Raggio esterno",
+      "themeReset": "Ripristina predefiniti",
+      "themePreviewLabel": "Anteprima",
+      "sliceGapLabel": "Spazio tra schede adiacenti",
+      "sliceGapHint": "Quando è attivo, le fette adiacenti mostrano un piccolo spazio angolare tra loro."
+    },
+    "shortcut": {
+      "sectionTitle": "Scorciatoia globale",
+      "current": "Scorciatoia attuale:",
+      "record": "Registra nuova scorciatoia",
+      "recording": "Premi la combinazione di tasti…",
+      "cancel": "Annulla",
+      "hint": "Premi una combinazione con Ctrl/Alt/Maiusc/Super, o un singolo tasto come F12, Spazio o frecce (Invio/Esc/Tab vengono rifiutati).",
+      "reservedKey": "Tasto riservato: {{key}}",
+      "noModifier": "Una singola lettera o cifra ({{key}}) intercetterebbe il tasto in ogni app. Aggiungi Ctrl/Alt/Maiusc/Super, o usa F1–F12.",
+      "searchSectionTitle": "Scorciatoia di ricerca",
+      "searchHint": "Scorciatoia a livello di finestra che apre la ricerca rapida delle schede nel donut. Predefinita: Ctrl+F.",
+      "settingsSectionTitle": "Scorciatoia delle impostazioni",
+      "settingsHint": "Scorciatoia globale che apre direttamente la finestra delle Impostazioni, saltando il donut. Predefinita: Ctrl+Maiusc+,."
+    },
+    "tabs": {
+      "sectionTitle": "Schede",
+      "addTab": "Aggiungi scheda",
+      "empty": "Ancora nessuna scheda. Fai clic su «Aggiungi scheda» per iniziare.",
+      "selectPrompt": "Seleziona una scheda da modificare o fai clic su «Aggiungi scheda»."
+    },
+    "editor": {
+      "newTabTitle": "Nuova scheda",
+      "name": "Nome",
+      "namePlaceholder": "Lavoro",
+      "icon": "Icona",
+      "iconPlaceholder": "es. 🚀",
+      "iconHint": "Un'emoji o un carattere breve. È richiesto un nome o un'icona.",
+      "openMode": "Modalità di apertura",
+      "openModeReuseOrNewWindow": "Riutilizza o nuova finestra",
+      "openModeNewWindow": "Nuova finestra",
+      "openModeNewTab": "Nuova scheda",
+      "items": "Elementi",
+      "itemKindUrl": "URL",
+      "itemKindFile": "File",
+      "itemKindFolder": "Cartella",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\percorso\\al\\file.pdf",
+      "itemPlaceholderFolder": "C:\\percorso\\alla\\cartella",
+      "addItemUrl": "Aggiungi URL",
+      "addItemFile": "Aggiungi file",
+      "addItemFolder": "Aggiungi cartella",
+      "browse": "Sfoglia…",
+      "itemKindApp": "App",
+      "itemKindScript": "Script",
+      "itemPlaceholderApp": "es. firefox, code",
+      "itemPlaceholderScript": "es. git pull && cargo test",
+      "addItemApp": "Aggiungi app",
+      "addItemScript": "Aggiungi script",
+      "scriptTrustedLabel": "Fidati (esegui senza conferma)",
+      "scriptShellLabel": "Shell",
+      "scriptShellDefault": "Predefinita del sistema",
+      "scriptShellOptionCmd": "cmd",
+      "scriptShellOptionPowerShell": "PowerShell",
+      "scriptShellOptionPwsh": "pwsh",
+      "scriptShellOptionWsl": "WSL",
+      "scriptShellOptionBash": "bash",
+      "scriptShellOptionSh": "sh",
+      "scriptShellOptionZsh": "zsh",
+      "scriptHelpButton": "?",
+      "scriptHelpAria": "Aiuto sugli script",
+      "incognitoLabel": "Privato",
+      "incognitoHint": "Apre in modalità privata/incognito. Usa il browser scelto in «Apri con»; con «Predefinita del sistema», l'app rileva il browser predefinito del SO.",
+      "openWithLabel": "Apri con",
+      "openWithPlaceholder": "es. firefox, code",
+      "openWithHint": "Programma/gestore del SO. Vuoto = predefinito del sistema.",
+      "openWithDefault": "Predefinita del sistema",
+      "openWithCustom": "Personalizzato: {{value}}",
+      "removeItem": "Rimuovi elemento",
+      "save": "Salva",
+      "saving": "Salvataggio…",
+      "cancel": "Annulla",
+      "delete": "Elimina",
+      "confirmDelete": "Eliminare la scheda «{{label}}»? L'operazione non può essere annullata.",
+      "validationNameOrIcon": "Fornisci un nome o un'icona.",
+      "validationIconTooLong": "L'icona deve essere un singolo carattere o emoji.",
+      "validationAtLeastOneItem": "Aggiungi almeno un elemento (URL, file o cartella).",
+      "validationInvalidUrl": "URL non valido: {{value}}",
+      "appPickerButton": "📋 Sfoglia app",
+      "appPickerHint": "Elenca le applicazioni installate e rilevate dal sistema.",
+      "monitorLabel": "Schermo",
+      "monitorDefault": "Predefinito",
+      "monitorPrimarySuffix": " (principale)",
+      "monitorHint": "Sposta il cursore sullo schermo scelto prima dell'apertura. Le app che riutilizzano finestre esistenti potrebbero ignorarlo.",
+      "tabKindLeaf": "Scheda (link)",
+      "tabKindGroup": "Gruppo (sub-donut)",
+      "kindLabel": "Tipo",
+      "headerValue": "Valore",
+      "groupChildrenLabel": "Contenuto del gruppo",
+      "groupChildrenEmpty": "Ancora nessun elemento. Aggiungi schede o sottogruppi.",
+      "addChildTab": "+ Aggiungi scheda",
+      "addChildGroup": "+ Aggiungi sottogruppo",
+      "maxDepthHint": "Profondità massima raggiunta — impossibile aggiungere altri sottogruppi qui.",
+      "groupNewHint": "Salva prima il gruppo. Poi riaprilo dall'elenco o fai clic sul «+» del donut per aggiungere schede.",
+      "focusIfOpen": {
+        "label": "Porta in primo piano se già aperto",
+        "hint": "Le app e le schede già aperte vengono portate in primo piano; le altre si aprono normalmente.",
+        "hintMac": "Su macOS, portare in primo piano gli URL già aperti funziona con: Chrome, Safari, Edge, Arc, Brave, Vivaldi.\nIn altri browser, l'URL potrebbe aprirsi come una nuova scheda.",
+        "firefoxWarning": "Uno o più URL usano Firefox come browser. Firefox su macOS non espone le schede tramite AppleScript, quindi questi URL si apriranno sempre come una nuova scheda. Per portare in primo piano le schede, usa Chrome, Safari, Edge, Arc, Brave o Vivaldi."
+      }
+    },
+    "scriptHelp": {
+      "title": "Come usare gli script",
+      "howItWorksTitle": "Come funziona",
+      "howItWorksBody": "Il comando viene eseguito tramite la shell scelta nel selettore «Shell» della riga. Predefinita della piattaforma: {{defaultShell}}.",
+      "chainingTitle": "Concatenamento",
+      "chainingBody": "Operatori come &&, ||, | e i reindirizzamenti (> >> <) funzionano come nel terminale — l'intera stringa viene passata alla shell tramite -c/-Command/C.",
+      "outputTitle": "Output",
+      "outputBody": "stdout e stderr appaiono nella scheda «Cronologia» delle Impostazioni quando è abilitata in «Sistema». Senza cattura, gli script vengono eseguiti in modalità fire-and-forget (non visibili).",
+      "securityTitle": "Sicurezza",
+      "securityBody": "Gli script non attendibili richiedono conferma alla prima esecuzione. L'interruttore «Consenti gli script» per profilo blocca qualsiasi esecuzione di script indipendentemente dalla fiducia.",
+      "examplesTitle": "Esempi",
+      "close": "Chiudi"
+    },
+    "tree": {
+      "groupBadge": "Gruppo",
+      "childCount_one": "{{count}} scheda",
+      "childCount_other": "{{count}} schede"
+    },
+    "appPicker": {
+      "title": "Seleziona applicazione",
+      "loading": "Caricamento applicazioni…",
+      "empty": "Nessuna applicazione rilevata. Digita il nome manualmente nel campo.",
+      "searchPlaceholder": "Cerca applicazione…",
+      "errorFetch": "Impossibile elencare le applicazioni: {{reason}}",
+      "refresh": "Aggiorna elenco",
+      "cancel": "Annulla"
+    }
+  },
+  "wizard": {
+    "skip": "Salta tutorial",
+    "back": "Indietro",
+    "next": "Avanti",
+    "finish": "Fine",
+    "confirmSkipTitle": "Saltare il tutorial?",
+    "confirmSkipBody": "Puoi riaprirlo in qualsiasi momento in Impostazioni → Sistema.",
+    "confirmSkipYes": "Salta",
+    "confirmSkipNo": "Continua tutorial",
+    "stepCounter": "Passo {{current}} di {{total}}",
+    "mediaPlaceholder": "Una demo illustrativa sarà aggiunta presto.",
+    "spawnPositionCursor": "Cursore",
+    "spawnPositionCenter": "Centro del monitor",
+    "quickModeOn": "Attivo",
+    "quickModeOff": "Disattivo",
+    "openSettings": "Apri impostazioni",
+    "steps": {
+      "welcome": {
+        "title": "Benvenuto in DonutTabs!",
+        "body": "Questo breve tutorial mostra come funziona l'app e ti aiuta a configurare le tue preferenze iniziali. Puoi saltarlo in qualsiasi momento."
+      },
+      "tabs": {
+        "title": "Schede",
+        "body": "Ogni scheda del donut è una raccolta di cose che si aprono insieme: URL, file, cartelle, app o script. Usa l'icona ⚙ o questa sezione per crearle."
+      },
+      "demoCreateTab": {
+        "title": "Creare una scheda",
+        "body": "Aggiungi URL, file, cartelle, app o script a una singola scheda. Tutto si apre in una volta quando selezioni la scheda nel donut."
+      },
+      "demoSubdonuts": {
+        "title": "Gruppi e sub-donut",
+        "body": "Raggruppa le schede correlate in un gruppo — facendo clic si apre un sub-donut con le schede figlie. Utile per organizzare i contesti."
+      },
+      "demoGroupInDonut": {
+        "title": "Gruppi nel donut",
+        "body": "Vedi come appaiono i gruppi nel donut: la fetta riceve un marcatore e facendo clic il donut si trasforma in un sub-donut con le schede figlie. Fai clic sul gruppo selezionato per tornare indietro."
+      },
+      "profiles": {
+        "title": "Profili",
+        "body": "Crea più profili (es. Lavoro, Personale, Studio) con schede, scorciatoia e tema propri. Cambia tramite il centro del donut o tramite questa schermata delle Impostazioni."
+      },
+      "demoProfileSwitch": {
+        "title": "Cambiare profilo",
+        "body": "Fai clic sull'icona del profilo al centro del donut per vedere tutti i profili in un anello. Selezionane uno per attivarlo."
+      },
+      "appearance": {
+        "title": "Aspetto",
+        "body": "Scegli il tema chiaro/scuro/auto e personalizza colori, opacità e raggi. Ogni profilo può avere un proprio aspetto."
+      },
+      "shortcut": {
+        "title": "Scorciatoia globale",
+        "body": "Premi la scorciatoia globale per aprire il donut ovunque nel sistema. Puoi cambiarla in Impostazioni → Scorciatoia.",
+        "currentLabel": "Scorciatoia attuale:"
+      },
+      "demoQuickMode": {
+        "title": "Modalità rapida (tieni premuto e rilascia)",
+        "body": "Con la modalità rapida attiva, il donut appare solo mentre la scorciatoia è tenuta premuta. Rilascia con il cursore sulla scheda desiderata per aprirla — senza clic.",
+        "quickModeLabel": "Abilita modalità rapida"
+      },
+      "demoSpawnPosition": {
+        "title": "Dove appare il donut",
+        "body": "Scegli se il donut appare nella posizione del cursore o al centro del monitor attivo. Ogni stile ha un flusso diverso — provali.",
+        "spawnPositionLabel": "Posizione iniziale"
+      },
+      "system": {
+        "title": "Sistema",
+        "body": "Regola la lingua, l'avvio automatico con il sistema e il permesso di eseguire script in questo profilo.",
+        "languageLabel": "Lingua",
+        "autostartLabel": "Avvia con il sistema",
+        "allowScriptsLabel": "Consenti gli script in questo profilo",
+        "allowScriptsWarning": "Gli script hanno pieno accesso alla tua macchina e vengono eseguiti esattamente come li hai configurati. Abilita solo se ti fidi di ciò che hai aggiunto."
+      },
+      "demoSearchOverlay": {
+        "title": "Ricerca rapida nel donut",
+        "body": "Premi la scorciatoia di ricerca (Ctrl+F per impostazione predefinita) con il donut aperto per filtrare le schede per nome in un livello rapido."
+      },
+      "about": {
+        "title": "Informazioni",
+        "body": "Qui puoi vedere la versione attuale e gestire gli aggiornamenti automatici. Troverai anche il link GitHub del progetto — ottimo per seguire le modifiche e segnalare bug — e l'opzione per sostenere lo sviluppo tramite Ko-fi se desideri aiutare a mantenere vivo il progetto."
+      },
+      "done": {
+        "title": "Tutto pronto!",
+        "body": "Grazie per aver installato e usato DonutTabs — spero che velocizzi la tua quotidianità!\nPuoi riaprire questo tutorial in qualsiasi momento in Impostazioni → Sistema.\nPremi la scorciatoia globale e divertiti! 🍩"
+      }
+    }
+  }
+}
