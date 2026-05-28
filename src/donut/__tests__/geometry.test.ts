@@ -7,6 +7,7 @@ import {
   ringHitBounds,
   pointToRingIndex,
   slicePaintRange,
+  slicePaintAngles,
 } from "../geometry";
 
 describe("sliceAngleRange", () => {
@@ -222,5 +223,113 @@ describe("slicePaintRange", () => {
     expect(painted.start).toBeCloseTo(raw.start);
     expect(painted.end).toBeCloseTo(raw.end);
     expect(painted.end - painted.start).toBeCloseTo(Math.PI * 2);
+  });
+});
+
+describe("slicePaintAngles", () => {
+  it("gap=0 → todos os 4 ângulos casam com sliceAngleRange", () => {
+    const raw = sliceAngleRange(1, 4);
+    const a = slicePaintAngles(1, 4, 0, 80, 140);
+    expect(a.innerStart).toBeCloseTo(raw.start);
+    expect(a.innerEnd).toBeCloseTo(raw.end);
+    expect(a.outerStart).toBeCloseTo(raw.start);
+    expect(a.outerEnd).toBeCloseTo(raw.end);
+  });
+
+  it("n=1 retorna range completo nos 4 ângulos (anel fechado, sem fenda)", () => {
+    const raw = sliceAngleRange(0, 1);
+    const a = slicePaintAngles(0, 1, 6, 80, 140);
+    expect(a.innerStart).toBeCloseTo(raw.start);
+    expect(a.innerEnd).toBeCloseTo(raw.end);
+    expect(a.outerStart).toBeCloseTo(raw.start);
+    expect(a.outerEnd).toBeCloseTo(raw.end);
+    expect(a.outerEnd - a.outerStart).toBeCloseTo(Math.PI * 2);
+  });
+
+  it("gap perpendicular constante: arc-length do trim é ~g/2 em qualquer raio", () => {
+    const gap = 6;
+    const innerR = 80;
+    const outerR = 140;
+    const raw = sliceAngleRange(0, 4);
+    const a = slicePaintAngles(0, 4, gap, innerR, outerR);
+    // Cada lado é trimado de forma que a *distância perpendicular* equivalente
+    // ao trim no raio dado seja `gap/2`. `(α * r)` em um arco pequeno = `gap/2`,
+    // mas a regra exata é `r * sin(α) = gap/2` (asin invertido).
+    expect(innerR * Math.sin(a.innerStart - raw.start)).toBeCloseTo(gap / 2);
+    expect(outerR * Math.sin(a.outerStart - raw.start)).toBeCloseTo(gap / 2);
+    expect(innerR * Math.sin(raw.end - a.innerEnd)).toBeCloseTo(gap / 2);
+    expect(outerR * Math.sin(raw.end - a.outerEnd)).toBeCloseTo(gap / 2);
+  });
+
+  it("inner ganha mais trim angular que outer (mesma distância px)", () => {
+    const raw = sliceAngleRange(0, 4);
+    const a = slicePaintAngles(0, 4, 6, 80, 140);
+    const innerTrim = a.innerStart - raw.start;
+    const outerTrim = a.outerStart - raw.start;
+    expect(innerTrim).toBeGreaterThan(outerTrim);
+  });
+
+  it("midpoint preservado nos dois pares (slice continua centrada)", () => {
+    const raw = sliceAngleRange(2, 6);
+    const a = slicePaintAngles(2, 6, 6, 90, 150);
+    const rawMid = (raw.start + raw.end) / 2;
+    expect((a.innerStart + a.innerEnd) / 2).toBeCloseTo(rawMid);
+    expect((a.outerStart + a.outerEnd) / 2).toBeCloseTo(rawMid);
+  });
+
+  it("gap excessivo colapsa todos os 4 ângulos pro midpoint", () => {
+    // step = π/2 (n=4). Pra colapsar o inner (r pequeno) com gap absurdo:
+    const a = slicePaintAngles(1, 4, 1000, 10, 1000);
+    const raw = sliceAngleRange(1, 4);
+    const mid = (raw.start + raw.end) / 2;
+    expect(a.innerStart).toBeCloseTo(mid);
+    expect(a.innerEnd).toBeCloseTo(mid);
+    expect(a.outerStart).toBeCloseTo(mid);
+    expect(a.outerEnd).toBeCloseTo(mid);
+  });
+});
+
+describe("arcPath com 4 ângulos distintos", () => {
+  it("produz path SVG válido (M ... A ... L ... A ... Z) sem NaN", () => {
+    const raw = sliceAngleRange(0, 4);
+    const a = slicePaintAngles(0, 4, 6, 80, 140);
+    const d = arcPath({
+      cx: 100,
+      cy: 100,
+      innerR: 80,
+      outerR: 140,
+      startAngle: raw.start,
+      endAngle: raw.end,
+      innerStartAngle: a.innerStart,
+      innerEndAngle: a.innerEnd,
+      outerStartAngle: a.outerStart,
+      outerEndAngle: a.outerEnd,
+    });
+    expect(d).toMatch(/^M [\d.-]+ [\d.-]+ A .* A .* Z$/);
+    expect(d).not.toMatch(/NaN/);
+  });
+
+  it("sem overrides, cai no comportamento legado (corners iguais)", () => {
+    const legacy = arcPath({
+      cx: 0,
+      cy: 0,
+      innerR: 50,
+      outerR: 100,
+      startAngle: 0,
+      endAngle: Math.PI / 2,
+    });
+    const explicit = arcPath({
+      cx: 0,
+      cy: 0,
+      innerR: 50,
+      outerR: 100,
+      startAngle: 0,
+      endAngle: Math.PI / 2,
+      innerStartAngle: 0,
+      innerEndAngle: Math.PI / 2,
+      outerStartAngle: 0,
+      outerEndAngle: Math.PI / 2,
+    });
+    expect(explicit).toBe(legacy);
   });
 });

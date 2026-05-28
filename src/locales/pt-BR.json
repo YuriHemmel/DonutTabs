@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "Buscar aba…",
       "empty": "Nenhuma aba encontrada",
-      "shortcutHint": "↑↓ navegar · Enter abrir · Esc fechar"
+      "shortcutHint": "↑↓ navegar · Enter abrir · Esc fechar/voltar",
+      "breadcrumbRoot": "Raiz",
+      "groupBadgeTitle": "Abrir grupo"
     },
     "scriptModal": {
       "title": "Executar script?",

@@ -6,6 +6,11 @@ export interface SliceProps {
   cx: number; cy: number;
   innerR: number; outerR: number;
   startAngle: number; endAngle: number;
+  /** Issue #89 — quando definidos, sobrescrevem `startAngle`/`endAngle`
+   *  para os corners correspondentes do path. Permite gap perpendicular
+   *  constante. Label/ícone continuam usando `(startAngle+endAngle)/2`. */
+  innerStartAngle?: number; innerEndAngle?: number;
+  outerStartAngle?: number; outerEndAngle?: number;
   label?: string;
   icon?: string;
   /** Optional rich icon node (e.g. <IconRenderer/>). When set, replaces the

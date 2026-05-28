@@ -10,6 +10,12 @@ export interface HoverHoldOverlayProps {
   outerR: number;
   startAngle: number;
   endAngle: number;
+  /** Issue #89 — quando definidos, sobrescrevem os corners do path para
+   *  casar o overlay com o trim perpendicular do slice por baixo. */
+  innerStartAngle?: number;
+  innerEndAngle?: number;
+  outerStartAngle?: number;
+  outerEndAngle?: number;
   state: HoverHoldPhase;
   onEdit: () => void;
   onRequestDelete: () => void;
@@ -24,6 +30,10 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
   outerR,
   startAngle,
   endAngle,
+  innerStartAngle,
+  innerEndAngle,
+  outerStartAngle,
+  outerEndAngle,
   state,
   onEdit,
   onRequestDelete,
@@ -35,6 +45,12 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
 
   const mid = (startAngle + endAngle) / 2;
   const labelR = (innerR + outerR) / 2;
+  const iStart = innerStartAngle ?? startAngle;
+  const iEnd = innerEndAngle ?? endAngle;
+  const oStart = outerStartAngle ?? startAngle;
+  const oEnd = outerEndAngle ?? endAngle;
+  const innerMid = (iStart + iEnd) / 2;
+  const outerMid = (oStart + oEnd) / 2;
 
   if (state.phase === "holding") {
     // Preenchimento radial: arco com mesmo ângulo, raio externo cresce até outerR.
@@ -46,6 +62,10 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
       outerR: filledOuter,
       startAngle,
       endAngle,
+      innerStartAngle: iStart,
+      innerEndAngle: iEnd,
+      outerStartAngle: oStart,
+      outerEndAngle: oEnd,
     });
     return (
       <g data-testid="hover-hold-fill" pointerEvents="none">
@@ -55,6 +75,8 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
   }
 
   // actionable / confirming → divisão metade-metade, esquerda ✏️ direita 🗑️.
+  // Issue #89 — split midpoint usa innerMid/outerMid (sem gap no meio, é
+  // borda interna do mesmo slice).
   const editPath = arcPath({
     cx,
     cy,
@@ -62,6 +84,10 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
     outerR,
     startAngle,
     endAngle: mid,
+    innerStartAngle: iStart,
+    innerEndAngle: innerMid,
+    outerStartAngle: oStart,
+    outerEndAngle: outerMid,
   });
   const deletePath = arcPath({
     cx,
@@ -70,6 +96,10 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
     outerR,
     startAngle: mid,
     endAngle,
+    innerStartAngle: innerMid,
+    innerEndAngle: iEnd,
+    outerStartAngle: outerMid,
+    outerEndAngle: oEnd,
   });
 
   // Posição dos labels: ângulo em 1/4 e 3/4 da fatia.
@@ -151,7 +181,18 @@ export const HoverHoldOverlay: React.FC<HoverHoldOverlayProps> = ({
   const yesY = cy + labelR * Math.sin(yesAngle);
   const noX = cx + labelR * Math.cos(noAngle);
   const noY = cy + labelR * Math.sin(noAngle);
-  const slicePath = arcPath({ cx, cy, innerR, outerR, startAngle, endAngle });
+  const slicePath = arcPath({
+    cx,
+    cy,
+    innerR,
+    outerR,
+    startAngle,
+    endAngle,
+    innerStartAngle: iStart,
+    innerEndAngle: iEnd,
+    outerStartAngle: oStart,
+    outerEndAngle: oEnd,
+  });
 
   const onActivate = (fn: () => void) => (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {

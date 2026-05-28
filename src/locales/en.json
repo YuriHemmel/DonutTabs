@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "Search tab…",
       "empty": "No matching tab",
-      "shortcutHint": "↑↓ navigate · Enter open · Esc close"
+      "shortcutHint": "↑↓ navigate · Enter open · Esc close/back",
+      "breadcrumbRoot": "Root",
+      "groupBadgeTitle": "Open group"
     },
     "scriptModal": {
       "title": "Run script?",

@@ -9,12 +9,12 @@ import { PaginationDots } from "./PaginationDots";
 import { HoverHoldOverlay } from "./HoverHoldOverlay";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import {
-  OUTER_SLICE_ANGULAR_GAP_RAD,
+  OUTER_SLICE_GAP_PX,
   pointToRingIndex,
   pointToSliceIndex,
   ringDims,
   ringHitBounds,
-  slicePaintRange,
+  slicePaintAngles,
   type RingDims,
 } from "./geometry";
 import { paginate } from "./pagination";
@@ -24,7 +24,7 @@ import { useFavicon } from "./useFavicon";
 import { SliceContextMenu } from "./SliceContextMenu";
 import { TabSearchOverlay } from "./TabSearchOverlay";
 import { matchesCombo } from "./matchesCombo";
-import { tabInitial } from "./tabUtils";
+import { tabInitial, isGroup } from "./tabUtils";
 import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
 import { useRingStack, MAX_RINGS } from "./useRingStack";
@@ -57,8 +57,6 @@ export function countDescendants(tab: Tab): number {
   return n;
 }
 
-const isGroup = (tab: Tab): boolean => tab.kind === "group";
-
 /** Plano 23 — codifica (ring, slice) em índice composto pra reusar
  *  `useHoverHold` que aceita um único `number`. Limite de 10000 slices/ring
  *  é folgado (paginação corta bem antes). */
@@ -78,6 +76,11 @@ interface TabSliceProps {
   outerR: number;
   startAngle: number;
   endAngle: number;
+  /** Issue #89 — corners do path; quando omitidos, herdam start/end. */
+  innerStartAngle?: number;
+  innerEndAngle?: number;
+  outerStartAngle?: number;
+  outerEndAngle?: number;
   highlighted: boolean;
   onClick: () => void;
   onContextMenu?: (e: React.MouseEvent<SVGGElement>) => void;
@@ -582,12 +585,14 @@ export const Donut: React.FC<DonutProps> = ({
             return (
               <g key={ringKeyStr}>
                 {current.tabs.map((tab, sliceIdx) => {
-                  // Plano 23 — todos os rings (incluindo root) ganham
-                  // respiro angular entre vizinhos.
-                  const { start, end } = slicePaintRange(
+                  // Issue #89 — todos os rings (incluindo root) ganham
+                  // respiro perpendicular constante entre vizinhos.
+                  const angles = slicePaintAngles(
                     sliceIdx,
                     sliceCount,
-                    sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0,
+                    sliceGapEnabled ? OUTER_SLICE_GAP_PX : 0,
+                    dims.innerR,
+                    dims.outerR,
                   );
                   const isHighlighted =
                     hovered !== null &&
@@ -601,8 +606,12 @@ export const Donut: React.FC<DonutProps> = ({
                       cy={cy}
                       innerR={dims.innerR}
                       outerR={dims.outerR}
-                      startAngle={start}
-                      endAngle={end}
+                      startAngle={angles.outerStart}
+                      endAngle={angles.outerEnd}
+                      innerStartAngle={angles.innerStart}
+                      innerEndAngle={angles.innerEnd}
+                      outerStartAngle={angles.outerStart}
+                      outerEndAngle={angles.outerEnd}
                       highlighted={isHighlighted}
                       onClick={() => {
                         const phase = hoverHold.state.phase;
@@ -640,10 +649,12 @@ export const Donut: React.FC<DonutProps> = ({
                 })}
                 {current.hasPlus &&
                   (() => {
-                    const { start, end } = slicePaintRange(
+                    const angles = slicePaintAngles(
                       plusIdx,
                       sliceCount,
-                      sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0,
+                      sliceGapEnabled ? OUTER_SLICE_GAP_PX : 0,
+                      dims.innerR,
+                      dims.outerR,
                     );
                     return (
                       <Slice
@@ -652,8 +663,12 @@ export const Donut: React.FC<DonutProps> = ({
                         cy={cy}
                         innerR={dims.innerR}
                         outerR={dims.outerR}
-                        startAngle={start}
-                        endAngle={end}
+                        startAngle={angles.outerStart}
+                        endAngle={angles.outerEnd}
+                        innerStartAngle={angles.innerStart}
+                        innerEndAngle={angles.innerEnd}
+                        outerStartAngle={angles.outerStart}
+                        outerEndAngle={angles.outerEnd}
                         icon="+"
                         highlighted={
                           hovered !== null &&
@@ -671,12 +686,14 @@ export const Donut: React.FC<DonutProps> = ({
             active &&
             activeRingDims &&
             (() => {
-              // Plano 23 — overlay casa a pintura do slice. Todos os rings
-              // usam o mesmo gap angular.
-              const { start, end } = slicePaintRange(
+              // Issue #89 — overlay casa a pintura do slice. Mesmo gap
+              // perpendicular constante usado nas slices abaixo.
+              const angles = slicePaintAngles(
                 active.slice,
                 activeRingSliceCount,
-                sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0,
+                sliceGapEnabled ? OUTER_SLICE_GAP_PX : 0,
+                activeRingDims.innerR,
+                activeRingDims.outerR,
               );
               const parentPath = parentPathForRing(
                 visibleRings[active.ring]?.depth ?? 0,
@@ -687,8 +704,12 @@ export const Donut: React.FC<DonutProps> = ({
                   cy={cy}
                   innerR={activeRingDims.innerR}
                   outerR={activeRingDims.outerR}
-                  startAngle={start}
-                  endAngle={end}
+                  startAngle={angles.outerStart}
+                  endAngle={angles.outerEnd}
+                  innerStartAngle={angles.innerStart}
+                  innerEndAngle={angles.innerEnd}
+                  outerStartAngle={angles.outerStart}
+                  outerEndAngle={angles.outerEnd}
                   state={hoverHold.state}
                   onEdit={() => {
                     hoverHold.cancel();
