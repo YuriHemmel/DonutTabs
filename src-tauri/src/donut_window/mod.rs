@@ -23,6 +23,9 @@ const DONUT_LABEL: &str = "donut";
 /// UX do click outside).
 ///
 /// Composição: `420` (base, 1 ring) + `140` (incremento pra ring 2).
+/// Issue #91 — `OUTER_RING_BAND_WIDTH` subiu pra 72 no frontend, mas o
+/// ring externo ainda cabe dentro de 560/2 = 280, então a janela
+/// permanece 560.
 const DONUT_WINDOW_SIZE: f64 = 560.0;
 
 pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {

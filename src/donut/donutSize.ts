@@ -2,7 +2,10 @@ import type { Tab } from "../core/types/Tab";
 
 /** Plano 23 — espelha `BASE_DONUT_SIZE` em `donut_window/mod.rs`. */
 export const DONUT_BASE_SIZE = 420;
-/** Plano 23 — espelha `RING_SIZE_INCREMENT` em `donut_window/mod.rs`. */
+/** Plano 23 — espelha o incremento por ring em `donut_window/mod.rs`.
+ *  Issue #91 — `OUTER_RING_BAND_WIDTH` subiu pra 72; com a base fixa e os
+ *  ratios default o ring externo termina a ~270 do centro, ainda dentro
+ *  da meia-janela de 280 (560/2). 140 continua dando folga. */
 export const DONUT_RING_INCREMENT = 140;
 /** Plano 23 / Issue #39 — espelha `MAX_TAB_DEPTH = 2` no `validate.rs`.
  *  Reduzido de 3 pra encolher a janela do donut. */
