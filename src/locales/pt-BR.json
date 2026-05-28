@@ -286,6 +286,7 @@
     },
     "editor": {
       "newTabTitle": "Nova aba",
+      "newTabInGroupAria": "Criando aba dentro do grupo “{{groupName}}”.",
       "name": "Nome",
       "namePlaceholder": "Trabalho",
       "icon": "Ícone",

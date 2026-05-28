@@ -286,6 +286,7 @@
     },
     "editor": {
       "newTabTitle": "新建标签页",
+      "newTabInGroupAria": "正在“{{groupName}}”组内创建标签页。",
       "name": "名称",
       "namePlaceholder": "工作",
       "icon": "图标",

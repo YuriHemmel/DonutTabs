@@ -6,6 +6,7 @@ import { translateAppError } from "../core/errors";
 import { graphemeCount } from "./textUtils";
 import { IconPicker } from "./IconPicker";
 import { IconField } from "./IconField";
+import { IconDisplay } from "./IconDisplay";
 import { Switch } from "./Switch";
 import type { Tab } from "../core/types/Tab";
 import type { Item } from "../core/types/Item";
@@ -46,6 +47,10 @@ export interface TabEditorProps {
   /** Plano 16 — pré-seleciona o radio "Aba" / "Grupo" no modo new.
    *  Ignorado em mode=edit (kind é deduzido de `initial.children`). */
   initialKind?: TabKind;
+  /** Issue #103 — grupo-pai quando criando uma aba dentro de um grupo
+   *  (mode=new + currentDepth > 1). Renderizado como cabeçalho (ícone + nome)
+   *  acima do título "Nova aba"; `null` no root. */
+  parentGroup?: { name: string | null; icon: string | null } | null;
 }
 
 interface FormState {
@@ -194,19 +199,27 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   onSelectChild,
   onAddChild,
   initialKind = "leaf",
+  parentGroup = null,
 }) => {
   const { t } = useTranslation();
-  const [state, setState] = useState<FormState>(() => fromTab(initial, initialKind));
+  // Issue #103 — dentro de um grupo (currentDepth > 1) só é possível criar
+  // aba (leaf); o tipo "Grupo" seria inútil (MAX_TAB_DEPTH = 2). Forçamos leaf
+  // como kind inicial pra evitar um estado "group" órfão vindo de initialKind.
+  const insideGroup = currentDepth > 1;
+  const effectiveInitialKind: TabKind = insideGroup ? "leaf" : initialKind;
+  const [state, setState] = useState<FormState>(() =>
+    fromTab(initial, effectiveInitialKind),
+  );
   const [validation, setValidation] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
-    setState(fromTab(initial, initialKind));
+    setState(fromTab(initial, effectiveInitialKind));
     setValidation(null);
     setServerError(null);
-  }, [initial, mode, initialKind]);
+  }, [initial, mode, effectiveInitialKind]);
 
   const submit = async () => {
     setServerError(null);
@@ -320,6 +333,24 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         overflow: "auto",
       }}
     >
+      {mode === "new" && parentGroup && (
+        <div
+          data-testid="new-tab-in-group-header"
+          aria-label={t("settings.editor.newTabInGroupAria", {
+            groupName: parentGroup.name ?? parentGroup.icon ?? "",
+          })}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontWeight: 600,
+            fontSize: "1.1em",
+          }}
+        >
+          {parentGroup.icon && <IconDisplay icon={parentGroup.icon} size={22} />}
+          {parentGroup.name && <span>{parentGroup.name}</span>}
+        </div>
+      )}
       <h2 style={{ margin: 0 }}>{title}</h2>
 
       <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -410,7 +441,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         </div>
       )}
 
-      {mode === "new" && (
+      {mode === "new" && !insideGroup && (
         <fieldset
           style={{ border: "1px solid var(--input-border)", borderRadius: 4, padding: 12 }}
         >

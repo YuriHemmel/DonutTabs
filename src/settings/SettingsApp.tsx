@@ -315,6 +315,17 @@ export const SettingsApp: React.FC = () => {
 
   const currentDepth = (currentParentPath?.length ?? 0) + 1;
 
+  // Issue #103 — grupo-pai imediato (último id do path) pra exibir como
+  // cabeçalho (ícone + nome) na tela de criação de aba dentro de um grupo.
+  const parentGroup: { name: string | null; icon: string | null } | null =
+    currentParentPath && currentParentPath.length > 0
+      ? (() => {
+          const lastId = currentParentPath[currentParentPath.length - 1];
+          const found = findTabPathInProfile(selectedProfile.tabs, lastId);
+          return found ? { name: found.tab.name, icon: found.tab.icon } : null;
+        })()
+      : null;
+
   const handleSave = async (tab: Tab) => {
     await saveTab(tab, selectedProfile.id, currentParentPath);
     setSelection({ mode: "edit", tabId: tab.id, parentPath: currentParentPath });
@@ -427,6 +438,7 @@ export const SettingsApp: React.FC = () => {
               onDelete={handleDelete}
               currentDepth={currentDepth}
               initialKind={selection.suggestedKind ?? "leaf"}
+              parentGroup={parentGroup}
             />
           ) : selection.mode === "edit" && selectedTab ? (
             <TabEditor
