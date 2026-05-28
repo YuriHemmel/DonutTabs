@@ -24,7 +24,7 @@ import { useFavicon } from "./useFavicon";
 import { SliceContextMenu } from "./SliceContextMenu";
 import { TabSearchOverlay } from "./TabSearchOverlay";
 import { matchesCombo } from "./matchesCombo";
-import { tabInitial } from "./tabUtils";
+import { tabInitial, isGroup } from "./tabUtils";
 import { ThemeContext } from "./themeContext";
 import { resolvePresetTokens, type ThemeTokens } from "../core/themeTokens";
 import { useRingStack, MAX_RINGS } from "./useRingStack";
@@ -56,8 +56,6 @@ export function countDescendants(tab: Tab): number {
   }
   return n;
 }
-
-const isGroup = (tab: Tab): boolean => tab.kind === "group";
 
 /** Plano 23 — codifica (ring, slice) em índice composto pra reusar
  *  `useHoverHold` que aceita um único `number`. Limite de 10000 slices/ring
