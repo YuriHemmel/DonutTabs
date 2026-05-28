@@ -30,15 +30,6 @@ export interface UseRingStack {
   expand: (groupId: string, depth: number) => void;
   /** Colapsa todos os anéis externos. Equivale a expandedGroupIds = []. */
   collapseAll: () => void;
-  /** Issue #71 — trunca `expandedGroupIds` ao comprimento retornado por
-   *  `computeLen(current)`. Idempotente: se já está no tamanho alvo, não
-   *  dispara re-render. **Recebe função-updater** (não número direto)
-   *  porque hover-to-collapse e hover-to-expand frequentemente disparam
-   *  no mesmo commit cycle: o cálculo precisa rodar contra o `current`
-   *  pós-expand, não contra o snapshot stale do render anterior. Sem o
-   *  updater, `trim(0)` enfileirado depois de `expand("g",0)` anularia
-   *  o expand. Ver `useHoverToCollapse` pro caller real. */
-  trimToLength: (computeLen: (current: string[]) => number) => void;
 }
 
 /** Plano 23 / Issue #39 — máximo de anéis concêntricos (root + 1 sub-nível).
@@ -133,22 +124,11 @@ export function useRingStack(rootTabs: Tab[]): UseRingStack {
     setExpandedGroupIds((c) => (c.length === 0 ? c : []));
   }, []);
 
-  const trimToLength = useCallback(
-    (computeLen: (current: string[]) => number) => {
-      setExpandedGroupIds((c) => {
-        const clamped = Math.max(0, computeLen(c));
-        return c.length <= clamped ? c : c.slice(0, clamped);
-      });
-    },
-    [],
-  );
-
   return {
     expandedGroupIds: sanitized,
     rings,
     toggle,
     expand,
     collapseAll,
-    trimToLength,
   };
 }

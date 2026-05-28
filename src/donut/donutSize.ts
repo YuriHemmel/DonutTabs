@@ -2,8 +2,15 @@ import type { Tab } from "../core/types/Tab";
 
 /** Plano 23 — espelha `BASE_DONUT_SIZE` em `donut_window/mod.rs`. */
 export const DONUT_BASE_SIZE = 420;
-/** Plano 23 — espelha `RING_SIZE_INCREMENT` em `donut_window/mod.rs`. */
-export const DONUT_RING_INCREMENT = 140;
+/** Plano 23 — espelha o incremento por ring em `donut_window/mod.rs`.
+ *  Issue #91 — subiu 140→160 junto com `OUTER_RING_BAND_WIDTH` 60→72: o
+ *  tamanho precisa caber o **pior caso**, não só os ratios default. Com o
+ *  override `outerRatio = 0.50` (máximo aceito pelo validate) o ring
+ *  externo de depth-2 termina a `420*0.50 + RING_GAP(4) + 72 = 286` do
+ *  centro; a meia-janela precisa ser ≥ 286. Com 140 (meia = 280) clipava
+ *  6px nesse override; com 160 → 580 (meia = 290) sobram 4px. Override
+ *  default (0.46) sobra ~21px. */
+export const DONUT_RING_INCREMENT = 160;
 /** Plano 23 / Issue #39 — espelha `MAX_TAB_DEPTH = 2` no `validate.rs`.
  *  Reduzido de 3 pra encolher a janela do donut. */
 export const DONUT_MAX_RINGS = 2;

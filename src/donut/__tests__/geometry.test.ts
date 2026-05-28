@@ -90,17 +90,17 @@ describe("ringDims", () => {
   });
 
   it("ring 1 começa após gap, com banda externa fixa", () => {
-    // gap=4, outerBand=60. inner = 160 + 4 = 164; outer = 164 + 60 = 224.
+    // gap=4, outerBand=72 (Issue #91). inner = 160 + 4 = 164; outer = 164 + 72 = 236.
     const d = ringDims(1, 80, 160);
     expect(d.innerR).toBe(164);
-    expect(d.outerR).toBe(224);
+    expect(d.outerR).toBe(236);
   });
 
   it("ring 2 mantém banda externa fixa + gap entre anéis", () => {
-    // ring 1 outer = 224; gap=4; ring 2 inner = 228; outer = 288.
+    // ring 1 outer = 236; gap=4; ring 2 inner = 240; outer = 312.
     const d = ringDims(2, 80, 160);
-    expect(d.innerR).toBe(228);
-    expect(d.outerR).toBe(288);
+    expect(d.innerR).toBe(240);
+    expect(d.outerR).toBe(312);
   });
 });
 
@@ -112,18 +112,18 @@ describe("ringHitBounds (Issue #71 — gapless hit-test)", () => {
   });
 
   it("ring 1 absorve o gap radial que o precede (inner = outer paint do ring 0)", () => {
-    // ringDims(1) = {164, 224}; ringHitBounds(1) = {160, 224}.
+    // ringDims(1) = {164, 236}; ringHitBounds(1) = {160, 236}.
     // Os 4px do gap (160..164) ficam englobados no hit zone do ring 1.
     const d = ringHitBounds(1, 80, 160);
     expect(d.innerR).toBe(160);
-    expect(d.outerR).toBe(224);
+    expect(d.outerR).toBe(236);
   });
 
   it("ring 2 absorve seu gap antecedente (inner = outer paint do ring 1)", () => {
-    // ringDims(2) = {228, 288}; ringHitBounds(2) = {224, 288}.
+    // ringDims(2) = {240, 312}; ringHitBounds(2) = {236, 312}.
     const d = ringHitBounds(2, 80, 160);
-    expect(d.innerR).toBe(224);
-    expect(d.outerR).toBe(288);
+    expect(d.innerR).toBe(236);
+    expect(d.outerR).toBe(312);
   });
 
   it("hit bounds são contíguos (ring N.outerR == ring N+1.innerR) — sem buracos", () => {
@@ -154,18 +154,18 @@ describe("pointToRingIndex", () => {
 
   it("identifica ring 1 (banda externa, incluindo o gap radial absorvido)", () => {
     expect(pointToRingIndex({ x: 170, y: 0 }, 3, 80, 160)).toBe(1);
-    expect(pointToRingIndex({ x: 220, y: 0 }, 3, 80, 160)).toBe(1);
+    expect(pointToRingIndex({ x: 230, y: 0 }, 3, 80, 160)).toBe(1);
   });
 
   it("Issue #71 — gap entre ring 1 e ring 2 absorve no ring 2", () => {
-    // Pintura: ring 1 outer paint = 224; ring 2 inner paint = 228.
-    // Gap pintado em 225..227; hit-test mapeia tudo isso pra ring 2.
-    expect(pointToRingIndex({ x: 226, y: 0 }, 3, 80, 160)).toBe(2);
+    // Pintura: ring 1 outer paint = 236; ring 2 inner paint = 240.
+    // Gap pintado em 237..239; hit-test mapeia tudo isso pra ring 2.
+    expect(pointToRingIndex({ x: 238, y: 0 }, 3, 80, 160)).toBe(2);
   });
 
   it("identifica ring 2 (outermost)", () => {
-    expect(pointToRingIndex({ x: 230, y: 0 }, 3, 80, 160)).toBe(2);
-    expect(pointToRingIndex({ x: 285, y: 0 }, 3, 80, 160)).toBe(2);
+    expect(pointToRingIndex({ x: 240, y: 0 }, 3, 80, 160)).toBe(2);
+    expect(pointToRingIndex({ x: 310, y: 0 }, 3, 80, 160)).toBe(2);
   });
 
   it("Issue #71 — gap radial sem ring externo disponível continua null (não há onde absorver)", () => {

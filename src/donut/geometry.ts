@@ -144,8 +144,10 @@ export interface RingDims {
 }
 
 /** Plano 23 — bandWidth fixa para anéis externos (ring 1+). Menor que o
- *  ring root pra "abas subsequentes ocuparem menos espaço". */
-export const OUTER_RING_BAND_WIDTH = 60;
+ *  ring root pra "abas subsequentes ocuparem menos espaço".
+ *  Issue #91 — bumped 60→72 pra dar mais folga radial de hover sem deixar
+ *  as fatias grossas demais (90 foi exagero). */
+export const OUTER_RING_BAND_WIDTH = 72;
 /** Plano 23 — gap radial entre anéis vizinhos. Cria separador visual e
  *  região de "no-hit" no `pointToRingIndex` (cursor entre anéis não casa
  *  nenhum). */
