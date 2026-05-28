@@ -7,7 +7,6 @@ import { listen } from "@tauri-apps/api/event";
 import { Donut, type DonutHoverTarget } from "../donut/Donut";
 import { decideQuickRelease } from "../donut/quickRelease";
 import { ScriptConfirmModal } from "../donut/ScriptConfirmModal";
-import { OnboardingHint } from "../donut/OnboardingHint";
 import { ipc, CONFIG_CHANGED_EVENT, SHORTCUT_RELEASED_EVENT } from "../core/ipc";
 import { initI18n, changeLanguage } from "../core/i18n";
 import { applyTokensAsCssVars, watchSystemTheme } from "../core/theme";
@@ -36,9 +35,6 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   const configRef = useRef<Config | null>(initialConfig);
   const handleSelectRef = useRef<(tabId: string) => void>(() => {});
   const handleOpenSettingsRef = useRef<() => void>(() => {});
-  // Plano 22 — `null` = ainda não consultado; `true` = mostra overlay;
-  // `false` = launch normal (sem onboarding) ou já dispensado.
-  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   // Bumpa a cada re-show pra remontar o <Donut> e zerar estado local
   // (mode profile-switcher, sub-donut navigation, hover-hold). Reabrir o
   // donut sempre começa em "tabs" no root.
@@ -49,33 +45,6 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
     ipc.getConfig().then(setConfig).catch(console.error);
   }, [config]);
 
-  // Plano 22 — read-and-clear da flag transiente. Backend marca `false`
-  // após primeira leitura pra evitar mostrar de novo se o donut for
-  // re-aberto na mesma sessão.
-  useEffect(() => {
-    let cancelled = false;
-    ipc
-      .consumeOnboardingPending()
-      .then((pending) => {
-        if (!cancelled) setShowOnboarding(pending);
-      })
-      .catch(() => {
-        if (!cancelled) setShowOnboarding(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const dismissOnboarding = () => {
-    setShowOnboarding(false);
-    // Persiste `firstLaunchCompleted = true`; falha não interrompe UX
-    // (próxima manual launch tentaria mostrar de novo, aceitável).
-    ipc.setFirstLaunchCompleted(true).catch((e) => {
-      console.error("set_first_launch_completed failed", e);
-    });
-  };
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -83,17 +52,12 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
           setErrorMsg(null);
           return;
         }
-        if (showOnboarding) {
-          dismissOnboarding();
-          return;
-        }
         void ipc.hideDonut();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [errorMsg, showOnboarding]);
+  }, [errorMsg]);
 
   useEffect(() => {
     const w = getCurrentWindow();
@@ -224,8 +188,6 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
   }, []);
 
   const handleSelect = async (tabId: string) => {
-    // Plano 22 — interagir = onboarding cumprido (user já entendeu o app).
-    if (showOnboarding) dismissOnboarding();
     try {
       await ipc.openTab(tabId);
       void ipc.hideDonut();
@@ -408,15 +370,6 @@ function App({ initialConfig }: { initialConfig: Config | null }) {
             void handleScriptConfirm(trustForever);
           }}
           onCancel={handleScriptCancel}
-        />
-      )}
-      {showOnboarding && config && (
-        <OnboardingHint
-          shortcut={
-            config.profiles.find((p) => p.id === config.activeProfileId)
-              ?.shortcut ?? config.profiles[0]?.shortcut ?? ""
-          }
-          onDismiss={dismissOnboarding}
         />
       )}
     </div>

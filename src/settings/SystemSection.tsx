@@ -29,9 +29,9 @@ export interface SystemSectionProps {
    *  pressionado; soltar abre a aba sob o cursor. */
   quickMode?: boolean;
   onQuickModeChange?: (enabled: boolean) => void;
-  /** Plano 22: re-armar tutorial de boas-vindas na próxima manual launch.
-   *  Quando ausente, o botão não renderiza. */
-  onResetOnboarding?: () => void;
+  /** Issue #62: reabre o Setup Wizard imediatamente. Quando ausente,
+   *  o botão não renderiza. */
+  onReopenWizard?: () => void;
 }
 
 export const SystemSection: React.FC<SystemSectionProps> = ({
@@ -49,7 +49,7 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
   onSpawnPositionChange,
   quickMode,
   onQuickModeChange,
-  onResetOnboarding,
+  onReopenWizard,
 }) => {
   const { t } = useTranslation();
 
@@ -59,7 +59,7 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
       onScriptHistoryEnabledChange !== undefined);
 
   const showBackupAndTutorial =
-    !!onExportConfig || !!onImportConfig || !!onResetOnboarding;
+    !!onExportConfig || !!onImportConfig || !!onReopenWizard;
 
   return (
     <section
@@ -276,12 +276,12 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
             </div>
           )}
 
-          {onResetOnboarding && (
+          {onReopenWizard && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <button
                 type="button"
-                data-testid="reset-onboarding"
-                onClick={onResetOnboarding}
+                data-testid="reopen-wizard"
+                onClick={onReopenWizard}
                 style={{
                   alignSelf: "flex-start",
                   background: "transparent",
@@ -293,10 +293,10 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
                   font: "inherit",
                 }}
               >
-                {t("settings.system.resetOnboardingButton")}
+                {t("settings.system.reopenWizardButton")}
               </button>
               <small style={{ color: "var(--muted)" }}>
-                {t("settings.system.resetOnboardingHint")}
+                {t("settings.system.reopenWizardHint")}
               </small>
             </div>
           )}

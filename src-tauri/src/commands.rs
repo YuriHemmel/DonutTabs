@@ -65,12 +65,12 @@ pub struct AppState {
     /// remove + chama `kill()`. Quando o child termina natural, o task
     /// consumer também remove a entrada.
     pub script_children: Arc<Mutex<HashMap<Uuid, CommandChild>>>,
-    /// Plano 22 — flag transiente da sessão. `true` quando a launch foi
-    /// manual (sem `--autostart`) E `system.first_launch_completed ==
-    /// false`. Donut consome via `consume_onboarding_pending` na 1ª
-    /// montagem para mostrar o overlay de hint; flag é resetada após
-    /// consumida pra não repetir se o donut for re-aberto na mesma
-    /// sessão.
+    /// Issue #62 — flag transiente da sessão. `true` quando a launch
+    /// foi manual (sem `--autostart`) E `system.first_launch_completed
+    /// == false`. Lido apenas em `lib.rs:setup` para decidir disparar o
+    /// Setup Wizard (abre Settings + emite intent `show-wizard`).
+    /// Completion oficial é persistida via `set_first_launch_completed`
+    /// quando o user concluir/pular o wizard.
     pub pending_onboarding: RwLock<bool>,
 }
 
@@ -1124,23 +1124,11 @@ pub(crate) fn apply_set_script_history_enabled(cfg: &mut Config, enabled: bool) 
     cfg.system.script_history_enabled = enabled;
 }
 
-/// Plano 22 — read-and-clear da flag `pending_onboarding`. Donut chama
-/// na 1ª montagem; flag é resetada pra `false` aqui pra evitar mostrar
-/// o overlay de novo se o donut for re-aberto na mesma sessão. A
-/// completion oficial (persistir `first_launch_completed = true`) só
-/// acontece via `set_first_launch_completed` quando o user dispensa
-/// explicitamente o overlay.
-#[tauri::command]
-pub fn consume_onboarding_pending(state: tauri::State<'_, AppState>) -> bool {
-    let mut flag = state.pending_onboarding.write().unwrap();
-    let was = *flag;
-    *flag = false;
-    was
-}
-
-/// Plano 22 — toggle persistido do flag de onboarding. `true` (default
-/// uso pelo donut após dispensar overlay) marca completed; `false`
+/// Issue #62 — toggle persistido do flag de onboarding. `true`
+/// (chamado pelo Wizard ao concluir/pular) marca completed; `false`
 /// (reset via Settings) re-arma o fluxo pra próxima manual launch.
+/// Hoje o flag dispara o Setup Wizard na próxima launch manual; antes
+/// (Plano 22) disparava o `<OnboardingHint>` no donut.
 #[tauri::command]
 pub fn set_first_launch_completed<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,

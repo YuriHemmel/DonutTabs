@@ -11,6 +11,7 @@ import { HistorySection } from "./HistorySection";
 import { SectionTabs, type Section } from "./SectionTabs";
 import { ProfilePicker } from "./ProfilePicker";
 import { ProfilesSection, type ProfilesEditorMode } from "./ProfilesSection";
+import { Wizard } from "./Wizard";
 import { useConfig } from "./useConfig";
 import { ipc, dialog, SETTINGS_INTENT_EVENT } from "../core/ipc";
 import { translateAppError } from "../core/errors";
@@ -30,6 +31,8 @@ interface IntentTarget {
   /** Issue #39: o intent `new-profile` (donut) agora abre a seção dedicada
    *  "Perfis" com o editor já em modo "new". `null` = não toca no editor. */
   profileEditorMode?: ProfilesEditorMode;
+  /** Issue #62: quando `true`, abre o Setup Wizard sobre a Settings. */
+  openWizard?: boolean;
 }
 
 /**
@@ -77,6 +80,15 @@ function resolveIntent(
       section: "profiles",
       selection: { mode: "empty" },
       profileEditorMode: { mode: "new" },
+    };
+  }
+  if (intent === "show-wizard") {
+    // Wizard começa no passo 1 (welcome) cuja seção bg é "tabs". O próprio
+    // componente vai sincronizar quando o user avançar.
+    return {
+      section: "tabs",
+      selection: { mode: "empty" },
+      openWizard: true,
     };
   }
   if (intent && intent.startsWith("new-tab-in-group:")) {
@@ -139,6 +151,7 @@ export const SettingsApp: React.FC = () => {
   // que intents `new-profile` consigam abrir o editor já no mount.
   const [profileEditorMode, setProfileEditorMode] =
     useState<ProfilesEditorMode | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const configRef = useRef<Config | null>(config);
   configRef.current = config;
@@ -154,6 +167,7 @@ export const SettingsApp: React.FC = () => {
     setSelection(target.selection);
     if (target.selectedProfileId) setSelectedProfileId(target.selectedProfileId);
     if (target.profileEditorMode) setProfileEditorMode(target.profileEditorMode);
+    if (target.openWizard) setWizardOpen(true);
   };
 
   useEffect(() => {
@@ -548,13 +562,11 @@ export const SettingsApp: React.FC = () => {
               window.alert(translateAppError(err, t));
             });
           }}
-          onResetOnboarding={() => {
-            // Plano 22 — re-arma o overlay de boas-vindas pra próxima
-            // launch manual. Falha silenciosa: user vê erro via toast
-            // do useConfig; sem necessidade de bloqueio extra aqui.
-            ipc.setFirstLaunchCompleted(false).catch((e) => {
-              window.alert(translateAppError(e, t));
-            });
+          onReopenWizard={() => {
+            // Issue #62 — abre o wizard imediatamente. Flag de
+            // `first_launch_completed` é setado pra true apenas quando o
+            // user conclui/pula o wizard (em onClose abaixo).
+            setWizardOpen(true);
           }}
         />
       )}
@@ -588,6 +600,42 @@ export const SettingsApp: React.FC = () => {
           }}
         />
       )}
+
+      <Wizard
+        open={wizardOpen}
+        onClose={() => {
+          setWizardOpen(false);
+          // Persiste a conclusão. Falha em disco vira alerta — sem ela o
+          // wizard reabriria toda manual launch.
+          ipc.setFirstLaunchCompleted(true).catch((e) => {
+            window.alert(translateAppError(e, t));
+          });
+        }}
+        onSectionChange={setSection}
+        shortcutDisplay={selectedProfile.shortcut}
+        language={config.appearance.language}
+        onLanguageChange={(lang) => {
+          void setLanguage(lang);
+        }}
+        autostart={config.system.autostart}
+        onAutostartChange={(enabled) => {
+          void setAutostart(enabled);
+        }}
+        allowScripts={selectedProfile.allowScripts}
+        onAllowScriptsChange={(allow) => {
+          void setProfileAllowScripts(selectedProfile.id, allow);
+        }}
+        spawnPosition={config.interaction.spawnPosition}
+        onSpawnPositionChange={(pos) => {
+          void setSpawnPosition(pos);
+        }}
+        quickMode={config.interaction.quickMode}
+        onQuickModeChange={(enabled) => {
+          void setQuickMode(enabled).catch((err) => {
+            window.alert(translateAppError(err, t));
+          });
+        }}
+      />
     </div>
   );
 };
