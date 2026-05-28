@@ -1,0 +1,481 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage 必须在 4 到 8 之间（当前为 {{got}}）",
+      "hoverHoldMsZero": "hoverHoldMs 必须大于 0",
+      "tabMissingNameAndIcon": "标签页 {{id}} 需要一个名称或图标",
+      "invalidUrl": "标签页 {{tabId}} 中的 URL 无效：{{reason}}",
+      "duplicateTabId": "标签页 id 重复：{{id}}",
+      "tabLeafHasChildren": "标签页 {{tabId}} 是叶子项，不能包含子项。",
+      "tabGroupHasItems": "标签页 {{tabId}} 是分组，不能包含直接的 URL/文件。",
+      "tabTooDeep": "标签页 {{tabId}} 的深度（{{depth}}）超过了限制（{{maxDepth}}）。",
+      "tabMixedLeafAndGroup": "标签页 {{tabId}} 不能同时包含项目和子项。",
+      "pathEmpty": "标签页 {{tabId}} 中的 {{kind}} 路径不能为空。",
+      "openWithEmpty": "标签页 {{tabId}}（{{kind}} 项）的打开程序不能为空。",
+      "appNameEmpty": "标签页 {{tabId}} 中的应用名称不能为空。",
+      "scriptCommandEmpty": "标签页 {{tabId}} 中的脚本命令不能为空。",
+      "scriptShellInvalid": "无效的脚本 shell：{{value}}。请使用 cmd、powershell、pwsh、wsl、bash、sh 或 zsh。",
+      "themeColorInvalid": "{{field}} 中的颜色无效：{{value}}。请使用 #RRGGBB 格式。",
+      "themeAlphaOutOfRange": "{{field}} 中的透明度无效：必须介于 0 和 1 之间。",
+      "themeRadiusOutOfRange": "{{field}} 中的半径无效：{{value}}。超出允许范围。",
+      "themeRadiusInverted": "内半径必须小于外半径。",
+      "searchShortcutEmpty": "搜索快捷键不能为空。",
+      "settingsShortcutEmpty": "设置快捷键不能为空。",
+      "noProfiles": "配置无效：未定义任何配置文件。",
+      "activeProfileNotFound": "未找到活动配置文件：{{activeProfileId}}",
+      "duplicateProfileId": "配置文件 id 重复：{{id}}",
+      "profileNameEmpty": "配置文件名称不能为空。",
+      "profileShortcutEmpty": "配置文件快捷键不能为空。",
+      "profileNotFound": "未找到配置文件：{{profileId}}",
+      "cannotDeleteLastProfile": "无法删除最后一个配置文件。",
+      "reorderMismatch": "重新排序失败：项目集不匹配（{{scope}}）。",
+      "jsonParse": "配置文件格式错误：{{reason}}",
+      "unknown": "配置错误：{{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "{{total}} 个链接均无法打开",
+      "partialFailure": "{{total}} 个链接中有 {{failed}} 个无法打开",
+      "tabNotFound": "未找到标签页 {{id}}",
+      "scriptBlocked": "脚本未授权——请在运行前确认。",
+      "scriptsDisabled": "此配置文件已禁用脚本。",
+      "scriptCommandMismatch": "脚本在您确认后已更改——请重新打开标签页以查看。",
+      "itemKindMismatch": "项目类型不匹配（{{got}} ≠ {{expected}}）。",
+      "itemIndexOutOfRange": "项目索引超出范围：{{itemIndex}}。",
+      "scriptCancelFailed": "无法取消运行：{{reason}}",
+      "unknown": "无法打开标签页：{{code}}"
+    },
+    "shortcut": {
+      "shortcutRegistrationFailed": "无法注册快捷键：{{reason}}",
+      "shortcutParseFailed": "组合键无效：{{reason}}",
+      "unknown": "快捷键错误：{{code}}"
+    },
+    "window": {
+      "windowHideFailed": "无法隐藏窗口：{{reason}}",
+      "unknown": "窗口错误：{{code}}"
+    },
+    "io": {
+      "ioGeneric": "I/O 错误：{{reason}}",
+      "autostartFailed": "无法更改自启动设置：{{reason}}",
+      "faviconFetch": "无法获取网站图标（{{url}}）。",
+      "faviconParse": "无效的 favicon URL：{{reason}}",
+      "unknown": "I/O 错误：{{code}}"
+    },
+    "updater": {
+      "updaterCheckFailed": "检查更新失败：{{reason}}",
+      "updaterInstallFailed": "安装更新失败：{{reason}}",
+      "updaterSignatureInvalid": "更新签名无效。更新已取消。",
+      "updaterNetworkUnavailable": "无网络连接，无法检查更新。",
+      "updaterNoEndpoints": "未配置更新端点。",
+      "unknown": "更新错误：{{code}}"
+    },
+    "fallback": "发生了意外错误（{{kind}}）"
+  },
+  "donut": {
+    "toastDismiss": "关闭",
+    "onboarding": {
+      "title": "欢迎使用 DonutTabs！",
+      "body": "随时按 {{shortcut}} 打开此菜单。按 ESC 关闭。",
+      "dismiss": "知道了"
+    },
+    "hoverHold": {
+      "edit": "编辑",
+      "delete": "删除",
+      "yes": "确认删除",
+      "no": "取消"
+    },
+    "contextMenu": {
+      "openAll": "全部打开",
+      "edit": "编辑",
+      "delete": "删除",
+      "confirmDelete": "删除标签页“{{label}}”？此操作无法撤销。"
+    },
+    "search": {
+      "placeholder": "搜索标签页…",
+      "empty": "没有匹配的标签页",
+      "shortcutHint": "↑↓ 导航 · Enter 打开 · Esc 关闭/返回",
+      "breadcrumbRoot": "根",
+      "groupBadgeTitle": "打开分组"
+    },
+    "scriptModal": {
+      "title": "运行脚本？",
+      "commandLabel": "命令：",
+      "warning": "脚本对您的文件和设置拥有完全访问权限。请仅运行您能识别的命令。",
+      "trustLabel": "信任此标签页（不再询问）",
+      "run": "运行",
+      "cancel": "取消"
+    },
+    "confirmCascadeDelete": "删除分组“{{label}}”？将移除 {{count}} 个子项。"
+  },
+  "settings": {
+    "title": "设置",
+    "sections": {
+      "tabs": "标签页",
+      "profiles": "配置文件",
+      "appearance": "外观",
+      "shortcut": "快捷键",
+      "system": "系统",
+      "history": "历史记录",
+      "about": "关于"
+    },
+    "profile": {
+      "label": "配置文件：",
+      "new": "新建",
+      "edit": "编辑配置文件",
+      "delete": "删除配置文件",
+      "activate": "设为活动配置文件",
+      "activeMarker": "（活动）",
+      "activeBadge": "活动",
+      "editingMarker": "编辑中",
+      "sectionTitle": "配置文件",
+      "addProfile": "添加配置文件",
+      "selectPrompt": "选择要编辑的配置文件，或点击“+ 添加配置文件”。",
+      "confirmDelete": "删除配置文件“{{name}}”？其标签页和设置将丢失。",
+      "newTitle": "新建配置文件",
+      "editTitle": "编辑配置文件",
+      "nameLabel": "名称",
+      "namePlaceholder": "工作",
+      "iconLabel": "图标",
+      "iconPlaceholder": "例如 🚀",
+      "iconHint": "一个表情符号或短字符。可选。",
+      "create": "创建",
+      "validationNameRequired": "配置文件名称为必填项。",
+      "validationIconTooLong": "图标必须是单个字符或表情符号。"
+    },
+    "system": {
+      "title": "系统",
+      "autostart": "随系统自动启动",
+      "autostartHint": "启用后，DonutTabs 将在系统启动时在托盘中运行。",
+      "exportButton": "导出配置…",
+      "importButton": "导入配置…",
+      "exportImportHint": "备份/恢复 config.json，以在多台机器间同步。",
+      "exportSuccess": "配置已导出到 {{path}}。",
+      "groups": {
+        "general": "常规",
+        "donut": "甜甜圈",
+        "scripts": "脚本",
+        "backupAndTutorial": "备份与教程"
+      },
+      "allowScriptsLabel": "允许此配置文件中的脚本",
+      "allowScriptsHint": "Shell 脚本首次执行时始终需要确认。禁用以阻止此配置文件中的所有脚本。",
+      "scriptHistoryLabel": "启用脚本历史记录页面",
+      "scriptHistoryHint": "启用后，“历史记录”标签将出现在设置中，每次脚本运行的 stdout/stderr 输出可在那里查看（保存在内存中；应用关闭时清除）。禁用后，脚本仍会运行，但不会捕获其输出。",
+      "spawnPositionLegend": "甜甜圈出现的位置",
+      "spawnPositionCursor": "在鼠标位置",
+      "spawnPositionCenter": "在活动显示器中央",
+      "spawnPositionHint": "设置触发全局快捷键时甜甜圈的起始点。",
+      "quickModeLabel": "快速模式（按住显示，松开打开）",
+      "quickModeHint": "启用后，甜甜圈仅在按住全局快捷键时保持可见。将光标移到标签页上松开按键即可打开它（或移到 ⚙ 上打开设置）。",
+      "reopenWizardButton": "重新打开教程",
+      "reopenWizardHint": "重新打开引导式设置教程。",
+      "importConfirm": "导入将替换您当前的全部配置（配置文件、标签页、快捷键、主题）。是否继续？",
+      "importShortcutWarning": "配置已导入，但无法为新的活动配置文件注册全局快捷键（可能已被其他应用占用）。请重启 DonutTabs 或在设置中更改快捷键。",
+      "update": {
+        "currentVersion": "当前版本：v{{version}}",
+        "autoCheckLabel": "启动时自动检查更新",
+        "autoCheckHint": "启用后，应用在启动时检查一次，并在有新版本时通知您。",
+        "checkNow": "立即检查",
+        "checking": "检查中…",
+        "upToDate": "您已使用最新版本。",
+        "available": "{{version}} 版本可用",
+        "releaseNotes": "发行说明",
+        "installNow": "安装并重启",
+        "installing": "安装中… {{progress}}%",
+        "downloading": "下载中… {{progress}}%",
+        "dismissedHint": "您已收到此版本的通知。在下次更新之前我们不会再次显示提醒。"
+      }
+    },
+    "history": {
+      "heading": "最近运行",
+      "empty": "尚未运行任何脚本。",
+      "disabled": "输出捕获已在系统首选项中禁用。",
+      "clearAll": "清除全部",
+      "clearConfirm": "删除全部 {{count}} 次运行？输出将无法恢复。",
+      "status": {
+        "running": "运行中",
+        "succeeded": "成功",
+        "failed": "失败",
+        "interrupted": "已中断",
+        "cancelled": "已取消"
+      },
+      "detail": {
+        "metadata": "元数据",
+        "profile": "配置文件",
+        "tab": "标签页",
+        "exitCode": "退出代码",
+        "startedAt": "开始于",
+        "finishedAt": "结束于",
+        "duration": "时长",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "输出已截断（已达上限）。要查看全部内容，请将脚本输出重定向到文件。",
+        "cancel": "取消运行",
+        "copy": "复制"
+      }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "通过快捷键打开您喜爱的网站、应用和文件——就在光标处。",
+      "version": "版本",
+      "versionValue": "v{{version}}",
+      "author": "作者",
+      "repository": "🔗 GitHub 仓库",
+      "updates": "更新",
+      "support": "支持本项目",
+      "supportBody": "如果 DonutTabs 在您的日常工作中有所帮助，请考虑支持本项目。每一笔捐赠都有助于保持开发的活跃。",
+      "kofiButton": "☕ 在 Ko-fi 上支持"
+    },
+    "icon": {
+      "modalTitle": "选择图标",
+      "pickButton": "🎨 选择",
+      "tabEmoji": "表情符号",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "搜索图标…",
+      "clear": "清除图标",
+      "changeChip": "更改图标"
+    },
+    "appearance": {
+      "sectionTitle": "外观",
+      "theme": "主题",
+      "themeDark": "深色",
+      "themeLight": "浅色",
+      "themeAuto": "系统",
+      "language": "语言",
+      "languageAuto": "系统",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English",
+      "languageEs": "Español",
+      "languageZh": "中文",
+      "languageJa": "日本語",
+      "languageRu": "Русский",
+      "languageFr": "Français",
+      "languageIt": "Italiano",
+      "themeCustomTitle": "自定义主题",
+      "themeCustomHint": "在所选预设之上进行调整。仅应用于此配置文件。",
+      "colorSliceFill": "扇区颜色",
+      "colorSliceHighlight": "高亮颜色",
+      "colorSliceStroke": "边框颜色",
+      "colorCenterFill": "中心颜色",
+      "colorText": "文本颜色",
+      "alphaOverlay": "背景透明度",
+      "dimensionInnerRatio": "内半径",
+      "dimensionOuterRatio": "外半径",
+      "themeReset": "恢复默认",
+      "themePreviewLabel": "预览",
+      "sliceGapLabel": "相邻标签页之间的间隙",
+      "sliceGapHint": "启用后，相邻扇区之间会显示一个小的角度间隙。"
+    },
+    "shortcut": {
+      "sectionTitle": "全局快捷键",
+      "current": "当前快捷键：",
+      "record": "录制新快捷键",
+      "recording": "请按下组合键…",
+      "cancel": "取消",
+      "hint": "按下带 Ctrl/Alt/Shift/Super 的组合键，或单个按键如 F12、空格或方向键（Enter/Esc/Tab 会被拒绝）。",
+      "reservedKey": "保留键：{{key}}",
+      "noModifier": "单个字母或数字（{{key}}）会在每个应用中劫持该按键。请添加 Ctrl/Alt/Shift/Super，或使用 F1–F12。",
+      "searchSectionTitle": "搜索快捷键",
+      "searchHint": "窗口级快捷键，可在甜甜圈内打开快速标签页搜索。默认：Ctrl+F。",
+      "settingsSectionTitle": "设置快捷键",
+      "settingsHint": "全局快捷键，可直接打开设置窗口，绕过甜甜圈。默认：Ctrl+Shift+,。"
+    },
+    "tabs": {
+      "sectionTitle": "标签页",
+      "addTab": "添加标签页",
+      "empty": "还没有标签页。点击“添加标签页”开始。",
+      "selectPrompt": "选择要编辑的标签页，或点击“添加标签页”。"
+    },
+    "editor": {
+      "newTabTitle": "新建标签页",
+      "name": "名称",
+      "namePlaceholder": "工作",
+      "icon": "图标",
+      "iconPlaceholder": "例如 🚀",
+      "iconHint": "一个表情符号或短字符。名称或图标为必填项。",
+      "openMode": "打开方式",
+      "openModeReuseOrNewWindow": "复用或新窗口",
+      "openModeNewWindow": "新窗口",
+      "openModeNewTab": "新标签页",
+      "items": "项目",
+      "itemKindUrl": "URL",
+      "itemKindFile": "文件",
+      "itemKindFolder": "文件夹",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\path\\to\\file.pdf",
+      "itemPlaceholderFolder": "C:\\path\\to\\folder",
+      "addItemUrl": "添加 URL",
+      "addItemFile": "添加文件",
+      "addItemFolder": "添加文件夹",
+      "browse": "浏览…",
+      "itemKindApp": "应用",
+      "itemKindScript": "脚本",
+      "itemPlaceholderApp": "例如 firefox、code",
+      "itemPlaceholderScript": "例如 git pull && cargo test",
+      "addItemApp": "添加应用",
+      "addItemScript": "添加脚本",
+      "scriptTrustedLabel": "信任（无需确认即运行）",
+      "scriptShellLabel": "Shell",
+      "scriptShellDefault": "系统默认",
+      "scriptShellOptionCmd": "cmd",
+      "scriptShellOptionPowerShell": "PowerShell",
+      "scriptShellOptionPwsh": "pwsh",
+      "scriptShellOptionWsl": "WSL",
+      "scriptShellOptionBash": "bash",
+      "scriptShellOptionSh": "sh",
+      "scriptShellOptionZsh": "zsh",
+      "scriptHelpButton": "?",
+      "scriptHelpAria": "脚本帮助",
+      "incognitoLabel": "隐私",
+      "incognitoHint": "以隐私/无痕模式打开。使用在“打开方式”中选择的浏览器；选择“系统默认”时，应用会检测操作系统的默认浏览器。",
+      "openWithLabel": "打开方式",
+      "openWithPlaceholder": "例如 firefox、code",
+      "openWithHint": "操作系统程序/处理程序。留空 = 系统默认。",
+      "openWithDefault": "系统默认",
+      "openWithCustom": "自定义：{{value}}",
+      "removeItem": "移除项目",
+      "save": "保存",
+      "saving": "保存中…",
+      "cancel": "取消",
+      "delete": "删除",
+      "confirmDelete": "删除标签页“{{label}}”？此操作无法撤销。",
+      "validationNameOrIcon": "请提供名称或图标。",
+      "validationIconTooLong": "图标必须是单个字符或表情符号。",
+      "validationAtLeastOneItem": "请至少添加一个项目（URL、文件或文件夹）。",
+      "validationInvalidUrl": "无效的 URL：{{value}}",
+      "appPickerButton": "📋 浏览应用",
+      "appPickerHint": "列出系统安装并检测到的应用程序。",
+      "monitorLabel": "屏幕",
+      "monitorDefault": "默认",
+      "monitorPrimarySuffix": "（主）",
+      "monitorHint": "在打开前将光标移动到所选屏幕。复用现有窗口的应用可能会忽略此设置。",
+      "tabKindLeaf": "标签页（链接）",
+      "tabKindGroup": "分组（子甜甜圈）",
+      "kindLabel": "类型",
+      "headerValue": "值",
+      "groupChildrenLabel": "分组内容",
+      "groupChildrenEmpty": "还没有项目。添加标签页或子分组。",
+      "addChildTab": "+ 添加标签页",
+      "addChildGroup": "+ 添加子分组",
+      "maxDepthHint": "已达最大深度——此处无法添加更多子分组。",
+      "groupNewHint": "请先保存分组。然后从列表中重新打开它，或点击甜甜圈的“+”来添加标签页。",
+      "focusIfOpen": {
+        "label": "如果已打开则聚焦",
+        "hint": "已打开的应用和标签页会被聚焦；其他的正常打开。",
+        "hintMac": "在 macOS 上，聚焦已打开的 URL 适用于：Chrome、Safari、Edge、Arc、Brave、Vivaldi。\n在其他浏览器中，URL 可能会作为新标签页打开。",
+        "firefoxWarning": "一个或多个 URL 使用 Firefox 作为浏览器。macOS 上的 Firefox 不通过 AppleScript 公开标签页，因此这些 URL 将始终作为新标签页打开。要聚焦标签页，请使用 Chrome、Safari、Edge、Arc、Brave 或 Vivaldi。"
+      }
+    },
+    "scriptHelp": {
+      "title": "如何使用脚本",
+      "howItWorksTitle": "工作原理",
+      "howItWorksBody": "命令通过该行“Shell”选择器中选择的 shell 运行。平台默认：{{defaultShell}}。",
+      "chainingTitle": "链式命令",
+      "chainingBody": "&&、||、| 等运算符和重定向（> >> <）的工作方式与终端中相同——整个字符串通过 -c/-Command/C 传递给 shell。",
+      "outputTitle": "输出",
+      "outputBody": "当在“系统”下启用时，stdout 和 stderr 会显示在设置的“历史记录”标签中。不捕获时，脚本以“运行后即忘”方式执行（不可见）。",
+      "securityTitle": "安全",
+      "securityBody": "不受信任的脚本首次运行时需要确认。每个配置文件的“允许脚本”总开关无论信任与否都会阻止所有脚本执行。",
+      "examplesTitle": "示例",
+      "close": "关闭"
+    },
+    "tree": {
+      "groupBadge": "分组",
+      "childCount_one": "{{count}} 个标签页",
+      "childCount_other": "{{count}} 个标签页"
+    },
+    "appPicker": {
+      "title": "选择应用程序",
+      "loading": "正在加载应用程序…",
+      "empty": "未检测到应用程序。请在字段中手动输入名称。",
+      "searchPlaceholder": "搜索应用程序…",
+      "errorFetch": "无法列出应用程序：{{reason}}",
+      "refresh": "刷新列表",
+      "cancel": "取消"
+    }
+  },
+  "wizard": {
+    "skip": "跳过教程",
+    "back": "上一步",
+    "next": "下一步",
+    "finish": "完成",
+    "confirmSkipTitle": "跳过教程？",
+    "confirmSkipBody": "您可以随时在 设置 → 系统 中重新打开它。",
+    "confirmSkipYes": "跳过",
+    "confirmSkipNo": "继续教程",
+    "stepCounter": "第 {{current}} 步，共 {{total}} 步",
+    "mediaPlaceholder": "示意演示即将添加。",
+    "spawnPositionCursor": "光标",
+    "spawnPositionCenter": "显示器中央",
+    "quickModeOn": "已启用",
+    "quickModeOff": "已禁用",
+    "openSettings": "打开设置",
+    "steps": {
+      "welcome": {
+        "title": "欢迎使用 DonutTabs！",
+        "body": "这个快速教程将展示应用的工作方式，并帮助您配置初始首选项。您可以随时跳过。"
+      },
+      "tabs": {
+        "title": "标签页",
+        "body": "甜甜圈中的每个标签页都是一组一起打开的内容：URL、文件、文件夹、应用或脚本。使用 ⚙ 图标或此部分来创建它们。"
+      },
+      "demoCreateTab": {
+        "title": "创建标签页",
+        "body": "将 URL、文件、文件夹、应用或脚本添加到单个标签页。当您在甜甜圈中选择该标签页时，所有内容会一次性打开。"
+      },
+      "demoSubdonuts": {
+        "title": "分组与子甜甜圈",
+        "body": "将相关标签页归入一个分组——点击会打开包含子标签页的子甜甜圈。便于组织各种情境。"
+      },
+      "demoGroupInDonut": {
+        "title": "甜甜圈中的分组",
+        "body": "看看分组在甜甜圈中的显示方式：扇区会带有一个标记，点击会将甜甜圈变形为包含子标签页的子甜甜圈。点击所选分组即可返回。"
+      },
+      "profiles": {
+        "title": "配置文件",
+        "body": "创建多个配置文件（例如 工作、个人、学习），每个都有自己的标签页、快捷键和主题。通过甜甜圈中心或此设置界面切换。"
+      },
+      "demoProfileSwitch": {
+        "title": "切换配置文件",
+        "body": "点击甜甜圈中心的配置文件图标，即可在环形中查看所有配置文件。选择一个以激活。"
+      },
+      "appearance": {
+        "title": "外观",
+        "body": "选择浅色/深色/自动主题，并自定义颜色、不透明度和半径。每个配置文件都可以有自己的外观。"
+      },
+      "shortcut": {
+        "title": "全局快捷键",
+        "body": "按下全局快捷键即可在系统的任何位置打开甜甜圈。您可以在 设置 → 快捷键 中更改它。",
+        "currentLabel": "当前快捷键："
+      },
+      "demoQuickMode": {
+        "title": "快速模式（按住并松开）",
+        "body": "启用快速模式后，甜甜圈仅在按住快捷键时出现。将光标移到所需标签页上松开即可打开它——无需点击。",
+        "quickModeLabel": "启用快速模式"
+      },
+      "demoSpawnPosition": {
+        "title": "甜甜圈出现的位置",
+        "body": "选择甜甜圈出现在光标位置还是活动显示器的中央。每种样式都有不同的操作流程——试试看吧。",
+        "spawnPositionLabel": "初始位置"
+      },
+      "system": {
+        "title": "系统",
+        "body": "调整语言、随系统自动启动以及在此配置文件中运行脚本的权限。",
+        "languageLabel": "语言",
+        "autostartLabel": "随系统启动",
+        "allowScriptsLabel": "允许此配置文件中的脚本",
+        "allowScriptsWarning": "脚本对您的机器拥有完全访问权限，并完全按照您的配置运行。仅在您信任所添加内容时才启用。"
+      },
+      "demoSearchOverlay": {
+        "title": "甜甜圈中的快速搜索",
+        "body": "在甜甜圈打开时按下搜索快捷键（默认 Ctrl+F），即可在快速覆盖层中按名称筛选标签页。"
+      },
+      "about": {
+        "title": "关于",
+        "body": "在这里您可以查看当前版本并管理自动更新。您还会找到项目的 GitHub 链接——非常适合关注更改和报告错误——以及通过 Ko-fi 支持开发的选项，如果您愿意帮助保持项目持续发展的话。"
+      },
+      "done": {
+        "title": "全部就绪！",
+        "body": "感谢您安装并使用 DonutTabs——希望它能加快您的日常工作！\n您可以随时在 设置 → 系统 中重新打开此教程。\n按下全局快捷键，尽情享受吧！🍩"
+      }
+    }
+  }
+}

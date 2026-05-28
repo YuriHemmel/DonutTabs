@@ -1,0 +1,481 @@
+{
+  "errors": {
+    "config": {
+      "itemsPerPageOutOfRange": "itemsPerPage debe estar entre 4 y 8 (se obtuvo {{got}})",
+      "hoverHoldMsZero": "hoverHoldMs debe ser mayor que 0",
+      "tabMissingNameAndIcon": "La pestaña {{id}} necesita un nombre o un icono",
+      "invalidUrl": "URL inválida en la pestaña {{tabId}}: {{reason}}",
+      "duplicateTabId": "Id de pestaña duplicado: {{id}}",
+      "tabLeafHasChildren": "La pestaña {{tabId}} es una hoja y no puede tener subelementos.",
+      "tabGroupHasItems": "La pestaña {{tabId}} es un grupo y no puede tener URLs/archivos directos.",
+      "tabTooDeep": "La profundidad de la pestaña {{tabId}} ({{depth}}) supera el límite ({{maxDepth}}).",
+      "tabMixedLeafAndGroup": "La pestaña {{tabId}} no puede mezclar elementos y subelementos.",
+      "pathEmpty": "La ruta de {{kind}} no puede estar vacía en la pestaña {{tabId}}.",
+      "openWithEmpty": "El programa de apertura no puede estar vacío en la pestaña {{tabId}} (elemento {{kind}}).",
+      "appNameEmpty": "El nombre de la aplicación no puede estar vacío en la pestaña {{tabId}}.",
+      "scriptCommandEmpty": "El comando del script no puede estar vacío en la pestaña {{tabId}}.",
+      "scriptShellInvalid": "Shell de script inválido: {{value}}. Usa cmd, powershell, pwsh, wsl, bash, sh o zsh.",
+      "themeColorInvalid": "Color inválido en {{field}}: {{value}}. Usa el formato #RRGGBB.",
+      "themeAlphaOutOfRange": "Transparencia inválida en {{field}}: debe estar entre 0 y 1.",
+      "themeRadiusOutOfRange": "Radio inválido en {{field}}: {{value}}. Fuera del rango permitido.",
+      "themeRadiusInverted": "El radio interior debe ser menor que el radio exterior.",
+      "searchShortcutEmpty": "El atajo de búsqueda no puede estar vacío.",
+      "settingsShortcutEmpty": "El atajo de ajustes no puede estar vacío.",
+      "noProfiles": "Configuración inválida: no hay perfiles definidos.",
+      "activeProfileNotFound": "Perfil activo no encontrado: {{activeProfileId}}",
+      "duplicateProfileId": "Id de perfil duplicado: {{id}}",
+      "profileNameEmpty": "El nombre del perfil no puede estar vacío.",
+      "profileShortcutEmpty": "El atajo del perfil no puede estar vacío.",
+      "profileNotFound": "Perfil no encontrado: {{profileId}}",
+      "cannotDeleteLastProfile": "No se puede eliminar el último perfil.",
+      "reorderMismatch": "Reordenación fallida: el conjunto de elementos no coincide ({{scope}}).",
+      "jsonParse": "Archivo de configuración mal formado: {{reason}}",
+      "unknown": "Error de configuración: {{code}}"
+    },
+    "launcher": {
+      "allItemsFailed": "No se pudo abrir ninguno de los {{total}} enlaces",
+      "partialFailure": "{{failed}} de {{total}} enlaces no se pudieron abrir",
+      "tabNotFound": "Pestaña {{id}} no encontrada",
+      "scriptBlocked": "Script no autorizado — confirma antes de ejecutar.",
+      "scriptsDisabled": "Los scripts están deshabilitados en este perfil.",
+      "scriptCommandMismatch": "El script cambió desde que confirmaste — abre la pestaña de nuevo para revisar.",
+      "itemKindMismatch": "Tipo de elemento incompatible ({{got}} ≠ {{expected}}).",
+      "itemIndexOutOfRange": "Índice de elemento fuera de rango: {{itemIndex}}.",
+      "scriptCancelFailed": "No se pudo cancelar la ejecución: {{reason}}",
+      "unknown": "No se pudo abrir la pestaña: {{code}}"
+    },
+    "shortcut": {
+      "shortcutRegistrationFailed": "No se pudo registrar el atajo: {{reason}}",
+      "shortcutParseFailed": "Combinación inválida: {{reason}}",
+      "unknown": "Error de atajo: {{code}}"
+    },
+    "window": {
+      "windowHideFailed": "No se pudo ocultar la ventana: {{reason}}",
+      "unknown": "Error de ventana: {{code}}"
+    },
+    "io": {
+      "ioGeneric": "Error de E/S: {{reason}}",
+      "autostartFailed": "No se pudo cambiar el ajuste de inicio automático: {{reason}}",
+      "faviconFetch": "No se pudo obtener el icono del sitio ({{url}}).",
+      "faviconParse": "URL de favicon inválida: {{reason}}",
+      "unknown": "Error de E/S: {{code}}"
+    },
+    "updater": {
+      "updaterCheckFailed": "No se pudo buscar actualizaciones: {{reason}}",
+      "updaterInstallFailed": "No se pudo instalar la actualización: {{reason}}",
+      "updaterSignatureInvalid": "Firma de actualización inválida. Actualización cancelada.",
+      "updaterNetworkUnavailable": "Sin conexión de red para buscar actualizaciones.",
+      "updaterNoEndpoints": "Endpoint de actualización no configurado.",
+      "unknown": "Error de actualización: {{code}}"
+    },
+    "fallback": "Ocurrió un error inesperado ({{kind}})"
+  },
+  "donut": {
+    "toastDismiss": "Cerrar",
+    "onboarding": {
+      "title": "¡Bienvenido a DonutTabs!",
+      "body": "Pulsa {{shortcut}} en cualquier momento para abrir este menú. Pulsa ESC para cerrar.",
+      "dismiss": "Entendido"
+    },
+    "hoverHold": {
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "yes": "Confirmar eliminación",
+      "no": "Cancelar"
+    },
+    "contextMenu": {
+      "openAll": "Abrir todo",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar la pestaña «{{label}}»? Esto no se puede deshacer."
+    },
+    "search": {
+      "placeholder": "Buscar pestaña…",
+      "empty": "No hay pestañas coincidentes",
+      "shortcutHint": "↑↓ navegar · Enter abrir · Esc cerrar/volver",
+      "breadcrumbRoot": "Raíz",
+      "groupBadgeTitle": "Abrir grupo"
+    },
+    "scriptModal": {
+      "title": "¿Ejecutar script?",
+      "commandLabel": "Comando:",
+      "warning": "Los scripts tienen acceso total a tus archivos y ajustes. Ejecuta solo comandos que reconozcas.",
+      "trustLabel": "Confiar en esta pestaña (no preguntar de nuevo)",
+      "run": "Ejecutar",
+      "cancel": "Cancelar"
+    },
+    "confirmCascadeDelete": "¿Eliminar el grupo «{{label}}»? Se eliminarán {{count}} subelementos."
+  },
+  "settings": {
+    "title": "Ajustes",
+    "sections": {
+      "tabs": "Pestañas",
+      "profiles": "Perfiles",
+      "appearance": "Apariencia",
+      "shortcut": "Atajo",
+      "system": "Sistema",
+      "history": "Historial",
+      "about": "Acerca de"
+    },
+    "profile": {
+      "label": "Perfil:",
+      "new": "Nuevo",
+      "edit": "Editar perfil",
+      "delete": "Eliminar perfil",
+      "activate": "Establecer como perfil activo",
+      "activeMarker": "(activo)",
+      "activeBadge": "Activo",
+      "editingMarker": "Editando",
+      "sectionTitle": "Perfiles",
+      "addProfile": "Añadir perfil",
+      "selectPrompt": "Selecciona un perfil para editar o haz clic en «+ Añadir perfil».",
+      "confirmDelete": "¿Eliminar el perfil «{{name}}»? Se perderán sus pestañas y ajustes.",
+      "newTitle": "Nuevo perfil",
+      "editTitle": "Editar perfil",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Trabajo",
+      "iconLabel": "Icono",
+      "iconPlaceholder": "p. ej. 🚀",
+      "iconHint": "Un emoji o un carácter corto. Opcional.",
+      "create": "Crear",
+      "validationNameRequired": "El nombre del perfil es obligatorio.",
+      "validationIconTooLong": "El icono debe ser un solo carácter o emoji."
+    },
+    "system": {
+      "title": "Sistema",
+      "autostart": "Iniciar automáticamente con el sistema",
+      "autostartHint": "Cuando está activado, DonutTabs se inicia en la bandeja al arrancar el sistema.",
+      "exportButton": "Exportar configuración…",
+      "importButton": "Importar configuración…",
+      "exportImportHint": "Copia de seguridad / restauración del config.json para sincronizar entre máquinas.",
+      "exportSuccess": "Configuración exportada a {{path}}.",
+      "groups": {
+        "general": "General",
+        "donut": "Donut",
+        "scripts": "Scripts",
+        "backupAndTutorial": "Copia de seguridad y tutorial"
+      },
+      "allowScriptsLabel": "Permitir scripts en este perfil",
+      "allowScriptsHint": "Los scripts de shell siempre requieren confirmación en la primera ejecución. Desactívalo para bloquear todos los scripts de este perfil.",
+      "scriptHistoryLabel": "Habilitar la página de historial de scripts",
+      "scriptHistoryHint": "Cuando está activado, la pestaña «Historial» aparece en Ajustes y allí se ve la salida stdout/stderr de cada ejecución de script (en memoria; se borra al cerrar la app). Cuando está desactivado, los scripts siguen ejecutándose pero su salida no se captura.",
+      "spawnPositionLegend": "Dónde aparece el donut",
+      "spawnPositionCursor": "En la posición del ratón",
+      "spawnPositionCenter": "Centrado en el monitor activo",
+      "spawnPositionHint": "Define el punto de partida del donut cuando activas el atajo global.",
+      "quickModeLabel": "Modo rápido (mantener para mostrar, soltar para abrir)",
+      "quickModeHint": "Mientras está activado, el donut solo permanece visible mientras se mantiene el atajo global. Suelta las teclas con el cursor sobre una pestaña para abrirla (o sobre el ⚙ para abrir ajustes).",
+      "reopenWizardButton": "Reabrir tutorial",
+      "reopenWizardHint": "Reabre el tutorial guiado de ajustes.",
+      "importConfirm": "Importar reemplazará toda tu configuración actual (perfiles, pestañas, atajo, tema). ¿Continuar?",
+      "importShortcutWarning": "Configuración importada, pero no se pudo registrar el atajo global del nuevo perfil activo (probablemente ya está en uso por otra app). Reinicia DonutTabs o cambia el atajo en Ajustes.",
+      "update": {
+        "currentVersion": "Versión actual: v{{version}}",
+        "autoCheckLabel": "Buscar actualizaciones automáticamente al iniciar",
+        "autoCheckHint": "Cuando está activado, la app comprueba una vez al iniciar y te avisa de nuevas versiones.",
+        "checkNow": "Buscar ahora",
+        "checking": "Buscando…",
+        "upToDate": "Estás en la última versión.",
+        "available": "Versión {{version}} disponible",
+        "releaseNotes": "Notas de la versión",
+        "installNow": "Instalar y reiniciar",
+        "installing": "Instalando… {{progress}}%",
+        "downloading": "Descargando… {{progress}}%",
+        "dismissedHint": "Ya se te notificó de esta versión. No volveremos a mostrar el aviso hasta la próxima actualización."
+      }
+    },
+    "history": {
+      "heading": "Ejecuciones recientes",
+      "empty": "Aún no se ha ejecutado ningún script.",
+      "disabled": "La captura de salida está deshabilitada en las preferencias del Sistema.",
+      "clearAll": "Borrar todo",
+      "clearConfirm": "¿Eliminar las {{count}} ejecuciones? La salida no se puede recuperar.",
+      "status": {
+        "running": "En ejecución",
+        "succeeded": "Correcto",
+        "failed": "Fallido",
+        "interrupted": "Interrumpido",
+        "cancelled": "Cancelado"
+      },
+      "detail": {
+        "metadata": "Metadatos",
+        "profile": "Perfil",
+        "tab": "Pestaña",
+        "exitCode": "Código de salida",
+        "startedAt": "Iniciado a las",
+        "finishedAt": "Finalizado a las",
+        "duration": "Duración",
+        "stdout": "stdout",
+        "stderr": "stderr",
+        "truncated": "Salida truncada (límite alcanzado). Para verla completa, redirige la salida del script a un archivo.",
+        "cancel": "Cancelar ejecución",
+        "copy": "Copiar"
+      }
+    },
+    "about": {
+      "appName": "DonutTabs",
+      "description": "Abre tus sitios, apps y archivos favoritos con un atajo, justo desde tu cursor.",
+      "version": "Versión",
+      "versionValue": "v{{version}}",
+      "author": "Autor",
+      "repository": "🔗 Repositorio en GitHub",
+      "updates": "Actualizaciones",
+      "support": "Apoya el proyecto",
+      "supportBody": "Si DonutTabs te ayuda en el día a día, considera apoyar el proyecto. Cada donación ayuda a mantener el desarrollo activo.",
+      "kofiButton": "☕ Apoyar en Ko-fi"
+    },
+    "icon": {
+      "modalTitle": "Elige un icono",
+      "pickButton": "🎨 Elegir",
+      "tabEmoji": "Emoji",
+      "tabLucide": "Lucide",
+      "searchPlaceholder": "Buscar icono…",
+      "clear": "Quitar icono",
+      "changeChip": "Cambiar icono"
+    },
+    "appearance": {
+      "sectionTitle": "Apariencia",
+      "theme": "Tema",
+      "themeDark": "Oscuro",
+      "themeLight": "Claro",
+      "themeAuto": "Sistema",
+      "language": "Idioma",
+      "languageAuto": "Sistema",
+      "languagePtBr": "Português (Brasil)",
+      "languageEn": "English",
+      "languageEs": "Español",
+      "languageZh": "中文",
+      "languageJa": "日本語",
+      "languageRu": "Русский",
+      "languageFr": "Français",
+      "languageIt": "Italiano",
+      "themeCustomTitle": "Personalizar tema",
+      "themeCustomHint": "Ajustes sobre el preset seleccionado. Se aplican solo a este perfil.",
+      "colorSliceFill": "Color de la porción",
+      "colorSliceHighlight": "Color de resaltado",
+      "colorSliceStroke": "Color del borde",
+      "colorCenterFill": "Color del centro",
+      "colorText": "Color del texto",
+      "alphaOverlay": "Transparencia del fondo",
+      "dimensionInnerRatio": "Radio interior",
+      "dimensionOuterRatio": "Radio exterior",
+      "themeReset": "Restaurar valores predeterminados",
+      "themePreviewLabel": "Vista previa",
+      "sliceGapLabel": "Espacio entre pestañas adyacentes",
+      "sliceGapHint": "Cuando está activado, las porciones adyacentes muestran un pequeño espacio angular entre ellas."
+    },
+    "shortcut": {
+      "sectionTitle": "Atajo global",
+      "current": "Atajo actual:",
+      "record": "Grabar nuevo atajo",
+      "recording": "Pulsa la combinación de teclas…",
+      "cancel": "Cancelar",
+      "hint": "Pulsa una combinación con Ctrl/Alt/Shift/Super, o una tecla individual como F12, Espacio o flechas (Enter/Esc/Tab se rechazan).",
+      "reservedKey": "Tecla reservada: {{key}}",
+      "noModifier": "Una letra o dígito individual ({{key}}) secuestraría la tecla en todas las apps. Añade Ctrl/Alt/Shift/Super, o usa F1–F12.",
+      "searchSectionTitle": "Atajo de búsqueda",
+      "searchHint": "Atajo a nivel de ventana que abre la búsqueda rápida de pestañas dentro del donut. Predeterminado: Ctrl+F.",
+      "settingsSectionTitle": "Atajo de ajustes",
+      "settingsHint": "Atajo global que abre la ventana de Ajustes directamente, sin pasar por el donut. Predeterminado: Ctrl+Shift+,."
+    },
+    "tabs": {
+      "sectionTitle": "Pestañas",
+      "addTab": "Añadir pestaña",
+      "empty": "Aún no hay pestañas. Haz clic en «Añadir pestaña» para empezar.",
+      "selectPrompt": "Selecciona una pestaña para editar o haz clic en «Añadir pestaña»."
+    },
+    "editor": {
+      "newTabTitle": "Nueva pestaña",
+      "name": "Nombre",
+      "namePlaceholder": "Trabajo",
+      "icon": "Icono",
+      "iconPlaceholder": "p. ej. 🚀",
+      "iconHint": "Un emoji o un carácter corto. Se requiere nombre o icono.",
+      "openMode": "Modo de apertura",
+      "openModeReuseOrNewWindow": "Reutilizar o nueva ventana",
+      "openModeNewWindow": "Nueva ventana",
+      "openModeNewTab": "Nueva pestaña",
+      "items": "Elementos",
+      "itemKindUrl": "URL",
+      "itemKindFile": "Archivo",
+      "itemKindFolder": "Carpeta",
+      "itemPlaceholderUrl": "https://…",
+      "itemPlaceholderFile": "C:\\ruta\\al\\archivo.pdf",
+      "itemPlaceholderFolder": "C:\\ruta\\a\\la\\carpeta",
+      "addItemUrl": "Añadir URL",
+      "addItemFile": "Añadir archivo",
+      "addItemFolder": "Añadir carpeta",
+      "browse": "Examinar…",
+      "itemKindApp": "App",
+      "itemKindScript": "Script",
+      "itemPlaceholderApp": "p. ej. firefox, code",
+      "itemPlaceholderScript": "p. ej. git pull && cargo test",
+      "addItemApp": "Añadir app",
+      "addItemScript": "Añadir script",
+      "scriptTrustedLabel": "Confiar (ejecutar sin confirmación)",
+      "scriptShellLabel": "Shell",
+      "scriptShellDefault": "Predeterminado del sistema",
+      "scriptShellOptionCmd": "cmd",
+      "scriptShellOptionPowerShell": "PowerShell",
+      "scriptShellOptionPwsh": "pwsh",
+      "scriptShellOptionWsl": "WSL",
+      "scriptShellOptionBash": "bash",
+      "scriptShellOptionSh": "sh",
+      "scriptShellOptionZsh": "zsh",
+      "scriptHelpButton": "?",
+      "scriptHelpAria": "Ayuda con scripts",
+      "incognitoLabel": "Privado",
+      "incognitoHint": "Abre en modo privado/incógnito. Usa el navegador elegido en «Abrir con»; con «Predeterminado del sistema», la app detecta el navegador predeterminado del SO.",
+      "openWithLabel": "Abrir con",
+      "openWithPlaceholder": "p. ej. firefox, code",
+      "openWithHint": "Programa/controlador del SO. Vacío = predeterminado del sistema.",
+      "openWithDefault": "Predeterminado del sistema",
+      "openWithCustom": "Personalizado: {{value}}",
+      "removeItem": "Quitar elemento",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar la pestaña «{{label}}»? Esto no se puede deshacer.",
+      "validationNameOrIcon": "Proporciona un nombre o un icono.",
+      "validationIconTooLong": "El icono debe ser un solo carácter o emoji.",
+      "validationAtLeastOneItem": "Añade al menos un elemento (URL, archivo o carpeta).",
+      "validationInvalidUrl": "URL inválida: {{value}}",
+      "appPickerButton": "📋 Examinar apps",
+      "appPickerHint": "Lista las aplicaciones instaladas y detectadas por el sistema.",
+      "monitorLabel": "Pantalla",
+      "monitorDefault": "Predeterminada",
+      "monitorPrimarySuffix": " (principal)",
+      "monitorHint": "Mueve el cursor a la pantalla elegida antes de abrir. Las apps que reutilizan ventanas existentes pueden ignorarlo.",
+      "tabKindLeaf": "Pestaña (enlaces)",
+      "tabKindGroup": "Grupo (sub-donut)",
+      "kindLabel": "Tipo",
+      "headerValue": "Valor",
+      "groupChildrenLabel": "Contenido del grupo",
+      "groupChildrenEmpty": "Aún no hay elementos. Añade pestañas o subgrupos.",
+      "addChildTab": "+ Añadir pestaña",
+      "addChildGroup": "+ Añadir subgrupo",
+      "maxDepthHint": "Profundidad máxima alcanzada — no se pueden añadir más subgrupos aquí.",
+      "groupNewHint": "Guarda primero el grupo. Luego reábrelo desde la lista o haz clic en el «+» del donut para añadir pestañas.",
+      "focusIfOpen": {
+        "label": "Enfocar si ya está abierto",
+        "hint": "Las apps y pestañas ya abiertas se enfocan; las demás se abren normalmente.",
+        "hintMac": "En macOS, enfocar URLs ya abiertas funciona con: Chrome, Safari, Edge, Arc, Brave, Vivaldi.\nEn otros navegadores, la URL puede abrirse como una pestaña nueva.",
+        "firefoxWarning": "Una o más URLs usan Firefox como navegador. Firefox en macOS no expone pestañas vía AppleScript, así que esas URLs siempre se abrirán como una pestaña nueva. Para enfocar pestañas, usa Chrome, Safari, Edge, Arc, Brave o Vivaldi."
+      }
+    },
+    "scriptHelp": {
+      "title": "Cómo usar scripts",
+      "howItWorksTitle": "Cómo funciona",
+      "howItWorksBody": "El comando se ejecuta a través del shell elegido en el selector «Shell» de la fila. Predeterminado de la plataforma: {{defaultShell}}.",
+      "chainingTitle": "Encadenamiento",
+      "chainingBody": "Operadores como &&, ||, | y redirecciones (> >> <) funcionan como en la terminal — toda la cadena se pasa al shell vía -c/-Command/C.",
+      "outputTitle": "Salida",
+      "outputBody": "stdout y stderr aparecen en la pestaña «Historial» de Ajustes cuando está habilitado en «Sistema». Sin captura, los scripts se ejecutan en modo fire-and-forget (no visibles).",
+      "securityTitle": "Seguridad",
+      "securityBody": "Los scripts no confiables requieren confirmación en la primera ejecución. El interruptor «Permitir scripts» por perfil bloquea toda ejecución de scripts independientemente de la confianza.",
+      "examplesTitle": "Ejemplos",
+      "close": "Cerrar"
+    },
+    "tree": {
+      "groupBadge": "Grupo",
+      "childCount_one": "{{count}} pestaña",
+      "childCount_other": "{{count}} pestañas"
+    },
+    "appPicker": {
+      "title": "Seleccionar aplicación",
+      "loading": "Cargando aplicaciones…",
+      "empty": "No se detectó ninguna aplicación. Escribe el nombre manualmente en el campo.",
+      "searchPlaceholder": "Buscar aplicación…",
+      "errorFetch": "No se pudieron listar las aplicaciones: {{reason}}",
+      "refresh": "Actualizar lista",
+      "cancel": "Cancelar"
+    }
+  },
+  "wizard": {
+    "skip": "Omitir tutorial",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "finish": "Finalizar",
+    "confirmSkipTitle": "¿Omitir el tutorial?",
+    "confirmSkipBody": "Puedes reabrirlo en cualquier momento en Ajustes → Sistema.",
+    "confirmSkipYes": "Omitir",
+    "confirmSkipNo": "Continuar tutorial",
+    "stepCounter": "Paso {{current}} de {{total}}",
+    "mediaPlaceholder": "Pronto se añadirá una demostración ilustrativa.",
+    "spawnPositionCursor": "Cursor",
+    "spawnPositionCenter": "Centro del monitor",
+    "quickModeOn": "Activado",
+    "quickModeOff": "Desactivado",
+    "openSettings": "Abrir ajustes",
+    "steps": {
+      "welcome": {
+        "title": "¡Bienvenido a DonutTabs!",
+        "body": "Este breve tutorial muestra cómo funciona la app y te ayuda a configurar tus preferencias iniciales. Puedes omitirlo en cualquier momento."
+      },
+      "tabs": {
+        "title": "Pestañas",
+        "body": "Cada pestaña del donut es una colección de cosas que se abren juntas: URLs, archivos, carpetas, apps o scripts. Usa el icono ⚙ o esta sección para crearlas."
+      },
+      "demoCreateTab": {
+        "title": "Crear una pestaña",
+        "body": "Añade URLs, archivos, carpetas, apps o scripts a una sola pestaña. Todo se abre a la vez cuando seleccionas la pestaña en el donut."
+      },
+      "demoSubdonuts": {
+        "title": "Grupos y sub-donuts",
+        "body": "Agrupa pestañas relacionadas en un grupo — al hacer clic se abre un sub-donut con las pestañas hijas. Útil para organizar contextos."
+      },
+      "demoGroupInDonut": {
+        "title": "Grupos en el donut",
+        "body": "Mira cómo aparecen los grupos en el donut: la porción recibe un marcador y, al hacer clic, el donut se transforma en un sub-donut con las pestañas hijas. Haz clic en el grupo seleccionado para volver."
+      },
+      "profiles": {
+        "title": "Perfiles",
+        "body": "Crea varios perfiles (p. ej. Trabajo, Personal, Estudios) con sus propias pestañas, atajo y tema. Cambia desde el centro del donut o desde esta pantalla de Ajustes."
+      },
+      "demoProfileSwitch": {
+        "title": "Cambiar de perfil",
+        "body": "Haz clic en el icono de perfil en el centro del donut para ver todos los perfiles en un anillo. Selecciona uno para activarlo."
+      },
+      "appearance": {
+        "title": "Apariencia",
+        "body": "Elige tema claro/oscuro/automático y personaliza colores, opacidad y radios. Cada perfil puede tener su propia apariencia."
+      },
+      "shortcut": {
+        "title": "Atajo global",
+        "body": "Pulsa el atajo global para abrir el donut en cualquier parte del sistema. Puedes cambiarlo en Ajustes → Atajo.",
+        "currentLabel": "Atajo actual:"
+      },
+      "demoQuickMode": {
+        "title": "Modo rápido (mantener y soltar)",
+        "body": "Con el modo rápido activado, el donut solo aparece mientras se mantiene el atajo. Suelta con el cursor sobre la pestaña deseada para abrirla — sin clics.",
+        "quickModeLabel": "Activar modo rápido"
+      },
+      "demoSpawnPosition": {
+        "title": "Dónde aparece el donut",
+        "body": "Elige si el donut aparece en la posición del cursor o en el centro del monitor activo. Cada estilo tiene un flujo distinto — pruébalos.",
+        "spawnPositionLabel": "Posición inicial"
+      },
+      "system": {
+        "title": "Sistema",
+        "body": "Ajusta el idioma, el inicio automático con el sistema y el permiso para ejecutar scripts en este perfil.",
+        "languageLabel": "Idioma",
+        "autostartLabel": "Iniciar con el sistema",
+        "allowScriptsLabel": "Permitir scripts en este perfil",
+        "allowScriptsWarning": "Los scripts tienen acceso total a tu máquina y se ejecutan exactamente como los configuraste. Actívalo solo si confías en lo que añadiste."
+      },
+      "demoSearchOverlay": {
+        "title": "Búsqueda rápida en el donut",
+        "body": "Pulsa el atajo de búsqueda (Ctrl+F por defecto) con el donut abierto para filtrar pestañas por nombre en una capa rápida."
+      },
+      "about": {
+        "title": "Acerca de",
+        "body": "Aquí puedes ver la versión actual y gestionar las actualizaciones automáticas. También encontrarás el enlace de GitHub del proyecto — ideal para seguir cambios y reportar errores — y la opción de apoyar el desarrollo vía Ko-fi si quieres ayudar a mantener el proyecto en marcha."
+      },
+      "done": {
+        "title": "¡Todo listo!",
+        "body": "Gracias por instalar y usar DonutTabs — ¡espero que agilice tu día a día!\nPuedes reabrir este tutorial cuando quieras en Ajustes → Sistema.\n¡Pulsa el atajo global y disfruta! 🍩"
+      }
+    }
+  }
+}

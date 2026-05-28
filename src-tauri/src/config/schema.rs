@@ -114,6 +114,12 @@ pub enum Language {
     Auto,
     PtBr,
     En,
+    Es,
+    Zh,
+    Ja,
+    Ru,
+    Fr,
+    It,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -533,6 +539,12 @@ mod tests {
         assert_eq!(serde_json::to_string(&Language::PtBr).unwrap(), "\"ptBr\"");
         assert_eq!(serde_json::to_string(&Language::En).unwrap(), "\"en\"");
         assert_eq!(serde_json::to_string(&Language::Auto).unwrap(), "\"auto\"");
+        assert_eq!(serde_json::to_string(&Language::Es).unwrap(), "\"es\"");
+        assert_eq!(serde_json::to_string(&Language::Zh).unwrap(), "\"zh\"");
+        assert_eq!(serde_json::to_string(&Language::Ja).unwrap(), "\"ja\"");
+        assert_eq!(serde_json::to_string(&Language::Ru).unwrap(), "\"ru\"");
+        assert_eq!(serde_json::to_string(&Language::Fr).unwrap(), "\"fr\"");
+        assert_eq!(serde_json::to_string(&Language::It).unwrap(), "\"it\"");
     }
 
     #[test]

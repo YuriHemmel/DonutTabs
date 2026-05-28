@@ -16,9 +16,28 @@ describe("resolveLanguage", () => {
     expect(resolveLanguage("auto" as Language, "pt-PT")).toBe("pt-BR");
   });
 
-  it("falls back to en when navigator is neither pt nor en", () => {
-    expect(resolveLanguage("auto" as Language, "es-ES")).toBe("en");
+  it("returns the resolved locale for each explicit choice", () => {
+    expect(resolveLanguage("es" as Language, "en-US")).toBe("es");
+    expect(resolveLanguage("zh" as Language, "en-US")).toBe("zh");
+    expect(resolveLanguage("ja" as Language, "en-US")).toBe("ja");
+    expect(resolveLanguage("ru" as Language, "en-US")).toBe("ru");
+    expect(resolveLanguage("fr" as Language, "en-US")).toBe("fr");
+    expect(resolveLanguage("it" as Language, "en-US")).toBe("it");
+  });
+
+  it("auto-detects the new languages by navigator prefix", () => {
+    expect(resolveLanguage("auto" as Language, "es-ES")).toBe("es");
+    expect(resolveLanguage("auto" as Language, "zh-CN")).toBe("zh");
+    expect(resolveLanguage("auto" as Language, "ja-JP")).toBe("ja");
+    expect(resolveLanguage("auto" as Language, "ru-RU")).toBe("ru");
+    expect(resolveLanguage("auto" as Language, "fr-FR")).toBe("fr");
+    expect(resolveLanguage("auto" as Language, "it-IT")).toBe("it");
+    expect(resolveLanguage("auto" as Language, "en-GB")).toBe("en");
+  });
+
+  it("falls back to en when navigator language is unsupported", () => {
     expect(resolveLanguage("auto" as Language, "de-DE")).toBe("en");
+    expect(resolveLanguage("auto" as Language, "ko-KR")).toBe("en");
   });
 
   it("falls back to en when navigator is undefined", () => {
@@ -46,5 +65,10 @@ describe("createI18n", () => {
     });
     expect(typeof result).toBe("string");
     expect((result as string).length).toBeGreaterThan(0);
+  });
+
+  it("translates a key in a newly added locale (es)", async () => {
+    const i18n = await createI18n("es");
+    expect(i18n.t("donut.toastDismiss")).toBe("Cerrar");
   });
 });
