@@ -50,6 +50,30 @@ describe("SystemSection", () => {
     expect(props.onLanguageChange).toHaveBeenCalledWith("ptBr");
   });
 
+  it("Issue #90 — renders all nine language options", async () => {
+    await renderSection();
+    const select = screen.getByLabelText(/idioma/i) as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual([
+      "auto",
+      "ptBr",
+      "en",
+      "es",
+      "zh",
+      "ja",
+      "ru",
+      "fr",
+      "it",
+    ]);
+  });
+
+  it("Issue #90 — calls onLanguageChange when a newly added language is selected", async () => {
+    const user = userEvent.setup();
+    const { props } = await renderSection({ language: "auto" });
+    await user.selectOptions(screen.getByLabelText(/idioma/i), "ja");
+    expect(props.onLanguageChange).toHaveBeenCalledWith("ja");
+  });
+
   it("autostart checkbox reflects the current value", async () => {
     await renderSection({ autostart: true });
     const cb = screen.getByTestId("autostart-toggle");

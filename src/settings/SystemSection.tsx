@@ -98,6 +98,12 @@ export const SystemSection: React.FC<SystemSectionProps> = ({
             <option value="auto">{t("settings.appearance.languageAuto")}</option>
             <option value="ptBr">{t("settings.appearance.languagePtBr")}</option>
             <option value="en">{t("settings.appearance.languageEn")}</option>
+            <option value="es">{t("settings.appearance.languageEs")}</option>
+            <option value="zh">{t("settings.appearance.languageZh")}</option>
+            <option value="ja">{t("settings.appearance.languageJa")}</option>
+            <option value="ru">{t("settings.appearance.languageRu")}</option>
+            <option value="fr">{t("settings.appearance.languageFr")}</option>
+            <option value="it">{t("settings.appearance.languageIt")}</option>
           </select>
         </label>
 
