@@ -1,13 +1,13 @@
 // Vite resolve esses imports pra URLs finais (com hash em build de produção)
 // e inclui os arquivos no bundle automaticamente. Trocar o asset = trocar o
 // import.
-import demoCreateTab from "../assets/wizard/demoCreateTab.webp";
+import demoCreateTab from "../assets/wizard/demoCreateTab.mp4";
 import demoSubdonuts from "../assets/wizard/demoSubdonuts.mp4";
-import demoGroupInDonut from "../assets/wizard/demoGroupInDonut.webp";
-import demoProfileSwitch from "../assets/wizard/demoProfileSwitch.webp";
-import demoSearchOverlay from "../assets/wizard/demoSearchOverlay.webp";
+import demoGroupInDonut from "../assets/wizard/demoGroupInDonut.mp4";
+import demoProfileSwitch from "../assets/wizard/demoProfileSwitch.mp4";
+import demoSearchOverlay from "../assets/wizard/demoSearchOverlay.mp4";
 import demoQuickMode from "../assets/wizard/demoQuickMode.mp4";
-import demoSpawnPositionCursor from "../assets/wizard/demoSpawnPosition.webp";
+import demoSpawnPositionCursor from "../assets/wizard/demoSpawnPosition.mp4";
 import demoSpawnPositionCenter from "../assets/wizard/demoSpawnPosition2.mp4";
 
 export interface WizardMediaEntry {
