@@ -3,9 +3,9 @@ import type { Profile } from "../core/types/Profile";
 import { Slice } from "./Slice";
 import { IconRenderer } from "./IconRenderer";
 import {
-  OUTER_SLICE_ANGULAR_GAP_RAD,
+  OUTER_SLICE_GAP_PX,
   sliceAngleRange,
-  slicePaintRange,
+  slicePaintAngles,
 } from "./geometry";
 import { useSliceHighlight } from "./useSliceHighlight";
 
@@ -19,9 +19,9 @@ export interface ProfileSwitcherProps {
   onSelect: (profileId: string) => void;
   /** Click na fatia "+" — cria novo perfil. */
   onCreate: () => void;
-  /** Issue #58 — paridade com o modo "tabs". Quando `true` (default),
-   *  slices ganham gap angular cosmético via `slicePaintRange`. Hit-testing
-   *  permanece sobre o setor completo via `useSliceHighlight`. */
+  /** Issue #58 / #89 — paridade com o modo "tabs". Quando `true` (default),
+   *  slices ganham gap perpendicular constante via `slicePaintAngles`.
+   *  Hit-testing permanece sobre o setor completo via `useSliceHighlight`. */
   sliceGapEnabled?: boolean;
 }
 
@@ -47,7 +47,7 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
 }) => {
   const total = profiles.length + 1;
   const plusIndex = profiles.length;
-  const gap = sliceGapEnabled ? OUTER_SLICE_ANGULAR_GAP_RAD : 0;
+  const gapPx = sliceGapEnabled ? OUTER_SLICE_GAP_PX : 0;
 
   const { highlighted, onMouseMove, onMouseLeave } = useSliceHighlight({
     center: { x: cx, y: cy },
@@ -63,7 +63,7 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
       onMouseLeave={onMouseLeave}
     >
       {profiles.map((profile, i) => {
-        const { start, end } = slicePaintRange(i, total, gap);
+        const angles = slicePaintAngles(i, total, gapPx, innerR, outerR);
         const full = sliceAngleRange(i, total);
         const label = profile.name;
         const fallbackInitial =
@@ -76,8 +76,12 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
               cy={cy}
               innerR={innerR}
               outerR={outerR}
-              startAngle={start}
-              endAngle={end}
+              startAngle={angles.outerStart}
+              endAngle={angles.outerEnd}
+              innerStartAngle={angles.innerStart}
+              innerEndAngle={angles.innerEnd}
+              outerStartAngle={angles.outerStart}
+              outerEndAngle={angles.outerEnd}
               label={label}
               iconNode={
                 <IconRenderer
@@ -101,7 +105,7 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
         );
       })}
       {(() => {
-        const { start, end } = slicePaintRange(plusIndex, total, gap);
+        const angles = slicePaintAngles(plusIndex, total, gapPx, innerR, outerR);
         return (
           <Slice
             key={PLUS_KEY}
@@ -109,8 +113,12 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({
             cy={cy}
             innerR={innerR}
             outerR={outerR}
-            startAngle={start}
-            endAngle={end}
+            startAngle={angles.outerStart}
+            endAngle={angles.outerEnd}
+            innerStartAngle={angles.innerStart}
+            innerEndAngle={angles.innerEnd}
+            outerStartAngle={angles.outerStart}
+            outerEndAngle={angles.outerEnd}
             icon="+"
             highlighted={highlighted === plusIndex}
             onClick={onCreate}

@@ -146,7 +146,7 @@ describe("ProfileSwitcher", () => {
     expect(texts).toContain("?");
   });
 
-  it("applies angular gap between slices when sliceGapEnabled=true", () => {
+  it("applies perpendicular gap between slices when sliceGapEnabled=true", () => {
     const profiles = [profile("a", "A"), profile("b", "B")];
     const { container } = renderInSvg(
       <ProfileSwitcher
