@@ -69,4 +69,16 @@ describe("searchTabs", () => {
     const tabs = [tab("a", { name: null, icon: "🚀" })];
     expect(searchTabs(tabs, "🚀")).toEqual([tabs[0]]);
   });
+
+  // searchTabs é per-level: o overlay passa `children` de um group drilado
+  // como input. Garante que o helper não pressupõe que esteja recebendo a
+  // lista raiz (sem dependência de profundidade ou parent).
+  it("filters a list of children just like a root list", () => {
+    const children = [
+      tab("c1", { name: "Rust" }),
+      tab("c2", { name: "React" }),
+      tab("c3", { name: "TypeScript" }),
+    ];
+    expect(searchTabs(children, "react").map((t) => t.id)).toEqual(["c2"]);
+  });
 });

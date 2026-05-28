@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Tab } from "../core/types/Tab";
 import { searchTabs } from "./searchTabs";
 import { IconRenderer } from "./IconRenderer";
-import { tabInitial } from "./tabUtils";
+import { isGroup, tabInitial } from "./tabUtils";
 
 export interface TabSearchOverlayProps {
   tabs: Tab[];
@@ -19,20 +19,30 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [path, setPath] = useState<Tab[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const filtered = useMemo(() => searchTabs(tabs, query), [tabs, query]);
+  const currentTabs = useMemo<Tab[]>(() => {
+    if (path.length === 0) return tabs;
+    const last = path[path.length - 1];
+    return last.children ?? [];
+  }, [tabs, path]);
+
+  const filtered = useMemo(
+    () => searchTabs(currentTabs, query),
+    [currentTabs, query],
+  );
 
   // Reset selection when results change.
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query]);
+  }, [query, path]);
 
-  // Auto-focus the input on mount.
+  // Auto-focus the input on mount and on level change.
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [path]);
 
   // Keep selected row visible inside the scroll container. JSDOM doesn't
   // implement `scrollIntoView`, so guard the call to avoid breaking tests.
@@ -46,11 +56,37 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
     }
   }, [selectedIndex, filtered.length]);
 
+  const drillInto = (group: Tab) => {
+    setPath((p) => [...p, group]);
+    setQuery("");
+    setSelectedIndex(0);
+  };
+
+  const handlePick = (tab: Tab) => {
+    if (isGroup(tab)) {
+      drillInto(tab);
+    } else {
+      onSelect(tab.id);
+    }
+  };
+
+  const jumpTo = (index: number) => {
+    setPath((p) => (index < 0 ? [] : p.slice(0, index + 1)));
+    setQuery("");
+    setSelectedIndex(0);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
-      onClose();
+      if (path.length > 0) {
+        setPath((p) => p.slice(0, -1));
+        setQuery("");
+        setSelectedIndex(0);
+      } else {
+        onClose();
+      }
       return;
     }
     if (e.key === "ArrowDown") {
@@ -68,7 +104,7 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
     if (e.key === "Enter") {
       e.preventDefault();
       const tab = filtered[selectedIndex];
-      if (tab) onSelect(tab.id);
+      if (tab) handlePick(tab);
     }
   };
 
@@ -94,6 +130,30 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
     boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
     fontSize: 13,
   };
+  const breadcrumbStyle: React.CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 4,
+    color: "#9aa6bf",
+    fontSize: 12,
+  };
+  const crumbButtonStyle: React.CSSProperties = {
+    background: "transparent",
+    border: "none",
+    color: "#9aa6bf",
+    cursor: "pointer",
+    padding: "2px 4px",
+    borderRadius: 3,
+    font: "inherit",
+  };
+  const crumbCurrentStyle: React.CSSProperties = {
+    color: "#eaeaea",
+    padding: "2px 4px",
+  };
+  const crumbSepStyle: React.CSSProperties = {
+    color: "#5a6582",
+  };
 
   return (
     <div
@@ -108,6 +168,46 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
       aria-label={t("donut.search.placeholder")}
     >
       <div style={dialogStyle}>
+        {path.length > 0 && (
+          <div data-testid="search-breadcrumb" style={breadcrumbStyle}>
+            <button
+              type="button"
+              data-testid="search-breadcrumb-root"
+              style={crumbButtonStyle}
+              onClick={() => jumpTo(-1)}
+            >
+              {t("donut.search.breadcrumbRoot")}
+            </button>
+            {path.map((group, i) => {
+              const isLast = i === path.length - 1;
+              const label = group.name ?? group.icon ?? group.id;
+              return (
+                <React.Fragment key={group.id}>
+                  <span style={crumbSepStyle} aria-hidden>
+                    /
+                  </span>
+                  {isLast ? (
+                    <span
+                      data-testid={`search-breadcrumb-${i}`}
+                      style={crumbCurrentStyle}
+                    >
+                      {label}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      data-testid={`search-breadcrumb-${i}`}
+                      style={crumbButtonStyle}
+                      onClick={() => jumpTo(i)}
+                    >
+                      {label}
+                    </button>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
         <input
           ref={inputRef}
           data-testid="search-input"
@@ -147,6 +247,7 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
           ) : (
             filtered.map((tab, i) => {
               const isSelected = i === selectedIndex;
+              const tabIsGroup = isGroup(tab);
               return (
                 <div
                   key={tab.id}
@@ -154,7 +255,7 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
                   aria-selected={isSelected}
                   data-testid={`search-row-${i}`}
                   onMouseEnter={() => setSelectedIndex(i)}
-                  onClick={() => onSelect(tab.id)}
+                  onClick={() => handlePick(tab)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -174,6 +275,16 @@ export const TabSearchOverlay: React.FC<TabSearchOverlayProps> = ({
                     />
                   </svg>
                   <span style={{ flex: 1 }}>{tab.name ?? tab.icon ?? tab.id}</span>
+                  {tabIsGroup && (
+                    <span
+                      data-testid={`search-row-group-badge-${i}`}
+                      title={t("donut.search.groupBadgeTitle")}
+                      aria-label={t("donut.search.groupBadgeTitle")}
+                      style={{ color: "#9aa6bf", fontSize: 14 }}
+                    >
+                      ▶
+                    </span>
+                  )}
                 </div>
               );
             })
