@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Section } from "./SectionTabs";
 import type { Language } from "../core/types/Language";
 import type { SpawnPosition } from "../core/types/SpawnPosition";
+import { WIZARD_MEDIA, isVideoSrc } from "./wizardMedia";
 
 type SectionStepId =
   | "welcome"
@@ -125,6 +126,45 @@ const Switch: React.FC<SwitchProps> = ({
   </span>
 );
 
+/** Renderiza mídia ilustrativa: `<video>` autoPlay/muted/loop pra MP4
+ *  (smaller que GIF animado), `<img>` pra WebP/JPG estático. `flex: 1`
+ *  pra dividir o espaço quando há mídia secundária ao lado. */
+const WizardMedia: React.FC<{ src: string }> = ({ src }) => {
+  if (isVideoSrc(src)) {
+    return (
+      <video
+        src={src}
+        autoPlay
+        muted
+        loop
+        playsInline
+        style={{
+          flex: 1,
+          minWidth: 0,
+          maxHeight: 360,
+          objectFit: "contain",
+          display: "block",
+          background: "#0e1422",
+        }}
+      />
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      style={{
+        flex: 1,
+        minWidth: 0,
+        maxHeight: 360,
+        objectFit: "contain",
+        display: "block",
+        background: "#0e1422",
+      }}
+    />
+  );
+};
+
 export interface WizardProps {
   open: boolean;
   onClose: () => void;
@@ -217,15 +257,9 @@ export const Wizard: React.FC<WizardProps> = ({
     }
   };
 
-  // Mídia opcional — se o locale tiver `wizard.steps.<id>.media`, renderiza
-  // como <img>; caso contrário, slot fica com placeholder textual em
-  // demo steps. `defaultValue=""` faz keys ausentes voltarem como string
-  // vazia (sem espalhar a key crua na UI).
-  const mediaKey = `wizard.steps.${step.id}.media`;
-  const mediaSrc = useMemo(() => {
-    const v = t(mediaKey, { defaultValue: "" });
-    return typeof v === "string" && v.length > 0 ? v : null;
-  }, [mediaKey, t]);
+  // Mídia ilustrativa: lookup em `WIZARD_MEDIA[stepId]`. Steps sem entry
+  // caem no placeholder textual (mídia ainda não disponibilizada).
+  const mediaEntry = step.kind === "demo" ? WIZARD_MEDIA[step.id] : undefined;
 
   if (!open) return null;
 
@@ -307,17 +341,19 @@ export const Wizard: React.FC<WizardProps> = ({
                 borderRadius: 6,
                 minHeight: 200,
                 display: "flex",
-                alignItems: "center",
+                alignItems: "stretch",
                 justifyContent: "center",
                 overflow: "hidden",
+                gap: mediaEntry?.secondary ? 6 : 0,
               }}
             >
-              {mediaSrc ? (
-                <img
-                  src={mediaSrc}
-                  alt=""
-                  style={{ maxWidth: "100%", maxHeight: 360, display: "block" }}
-                />
+              {mediaEntry ? (
+                <>
+                  <WizardMedia src={mediaEntry.primary} />
+                  {mediaEntry.secondary && (
+                    <WizardMedia src={mediaEntry.secondary} />
+                  )}
+                </>
               ) : (
                 <span style={{ color: "#6c7a99", fontSize: 12, padding: 16 }}>
                   {t("wizard.mediaPlaceholder")}
