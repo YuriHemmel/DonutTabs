@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "タブを検索…",
       "empty": "一致するタブがありません",
-      "shortcutHint": "↑↓ 移動 · Enter 開く · Esc 閉じる"
+      "shortcutHint": "↑↓ 移動 · Enter 開く · Esc 閉じる/戻る",
+      "breadcrumbRoot": "ルート",
+      "groupBadgeTitle": "グループを開く"
     },
     "scriptModal": {
       "title": "スクリプトを実行しますか？",

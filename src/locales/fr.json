@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "Rechercher un onglet…",
       "empty": "Aucun onglet correspondant",
-      "shortcutHint": "↑↓ naviguer · Entrée ouvrir · Échap fermer"
+      "shortcutHint": "↑↓ naviguer · Entrée ouvrir · Échap fermer/retour",
+      "breadcrumbRoot": "Racine",
+      "groupBadgeTitle": "Ouvrir le groupe"
     },
     "scriptModal": {
       "title": "Exécuter le script ?",

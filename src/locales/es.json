@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "Buscar pestaña…",
       "empty": "No hay pestañas coincidentes",
-      "shortcutHint": "↑↓ navegar · Enter abrir · Esc cerrar"
+      "shortcutHint": "↑↓ navegar · Enter abrir · Esc cerrar/volver",
+      "breadcrumbRoot": "Raíz",
+      "groupBadgeTitle": "Abrir grupo"
     },
     "scriptModal": {
       "title": "¿Ejecutar script?",

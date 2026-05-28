@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "搜索标签页…",
       "empty": "没有匹配的标签页",
-      "shortcutHint": "↑↓ 导航 · Enter 打开 · Esc 关闭"
+      "shortcutHint": "↑↓ 导航 · Enter 打开 · Esc 关闭/返回",
+      "breadcrumbRoot": "根",
+      "groupBadgeTitle": "打开分组"
     },
     "scriptModal": {
       "title": "运行脚本？",

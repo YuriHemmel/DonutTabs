@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "Поиск вкладки…",
       "empty": "Подходящих вкладок нет",
-      "shortcutHint": "↑↓ навигация · Enter открыть · Esc закрыть"
+      "shortcutHint": "↑↓ навигация · Enter открыть · Esc закрыть/назад",
+      "breadcrumbRoot": "Корень",
+      "groupBadgeTitle": "Открыть группу"
     },
     "scriptModal": {
       "title": "Запустить скрипт?",

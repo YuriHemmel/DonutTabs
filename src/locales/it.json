@@ -92,7 +92,9 @@
     "search": {
       "placeholder": "Cerca scheda…",
       "empty": "Nessuna scheda corrispondente",
-      "shortcutHint": "↑↓ naviga · Invio apri · Esc chiudi"
+      "shortcutHint": "↑↓ naviga · Invio apri · Esc chiudi/indietro",
+      "breadcrumbRoot": "Radice",
+      "groupBadgeTitle": "Apri gruppo"
     },
     "scriptModal": {
       "title": "Eseguire lo script?",
