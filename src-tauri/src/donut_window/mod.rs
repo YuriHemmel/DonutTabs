@@ -16,17 +16,20 @@ const DONUT_LABEL: &str = "donut";
 /// resize+reposition mid-flight, gerando flick visível ("donut renderiza
 /// em outro lugar antes do correto"). Com tamanho fixo, o SVG do frontend
 /// continua adaptando seu `width/height` por perfil, mas centralizado
-/// dentro de uma janela transparente sempre 560×560 — sem resize entre
+/// dentro de uma janela transparente sempre 580×580 — sem resize entre
 /// perfis, sem flick. Custo: área transparente extra pra perfis sem
 /// grupos. Imperceptível: window é transparent + skip-taskbar + sem
 /// shadow, e click na área extra cai no backdrop e fecha o donut (mesma
 /// UX do click outside).
 ///
-/// Composição: `420` (base, 1 ring) + `140` (incremento pra ring 2).
-/// Issue #91 — `OUTER_RING_BAND_WIDTH` subiu pra 72 no frontend, mas o
-/// ring externo ainda cabe dentro de 560/2 = 280, então a janela
-/// permanece 560.
-const DONUT_WINDOW_SIZE: f64 = 560.0;
+/// Composição: `420` (base, 1 ring) + `160` (incremento pra ring 2).
+/// Issue #91 — `OUTER_RING_BAND_WIDTH` subiu pra 72 no frontend. O tamanho
+/// cobre o **pior caso**, não só os ratios default: com o override
+/// `outerRatio = 0.50` (máximo do validate) o ring externo de depth-2 vai
+/// até `420*0.50 + RING_GAP(4) + 72 = 286` do centro, então a janela
+/// cresceu 560→580 (meia = 290) pra não clipar. Com 560 (meia = 280)
+/// clipava 6px nesse override; default (0.46) sobra ~21px.
+const DONUT_WINDOW_SIZE: f64 = 580.0;
 
 pub fn show<R: Runtime>(app: &AppHandle<R>) -> AppResult<()> {
     let size = DONUT_WINDOW_SIZE;
@@ -225,11 +228,11 @@ mod tests {
 
     /// Issue #39 — sanity-check de paridade com o frontend.
     /// `src/donut/donutSize.ts` calcula o mesmo valor pelo helper
-    /// `donutSizeForRings(DONUT_MAX_RINGS)` (= 420 + 140 * 1). Se essa
+    /// `donutSizeForRings(DONUT_MAX_RINGS)` (= 420 + 160 * 1). Se essa
     /// constante mudar de qualquer lado, o teste falha aqui pra forçar
     /// alinhamento.
     #[test]
     fn donut_window_size_matches_frontend_max() {
-        assert_eq!(DONUT_WINDOW_SIZE, 560.0);
+        assert_eq!(DONUT_WINDOW_SIZE, 580.0);
     }
 }
