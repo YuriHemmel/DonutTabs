@@ -340,13 +340,18 @@ export const SettingsApp: React.FC = () => {
     setSelection({ mode: "empty" });
   };
 
-  // Issue #109 — destinos válidos pra "Mover para" no editor. Sempre inclui a
-  // raiz + cada grupo da raiz, exceto a localização atual da aba. Um grupo só
-  // pode ir pra raiz (não cabe dentro de outro grupo, MAX_TAB_DEPTH = 2).
+  // Issue #109 — localização atual da aba (`"root"` ou id do grupo-pai). Vira a
+  // opção selecionada por padrão no dropdown "Mover Aba".
+  const currentMoveValue = currentParentPath?.[0] ?? "root";
+
+  // Issue #109 — destinos válidos pra "Mover Aba" no editor. Inclui a raiz +
+  // cada grupo da raiz, **incluindo** a localização atual (selecionada por
+  // padrão pra o usuário ver onde a aba está). Um grupo só pode ir pra raiz
+  // (não cabe dentro de outro grupo, MAX_TAB_DEPTH = 2). O TabEditor esconde o
+  // controle quando só há a localização atual (nada pra onde mover).
   const moveDestinations: { value: string; label: string }[] =
     selection.mode === "edit" && selectedTab
       ? (() => {
-          const currentKey = currentParentPath?.[0] ?? "root";
           const isGroupTab =
             selectedTab.kind === "group" ||
             (selectedTab.children?.length ?? 0) > 0;
@@ -363,7 +368,7 @@ export const SettingsApp: React.FC = () => {
               }
             }
           }
-          return all.filter((d) => d.value !== currentKey);
+          return all;
         })()
       : [];
 
@@ -499,6 +504,7 @@ export const SettingsApp: React.FC = () => {
               onSelectChild={handleSelectChild}
               onAddChild={handleAddChild}
               moveDestinations={moveDestinations}
+              currentMoveValue={currentMoveValue}
               onMove={handleMove}
             />
           ) : (

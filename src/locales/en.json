@@ -362,8 +362,9 @@
       "addChildGroup": "+ Add subgroup",
       "maxDepthHint": "Maximum depth reached — cannot add more subgroups here.",
       "groupNewHint": "Save the group first. Then reopen it from the list or click the donut's \"+\" to add tabs.",
-      "moveToLabel": "Move to",
+      "moveToLabel": "Move Tab",
       "moveToRoot": "Root (main menu)",
+      "moveSuccess": "Tab moved to {{dest}}",
       "focusIfOpen": {
         "label": "Focus if already open",
         "hint": "Apps and tabs already open get focused; others open normally.",

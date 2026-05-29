@@ -362,8 +362,9 @@
       "addChildGroup": "+ Adicionar subgrupo",
       "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui.",
       "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas.",
-      "moveToLabel": "Mover para",
+      "moveToLabel": "Mover Aba",
       "moveToRoot": "Raiz (menu principal)",
+      "moveSuccess": "Aba movida para {{dest}}",
       "focusIfOpen": {
         "label": "Focar se já estiver aberto",
         "hint": "Apps e abas já abertos ganham foco; os demais abrem normalmente.",

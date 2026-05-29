@@ -51,11 +51,14 @@ export interface TabEditorProps {
    *  (mode=new + currentDepth > 1). Renderizado como cabeçalho (ícone + nome)
    *  acima do título "Nova aba"; `null` no root. */
   parentGroup?: { name: string | null; icon: string | null } | null;
-  /** Issue #109 — destinos válidos pra "Mover para" (mode=edit). Cada item:
-   *  `value` = `"root"` ou o id do grupo de destino. A localização atual da
-   *  aba já vem **excluída** da lista pelo SettingsApp; lista vazia esconde o
-   *  controle. */
+  /** Issue #109 — destinos válidos pra "Mover Aba" (mode=edit). Cada item:
+   *  `value` = `"root"` ou o id do grupo. A lista **inclui** a localização
+   *  atual da aba (renderizada selecionada por padrão); o controle só aparece
+   *  quando há mais de um destino (há pra onde mover). */
   moveDestinations?: { value: string; label: string }[];
+  /** Issue #109 — chave da localização atual da aba (`"root"` ou id do grupo).
+   *  Vira a opção selecionada por padrão no dropdown e é tratada como no-op. */
+  currentMoveValue?: string;
   /** Issue #109 — dispara o move pro destino escolhido (`"root"` → `[]`). */
   onMove?: (toParentPath: string[]) => Promise<void>;
 }
@@ -208,6 +211,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   initialKind = "leaf",
   parentGroup = null,
   moveDestinations = [],
+  currentMoveValue = "root",
   onMove,
 }) => {
   const { t } = useTranslation();
@@ -223,12 +227,27 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Confirmação transitória de "Mover Aba" (Issue #109).
+  const [moveSuccess, setMoveSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     setState(fromTab(initial, effectiveInitialKind));
     setValidation(null);
     setServerError(null);
   }, [initial, mode, effectiveInitialKind]);
+
+  // Limpa a confirmação ao trocar de aba editada (id muda). Não dispara quando
+  // a mesma aba apenas se re-hidrata após o próprio move (id inalterado).
+  useEffect(() => {
+    setMoveSuccess(null);
+  }, [initial?.id]);
+
+  // Auto-dismiss da confirmação após alguns segundos.
+  useEffect(() => {
+    if (!moveSuccess) return;
+    const timer = setTimeout(() => setMoveSuccess(null), 3000);
+    return () => clearTimeout(timer);
+  }, [moveSuccess]);
 
   const submit = async () => {
     setServerError(null);
@@ -320,12 +339,17 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   };
 
   const handleMoveSelect = async (value: string) => {
-    if (!onMove || value === "") return;
+    // Selecionar a própria localização atual é no-op.
+    if (!onMove || value === "" || value === currentMoveValue) return;
     const toParentPath = value === "root" ? [] : [value];
+    const destLabel =
+      moveDestinations.find((d) => d.value === value)?.label ?? value;
     setServerError(null);
+    setMoveSuccess(null);
     setSaving(true);
     try {
       await onMove(toParentPath);
+      setMoveSuccess(t("settings.editor.moveSuccess", { dest: destLabel }));
     } catch (err) {
       setServerError(translateAppError(err, t));
     } finally {
@@ -333,8 +357,9 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     }
   };
 
+  // O controle só faz sentido quando há um destino além da localização atual.
   const showMoveControl =
-    mode === "edit" && !!onMove && moveDestinations.length > 0;
+    mode === "edit" && !!onMove && moveDestinations.length > 1;
 
   const title =
     mode === "new" ? t("settings.editor.newTabTitle") : state.name || state.icon || "";
@@ -427,28 +452,45 @@ export const TabEditor: React.FC<TabEditorProps> = ({
       />
 
       {showMoveControl && (
-        <label
-          data-testid="tab-move-to"
-          style={{ display: "flex", flexDirection: "column", gap: 4 }}
-        >
-          <span>{t("settings.editor.moveToLabel")}</span>
-          <select
-            data-testid="tab-move-to-select"
-            value=""
-            disabled={saving}
-            onChange={(e) => {
-              void handleMoveSelect(e.target.value);
-            }}
-            style={inputStyle}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label
+            data-testid="tab-move-to"
+            style={{ display: "flex", flexDirection: "column", gap: 4 }}
           >
-            <option value="">{t("settings.editor.moveToLabel")}…</option>
-            {moveDestinations.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span>{t("settings.editor.moveToLabel")}</span>
+            <select
+              data-testid="tab-move-to-select"
+              value={currentMoveValue}
+              disabled={saving}
+              onChange={(e) => {
+                void handleMoveSelect(e.target.value);
+              }}
+              style={{ ...inputStyle, maxWidth: 320, alignSelf: "flex-start", width: "100%" }}
+            >
+              {moveDestinations.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {moveSuccess && (
+            <span
+              data-testid="tab-move-success"
+              role="status"
+              aria-live="polite"
+              style={{
+                color: "var(--success-fg)",
+                fontSize: "0.9em",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              ✓ {moveSuccess}
+            </span>
+          )}
+        </div>
       )}
 
       {state.kind === "leaf" && (

@@ -362,8 +362,9 @@
       "addChildGroup": "+ Añadir subgrupo",
       "maxDepthHint": "Profundidad máxima alcanzada — no se pueden añadir más subgrupos aquí.",
       "groupNewHint": "Guarda primero el grupo. Luego reábrelo desde la lista o haz clic en el «+» del donut para añadir pestañas.",
-      "moveToLabel": "Mover a",
+      "moveToLabel": "Mover pestaña",
       "moveToRoot": "Raíz (menú principal)",
+      "moveSuccess": "Pestaña movida a {{dest}}",
       "focusIfOpen": {
         "label": "Enfocar si ya está abierto",
         "hint": "Las apps y pestañas ya abiertas se enfocan; las demás se abren normalmente.",

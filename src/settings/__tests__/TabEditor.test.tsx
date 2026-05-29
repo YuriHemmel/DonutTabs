@@ -622,7 +622,7 @@ describe("TabEditor", () => {
     expect(screen.queryByTestId("tab-focus-firefox-warning")).toBeNull();
   });
 
-  // ---------- Issue #109: "Mover para" control ----------
+  // ---------- Issue #109: "Mover Aba" control ----------
 
   it("renders the move-to select with the given destinations (mode=edit)", async () => {
     await renderEditor({
@@ -632,12 +632,28 @@ describe("TabEditor", () => {
         { value: "root", label: "Raiz" },
         { value: "g1", label: "Grupo 1" },
       ],
+      currentMoveValue: "root",
       onMove: vi.fn().mockResolvedValue(undefined),
     });
     const select = screen.getByTestId("tab-move-to-select") as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
-    // Placeholder vazio + os dois destinos.
-    expect(optionValues).toEqual(["", "root", "g1"]);
+    // Sem placeholder vazio — só os destinos reais.
+    expect(optionValues).toEqual(["root", "g1"]);
+  });
+
+  it("preselects the tab's current location", async () => {
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      currentMoveValue: "g1",
+      onMove: vi.fn().mockResolvedValue(undefined),
+    });
+    const select = screen.getByTestId("tab-move-to-select") as HTMLSelectElement;
+    expect(select.value).toBe("g1");
   });
 
   it("calls onMove with the parsed path when a destination is chosen", async () => {
@@ -645,7 +661,11 @@ describe("TabEditor", () => {
     await renderEditor({
       mode: "edit",
       initial: existing,
-      moveDestinations: [{ value: "g1", label: "Grupo 1" }],
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      currentMoveValue: "root",
       onMove,
     });
     fireEvent.change(screen.getByTestId("tab-move-to-select"), {
@@ -659,7 +679,11 @@ describe("TabEditor", () => {
     await renderEditor({
       mode: "edit",
       initial: existing,
-      moveDestinations: [{ value: "root", label: "Raiz" }],
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      currentMoveValue: "g1",
       onMove,
     });
     fireEvent.change(screen.getByTestId("tab-move-to-select"), {
@@ -668,11 +692,71 @@ describe("TabEditor", () => {
     expect(onMove).toHaveBeenCalledWith([]);
   });
 
-  it("hides the move-to control when there are no destinations", async () => {
+  it("does not call onMove when the current location is re-selected", async () => {
+    const onMove = vi.fn().mockResolvedValue(undefined);
     await renderEditor({
       mode: "edit",
       initial: existing,
-      moveDestinations: [],
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      currentMoveValue: "root",
+      onMove,
+    });
+    fireEvent.change(screen.getByTestId("tab-move-to-select"), {
+      target: { value: "root" },
+    });
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it("shows a success confirmation after a successful move", async () => {
+    const onMove = vi.fn().mockResolvedValue(undefined);
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      currentMoveValue: "root",
+      onMove,
+    });
+    expect(screen.queryByTestId("tab-move-success")).toBeNull();
+    fireEvent.change(screen.getByTestId("tab-move-to-select"), {
+      target: { value: "g1" },
+    });
+    const success = await screen.findByTestId("tab-move-success");
+    expect(success.textContent).toContain("Grupo 1");
+  });
+
+  it("does not show a confirmation when the move fails", async () => {
+    const onMove = vi.fn().mockRejectedValue(new Error("boom"));
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      currentMoveValue: "root",
+      onMove,
+    });
+    fireEvent.change(screen.getByTestId("tab-move-to-select"), {
+      target: { value: "g1" },
+    });
+    // Deixa o microtask da rejeição assentar.
+    await Promise.resolve();
+    expect(screen.queryByTestId("tab-move-success")).toBeNull();
+  });
+
+  it("hides the move-to control when there is nowhere else to move", async () => {
+    // Só a localização atual na lista → nada pra onde mover.
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [{ value: "root", label: "Raiz" }],
+      currentMoveValue: "root",
       onMove: vi.fn(),
     });
     expect(screen.queryByTestId("tab-move-to")).toBeNull();
@@ -682,7 +766,10 @@ describe("TabEditor", () => {
     await renderEditor({
       mode: "new",
       initial: null,
-      moveDestinations: [{ value: "g1", label: "Grupo 1" }],
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
       onMove: vi.fn(),
     });
     expect(screen.queryByTestId("tab-move-to")).toBeNull();
