@@ -9,6 +9,9 @@
 *.ps1 text eol=crlf
 
 # Binários — nunca converter
+*.exe binary
+*.msi binary
+*.dmg binary
 *.png binary
 *.jpg binary
 *.jpeg binary

@@ -122,7 +122,23 @@ A tag dispara `release.yml`. A action faz tudo:
 - Em **Releases → v0.2.0**, conferir que aparecem assets para os 3 OSes + `latest.json`.
 - Abrir `https://github.com/YuriHemmel/DonutTabs/releases/latest/download/latest.json` no browser; deve retornar JSON com `version`, `notes`, `pub_date`, `platforms.{darwin-x86_64,...}.{signature, url}`.
 
-### 5. Validar no app instalado
+### 5. Atualizar a pasta `installers/` (manual)
+
+O instalador Windows é versionado no repo para download público direto (issue #110). Após o Release publicar os assets, atualize a pasta apontando para a nova versão:
+
+```bash
+# Remove o .exe antigo e baixa o novo do Release recém-publicado
+rm installers/DonutTabs_*_x64-setup.exe
+gh release download v0.2.0 --pattern "DonutTabs_*_x64-setup.exe" --dir installers
+
+# (opcional) confira o SHA256 contra o digest do asset
+shasum -a 256 installers/DonutTabs_*_x64-setup.exe
+gh release view v0.2.0 --json assets -q '.assets[] | select(.name | endswith("x64-setup.exe")) | .digest'
+```
+
+Commite a troca e ajuste a versão referenciada na tabela de instalação do `README.md` se necessário. Apenas o `.exe` Windows entra no repo — os bundles de macOS/Linux continuam só nos Releases.
+
+### 6. Validar no app instalado
 
 Abrir uma máquina rodando a versão anterior (ex.: `v0.1.0`):
 
