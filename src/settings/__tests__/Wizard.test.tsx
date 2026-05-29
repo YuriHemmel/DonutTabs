@@ -118,6 +118,20 @@ describe("Wizard", () => {
       await user.click(screen.getByTestId("wizard-next"));
     }
     expect(screen.getByTestId("wizard-card-system")).toBeTruthy();
+    // Issue #106: o seletor do tutorial deve oferecer os 9 idiomas (não só auto/ptBr/en).
+    const languageSelect = screen.getByTestId("wizard-language") as HTMLSelectElement;
+    const optionValues = Array.from(languageSelect.options).map((o) => o.value);
+    expect(optionValues).toEqual([
+      "auto",
+      "ptBr",
+      "en",
+      "es",
+      "zh",
+      "ja",
+      "ru",
+      "fr",
+      "it",
+    ]);
     await user.click(screen.getByTestId("wizard-autostart"));
     expect(onAutostartChange).toHaveBeenCalledWith(true);
     await user.click(screen.getByTestId("wizard-allow-scripts"));

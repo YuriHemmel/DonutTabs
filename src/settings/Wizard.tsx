@@ -4,6 +4,7 @@ import type { Section } from "./SectionTabs";
 import type { Language } from "../core/types/Language";
 import type { SpawnPosition } from "../core/types/SpawnPosition";
 import { WIZARD_MEDIA, isVideoSrc } from "./wizardMedia";
+import { LANGUAGE_OPTIONS } from "./languageOptions";
 
 type SectionStepId =
   | "welcome"
@@ -472,9 +473,11 @@ export const Wizard: React.FC<WizardProps> = ({
                     font: "inherit",
                   }}
                 >
-                  <option value="auto">{t("settings.appearance.languageAuto")}</option>
-                  <option value="ptBr">{t("settings.appearance.languagePtBr")}</option>
-                  <option value="en">{t("settings.appearance.languageEn")}</option>
+                  {LANGUAGE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {t(opt.labelKey)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label
