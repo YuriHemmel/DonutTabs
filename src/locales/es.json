@@ -110,6 +110,7 @@
     "title": "Ajustes",
     "sections": {
       "tabs": "Pestañas",
+      "organization": "Organización",
       "profiles": "Perfiles",
       "appearance": "Apariencia",
       "shortcut": "Atajo",
@@ -391,6 +392,15 @@
       "errorFetch": "No se pudieron listar las aplicaciones: {{reason}}",
       "refresh": "Actualizar lista",
       "cancel": "Cancelar"
+    },
+    "organization": {
+      "title": "Organización de pestañas",
+      "crossRingHint": "Arrastra los segmentos para reordenarlos y moverlos entre páginas. El arrastre funciona dentro del mismo nivel (raíz o un grupo), no entre grupos distintos.",
+      "itemsPerPageLabel": "Elementos por página",
+      "itemsPerPageHint": "Se aplica a todos los perfiles",
+      "pageLabel": "Página {{n}}",
+      "groupLabel": "Grupo: {{name}}",
+      "empty": "Este perfil aún no tiene pestañas para organizar."
     }
   },
   "wizard": {

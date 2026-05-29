@@ -107,6 +107,10 @@ export const ipc = {
    *  (`cursor`) ou no centro do monitor ativo (`center`). */
   setSpawnPosition: (position: SpawnPosition) =>
     invoke<Config>("set_spawn_position", { position }),
+  /** Issue #102 — define quantas abas cabem por página do donut (4–8).
+   *  Global (`pagination.itemsPerPage`, vale pra todos os perfis). */
+  setItemsPerPage: (itemsPerPage: number) =>
+    invoke<Config>("set_items_per_page", { itemsPerPage }),
   /** `expectedCommand`: comando que o user viu no modal. Backend rejeita com
    *  `script_command_mismatch` se o item foi editado por outra janela entre
    *  o modal abrir e o user confirmar — evita autorizar comando que o user

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 export type Section =
   | "tabs"
+  | "organization"
   | "profiles"
   | "appearance"
   | "shortcut"
@@ -12,6 +13,7 @@ export type Section =
 
 const ALL_SECTIONS: Section[] = [
   "tabs",
+  "organization",
   "profiles",
   "appearance",
   "shortcut",

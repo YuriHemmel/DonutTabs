@@ -110,6 +110,7 @@
     "title": "設定",
     "sections": {
       "tabs": "タブ",
+      "organization": "整理",
       "profiles": "プロファイル",
       "appearance": "外観",
       "shortcut": "ショートカット",
@@ -391,6 +392,15 @@
       "errorFetch": "アプリケーションを一覧表示できませんでした：{{reason}}",
       "refresh": "一覧を更新",
       "cancel": "キャンセル"
+    },
+    "organization": {
+      "title": "タブの整理",
+      "crossRingHint": "スライスをドラッグして並べ替えたり、ページ間で移動できます。ドラッグは同じ階層（ルートまたはグループ）内でのみ機能し、異なるグループ間では機能しません。",
+      "itemsPerPageLabel": "ページあたりの項目数",
+      "itemsPerPageHint": "すべてのプロファイルに適用されます",
+      "pageLabel": "ページ {{n}}",
+      "groupLabel": "グループ: {{name}}",
+      "empty": "このプロファイルには整理するタブがまだありません。"
     }
   },
   "wizard": {

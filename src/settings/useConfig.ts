@@ -53,6 +53,7 @@ export interface UseConfig {
   setScriptHistoryEnabled: (enabled: boolean) => Promise<Config>;
   setSpawnPosition: (position: SpawnPosition) => Promise<Config>;
   setQuickMode: (enabled: boolean) => Promise<Config>;
+  setItemsPerPage: (itemsPerPage: number) => Promise<Config>;
 }
 
 export function useConfig(): UseConfig {
@@ -248,6 +249,12 @@ export function useConfig(): UseConfig {
     return next;
   }, []);
 
+  const setItemsPerPage = useCallback(async (itemsPerPage: number) => {
+    const next = await ipc.setItemsPerPage(itemsPerPage);
+    setConfig(next);
+    return next;
+  }, []);
+
   return {
     config,
     loadError,
@@ -272,5 +279,6 @@ export function useConfig(): UseConfig {
     setScriptHistoryEnabled,
     setSpawnPosition,
     setQuickMode,
+    setItemsPerPage,
   };
 }

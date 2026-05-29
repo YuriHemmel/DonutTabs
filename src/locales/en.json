@@ -110,6 +110,7 @@
     "title": "Settings",
     "sections": {
       "tabs": "Tabs",
+      "organization": "Organization",
       "profiles": "Profiles",
       "appearance": "Appearance",
       "shortcut": "Shortcut",
@@ -391,6 +392,15 @@
       "errorFetch": "Failed to list applications: {{reason}}",
       "refresh": "Refresh list",
       "cancel": "Cancel"
+    },
+    "organization": {
+      "title": "Tab organization",
+      "crossRingHint": "Drag slices to reorder them and move them between pages. Dragging works within the same level (root or a group), not across different groups.",
+      "itemsPerPageLabel": "Items per page",
+      "itemsPerPageHint": "Applies to all profiles",
+      "pageLabel": "Page {{n}}",
+      "groupLabel": "Group: {{name}}",
+      "empty": "This profile has no tabs to organize yet."
     }
   },
   "wizard": {

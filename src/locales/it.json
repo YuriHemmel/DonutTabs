@@ -110,6 +110,7 @@
     "title": "Impostazioni",
     "sections": {
       "tabs": "Schede",
+      "organization": "Organizzazione",
       "profiles": "Profili",
       "appearance": "Aspetto",
       "shortcut": "Scorciatoia",
@@ -391,6 +392,15 @@
       "errorFetch": "Impossibile elencare le applicazioni: {{reason}}",
       "refresh": "Aggiorna elenco",
       "cancel": "Annulla"
+    },
+    "organization": {
+      "title": "Organizzazione delle schede",
+      "crossRingHint": "Trascina gli spicchi per riordinarli e spostarli tra le pagine. Il trascinamento funziona all'interno dello stesso livello (radice o gruppo), non tra gruppi diversi.",
+      "itemsPerPageLabel": "Elementi per pagina",
+      "itemsPerPageHint": "Vale per tutti i profili",
+      "pageLabel": "Pagina {{n}}",
+      "groupLabel": "Gruppo: {{name}}",
+      "empty": "Questo profilo non ha ancora schede da organizzare."
     }
   },
   "wizard": {

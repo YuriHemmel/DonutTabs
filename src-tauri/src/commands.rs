@@ -787,6 +787,30 @@ pub(crate) fn apply_set_quick_mode(cfg: &mut Config, enabled: bool) {
     cfg.interaction.quick_mode = enabled;
 }
 
+/// Issue #102 — define quantas abas cabem por página do donut
+/// (`pagination.items_per_page`). Global (vale pra todos os perfis).
+/// `save_with_rollback` valida a faixa `4..=8` (`items_per_page_out_of_range`)
+/// e reverte em memória se falhar. Persiste + emite `CONFIG_CHANGED_EVENT`.
+#[tauri::command]
+pub fn set_items_per_page<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    items_per_page: u8,
+) -> Result<Config, AppError> {
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        apply_set_items_per_page(&mut cfg, items_per_page);
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+pub(crate) fn apply_set_items_per_page(cfg: &mut Config, items_per_page: u8) {
+    cfg.pagination.items_per_page = items_per_page;
+}
+
 /// Issue #52 — toggle entre `Cursor` (donut nasce na posição do mouse) e
 /// `Center` (centro do monitor onde o cursor está). Persiste + emite
 /// `CONFIG_CHANGED_EVENT`. A próxima abertura do donut respeita o novo
@@ -2903,6 +2927,15 @@ mod tests {
         assert!(cfg.interaction.quick_mode);
         apply_set_quick_mode(&mut cfg, false);
         assert!(!cfg.interaction.quick_mode);
+    }
+
+    #[test]
+    fn apply_set_items_per_page_sets_field() {
+        let mut cfg = Config::default();
+        apply_set_items_per_page(&mut cfg, 4);
+        assert_eq!(cfg.pagination.items_per_page, 4);
+        apply_set_items_per_page(&mut cfg, 8);
+        assert_eq!(cfg.pagination.items_per_page, 8);
     }
 
     #[test]
