@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/app-icon.png" alt="DonutTabs" width="96" height="96">
+</p>
+
 # DonutTabs
 
 > Menu radial transparente que abre no cursor por atalho global e dispara grupos de URLs, arquivos, pastas, apps ou scripts em um clique.

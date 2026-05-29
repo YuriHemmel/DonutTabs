@@ -179,3 +179,23 @@ Não há rollout escalonado nativo. O `latest.json` é único; assim que publica
 - Manter um endpoint `beta` separado em `plugins.updater.endpoints[1]`.
 
 Por enquanto, **uma tag = um release = todo mundo vê**.
+
+---
+
+## Ícones (instalador + repositório)
+
+O desenho (donut) vive em `src-tauri/icons/icon.{png,ico,icns}` e é gerado uma vez via
+`npx tauri icon <fonte>`. Trocar a arte = rodar esse comando de novo a partir de uma fonte
+≥1024×1024 e commitar `src-tauri/icons/*` + `public/app-icon.png`.
+
+- **Instalador Windows (NSIS):** o ícone do `.exe` do instalador/wizard vem de
+  `bundle.windows.nsis.installerIcon` em `tauri.conf.json` (aponta para `icons/icon.ico`;
+  o desinstalador reaproveita o mesmo ícone — não há chave `uninstallerIcon` nesta versão do
+  `tauri-build`). **Sem essa chave o NSIS usa o ícone genérico do MUI2** (`modern-install.ico`),
+  que parece um ícone de download padrão — foi o sintoma da issue #107. MSI (WiX) e o `.app`/DMG
+  do macOS já usam o `icon` do bundle.
+
+- **Social preview do GitHub (o "ícone" do repositório):** **não há API** — é upload manual.
+  A arte pronta (1280×640) está em `.github/social-preview.png`. Subir em
+  **Settings → General → Social preview → Edit → Upload an image**. Regerar com
+  `sips --padToHeightWidth 640 1280 --padColor ffffff src-tauri/icons/icon.png --out .github/social-preview.png`.
