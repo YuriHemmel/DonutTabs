@@ -4,111 +4,113 @@
 
 # DonutTabs
 
-> Menu radial transparente que abre no cursor por atalho global e dispara grupos de URLs, arquivos, pastas, apps ou scripts em um clique.
+> Transparent radial menu that opens at your cursor via a global shortcut and fires off groups of URLs, files, folders, apps, or scripts in a single click.
 
 [![CI](https://github.com/YuriHemmel/DonutTabs/actions/workflows/ci.yml/badge.svg)](https://github.com/YuriHemmel/DonutTabs/actions/workflows/ci.yml)
 
-DonutTabs é um app de bandeja (tray) cross-platform (Windows, macOS, Linux) feito para eliminar a fricção das tarefas repetitivas do começo do dia: aquele combo de "abrir Gmail + calendário + Jira", "abrir 3 dashboards do Grafana", "abrir a pasta do projeto + o terminal + o VS Code". Você configura **abas** (cada aba = um conjunto de itens), aciona um atalho de teclado, e o donut aparece centralizado no cursor. Clicar numa fatia dispara tudo de uma vez.
+DonutTabs is a cross-platform tray app (Windows, macOS, Linux) built to remove the friction of the repetitive tasks at the start of your day: that combo of "open Gmail + calendar + Jira", "open 3 Grafana dashboards", "open the project folder + the terminal + VS Code". You configure **tabs** (each tab = a set of items), trigger a keyboard shortcut, and the donut appears centered on your cursor. Clicking a slice fires everything at once.
 
 ---
 
-## Sumário
+## Table of contents
 
-- [Recursos](#recursos)
-- [Instalação](#instalação)
-  - [Avisos de antivírus / SmartScreen / Gatekeeper](#avisos-de-antivírus--smartscreen--gatekeeper)
-- [Uso básico](#uso-básico)
-- [Configuração](#configuração)
-- [Perfis](#perfis)
-- [Tipos de item suportados](#tipos-de-item-suportados)
-- [Atalhos](#atalhos)
-- [Atualizações automáticas](#atualizações-automáticas)
-- [Desenvolvimento](#desenvolvimento)
-- [Arquitetura](#arquitetura)
-- [Contribuindo](#contribuindo)
-- [Licença](#licença)
-
----
-
-## Recursos
-
-- **Menu radial** transparente, undecorated, sempre no topo, posicionado no cursor.
-- **Atalho global** configurável (padrão `Ctrl+Shift+Space` / `Cmd+Shift+Space`).
-- **Abas e grupos** — agrupe abas em sub-donuts (até 2 níveis de profundidade).
-- **Itens heterogêneos** por aba — URLs, arquivos, pastas, apps instalados, scripts shell.
-- **Perfis múltiplos** — cada perfil tem suas próprias abas, atalho, tema e regras (ex.: "Trabalho", "Pessoal", "Estudo").
-- **Temas customizáveis** por perfil (cores, raios, transparência) + presets dark/light/auto.
-- **Busca rápida** por aba (overlay com `Ctrl+F` por padrão, configurável).
-- **Picker visual de apps** instalados (cross-OS) para não digitar caminhos.
-- **Histórico de scripts** com captura de stdout/stderr (opt-out).
-- **Import/export** da configuração inteira em JSON.
-- **Autostart** opcional (LaunchAgent no macOS, Task Scheduler no Windows).
-- **i18n** pt-BR e en, com detecção automática.
-- **Auto-update** via GitHub Releases com notificação OS-native.
+- [Features](#features)
+- [Installation](#installation)
+  - [Antivirus / SmartScreen / Gatekeeper warnings](#antivirus--smartscreen--gatekeeper-warnings)
+- [Basic usage](#basic-usage)
+- [Configuration](#configuration)
+- [Profiles](#profiles)
+- [Supported item types](#supported-item-types)
+- [Shortcuts](#shortcuts)
+- [Automatic updates](#automatic-updates)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## Instalação
+## Features
 
-Baixe o instalador da sua plataforma na página de [Releases](https://github.com/YuriHemmel/DonutTabs/releases/latest):
+- **Radial menu** — transparent, undecorated, always-on-top, positioned at the cursor.
+- **Configurable global shortcut** (default `Ctrl+Shift+Space` / `Cmd+Shift+Space`).
+- **Tabs and groups** — group tabs into sub-donuts (up to 2 levels deep).
+- **Heterogeneous items** per tab — URLs, files, folders, installed apps, shell scripts.
+- **Multiple profiles** — each profile has its own tabs, shortcut, theme, and rules (e.g. "Work", "Personal", "Study").
+- **Customizable themes** per profile (colors, radii, transparency) + dark/light/auto presets.
+- **Quick search** for tabs (overlay with `Ctrl+F` by default, configurable).
+- **Visual picker** for installed apps (cross-OS) so you don't have to type paths.
+- **Script history** with stdout/stderr capture (opt-out).
+- **Import/export** of the entire configuration as JSON.
+- **Optional autostart** (LaunchAgent on macOS, Task Scheduler on Windows).
+- **i18n** in pt-BR and en, with automatic detection.
+- **Auto-update** via GitHub Releases with OS-native notification.
 
-| Plataforma | Arquivo |
+---
+
+## Installation
+
+Download the installer for your platform from the [Releases](https://github.com/YuriHemmel/DonutTabs/releases/latest) page:
+
+| Platform | File |
 | --- | --- |
-| Windows | `DonutTabs_<versão>_x64-setup.exe` ou `.msi` |
-| macOS (Apple Silicon) | `DonutTabs_<versão>_aarch64.dmg` |
-| macOS (Intel) | `DonutTabs_<versão>_x64.dmg` |
-| Linux (Debian/Ubuntu) | `donut-tabs_<versão>_amd64.deb` |
-| Linux (universal) | `donut-tabs_<versão>_amd64.AppImage` |
+| Windows | `DonutTabs_<version>_x64-setup.exe` (also in [`installers/`](installers/)) or `.msi` |
+| macOS (Apple Silicon) | `DonutTabs_<version>_aarch64.dmg` |
+| macOS (Intel) | `DonutTabs_<version>_x64.dmg` |
+| Linux (Debian/Ubuntu) | `donut-tabs_<version>_amd64.deb` |
+| Linux (universal) | `donut-tabs_<version>_amd64.AppImage` |
 
-Após instalar, o app sobe direto na bandeja do sistema — **não há janela principal**. Use o atalho ou o menu do tray para começar.
+> **Windows quick download:** the latest Windows installer (`.exe`) is committed directly to the [`installers/`](installers/) folder of this repository, so you can grab it without leaving the repo. macOS and Linux builds live only on the [Releases](https://github.com/YuriHemmel/DonutTabs/releases/latest) page.
 
-### Avisos de antivírus / SmartScreen / Gatekeeper
+After installing, the app runs straight in the system tray — **there is no main window**. Use the shortcut or the tray menu to get started.
 
-Como o DonutTabs é um app jovem e ainda não passou por **code-signing comercial** (cert OV/EV no Windows ou notarização Apple no macOS), é normal que o sistema operacional ou o seu antivírus mostrem um aviso na primeira execução. **Isso não significa que o binário seja malicioso** — é o comportamento padrão para qualquer instalador novo sem reputação acumulada.
+### Antivirus / SmartScreen / Gatekeeper warnings
 
-Os bundles oficiais são compilados pelo workflow `release.yml` deste repositório a partir do código-fonte público; cada release publica também os checksums para conferência.
+Since DonutTabs is a young app that hasn't yet gone through **commercial code-signing** (an OV/EV cert on Windows or Apple notarization on macOS), it's normal for your operating system or antivirus to show a warning on first launch. **This does not mean the binary is malicious** — it's the default behavior for any new installer without accumulated reputation.
 
-#### Windows — SmartScreen "Windows protegeu seu PC"
+The official bundles are compiled by this repository's `release.yml` workflow from the public source code; every release also publishes checksums for verification.
 
-1. Clique em **Mais informações** no aviso.
-2. Clique em **Executar assim mesmo**.
-3. O Defender pode pedir confirmação adicional uma única vez; aprove.
+#### Windows — SmartScreen "Windows protected your PC"
 
-Se o seu antivírus de terceiros (Kaspersky, Avast, Bitdefender, ESET, etc.) bloquear o `.exe`/`.msi`:
+1. Click **More info** on the warning.
+2. Click **Run anyway**.
+3. Defender may ask for one extra confirmation; approve it.
 
-- Confira o **SHA256** do arquivo baixado contra o publicado na página do Release.
-- Restaure o arquivo da quarentena e adicione a pasta de instalação à lista de exclusões, ou
-- Reporte como **falso positivo** no formulário do fornecedor — geralmente liberam em 24–72h após análise.
+If your third-party antivirus (Kaspersky, Avast, Bitdefender, ESET, etc.) blocks the `.exe`/`.msi`:
 
-#### macOS — Gatekeeper "DonutTabs não pode ser aberto"
+- Check the **SHA256** of the downloaded file against the one published on the Release page.
+- Restore the file from quarantine and add the install folder to the exclusion list, or
+- Report it as a **false positive** in the vendor's form — they usually clear it within 24–72h after analysis.
 
-Se você baixou o `.dmg` e o macOS recusa abrir:
+#### macOS — Gatekeeper "DonutTabs can't be opened"
+
+If you downloaded the `.dmg` and macOS refuses to open it:
 
 ```bash
-# Remove o atributo de quarentena que o Safari/Chrome adiciona em downloads
+# Remove the quarantine attribute that Safari/Chrome add to downloads
 xattr -d com.apple.quarantine /Applications/DonutTabs.app
 ```
 
-Ou, sem usar o terminal:
+Or, without using the terminal:
 
-1. No Finder, **botão direito** (ou Ctrl+clique) em **DonutTabs.app** → **Abrir**.
-2. No diálogo, clique em **Abrir** novamente.
-3. Em seguida, aprove em **Ajustes do Sistema → Privacidade e Segurança** se ainda for solicitado.
+1. In Finder, **right-click** (or Ctrl+click) on **DonutTabs.app** → **Open**.
+2. In the dialog, click **Open** again.
+3. Then approve it in **System Settings → Privacy & Security** if you're still prompted.
 
-A partir da próxima execução o sistema lembra a decisão.
+From the next launch on, the system remembers the decision.
 
 #### Linux
 
-`.AppImage` e `.deb` não disparam alertas equivalentes. Se o `.AppImage` não executar, garanta a flag de execução:
+`.AppImage` and `.deb` don't trigger equivalent alerts. If the `.AppImage` won't run, make sure the execute flag is set:
 
 ```bash
 chmod +x DonutTabs_*.AppImage
 ./DonutTabs_*.AppImage
 ```
 
-#### Verificando integridade
+#### Verifying integrity
 
-Cada release publica um arquivo `latest.json` com a assinatura Ed25519 do bundle (usada pelo updater automático). Para validar manualmente o download, compare o **SHA256** do arquivo:
+Each release publishes a `latest.json` file with the Ed25519 signature of the bundle (used by the automatic updater). To validate a download manually, compare the **SHA256** of the file:
 
 ```bash
 # macOS / Linux
@@ -118,119 +120,119 @@ shasum -a 256 DonutTabs_*.dmg
 Get-FileHash .\DonutTabs_*-setup.exe -Algorithm SHA256
 ```
 
-contra o checksum exibido na página do Release.
+against the checksum shown on the Release page.
 
 ---
 
-## Uso básico
+## Basic usage
 
-1. **Abra o donut** com o atalho global (padrão `Ctrl+Shift+Space` no Windows/Linux, `Cmd+Shift+Space` no macOS) ou via tray → **Abrir donut**.
-2. **Clique numa fatia** para abrir todos os itens daquela aba.
-3. **Hover-hold** em uma fatia (segurar o mouse parado em cima) revela os botões de **editar** (✏️) e **excluir** (🗑️).
-4. **Botão direito** em uma fatia abre um menu de contexto com "Abrir tudo / Editar / Excluir".
-5. **Rolar a roda do mouse** pagina entre páginas quando há muitas abas.
-6. **Metade esquerda do centro** (⚙) abre o **Settings**; **metade direita** (👤) abre o switcher de perfis.
-7. **ESC** fecha o donut; em sub-donut, ESC volta um nível.
-8. **`Ctrl+F`** (configurável) abre a busca rápida de abas dentro do donut.
+1. **Open the donut** with the global shortcut (default `Ctrl+Shift+Space` on Windows/Linux, `Cmd+Shift+Space` on macOS) or via tray → **Open donut**.
+2. **Click a slice** to open all items in that tab.
+3. **Hover-hold** on a slice (keep the mouse still over it) reveals the **edit** (✏️) and **delete** (🗑️) buttons.
+4. **Right-click** on a slice opens a context menu with "Open all / Edit / Delete".
+5. **Scroll the mouse wheel** to page between pages when there are many tabs.
+6. **Left half of the center** (⚙) opens **Settings**; **right half** (👤) opens the profile switcher.
+7. **ESC** closes the donut; in a sub-donut, ESC goes back one level.
+8. **`Ctrl+F`** (configurable) opens the quick tab search inside the donut.
 
 ---
 
-## Configuração
+## Configuration
 
-A configuração mora num único arquivo JSON, criado automaticamente no primeiro start:
+The configuration lives in a single JSON file, created automatically on first start:
 
-| SO | Caminho |
+| OS | Path |
 | --- | --- |
 | Windows | `%APPDATA%\DonutTabs\config.json` |
 | macOS | `~/Library/Application Support/DonutTabs/config.json` |
 | Linux | `~/.config/DonutTabs/config.json` |
 
-Edite **pelo Settings** (tray → **Configurações** ou ⚙ no donut). Mexer no JSON na mão funciona, mas perde validações da UI e a janela só recarrega após reabrir o app.
+Edit it **through Settings** (tray → **Settings** or ⚙ on the donut). Hand-editing the JSON works, but loses the UI validations and the window only reloads after you reopen the app.
 
-O Settings oferece:
+Settings offers:
 
-- **Abas**: CRUD, drag-and-drop para reordenar, picker de ícone (emoji ou ícones Lucide), picker de arquivo/pasta nativo, picker visual de apps instalados.
-- **Aparência**: tema (dark/light/auto), idioma, customização fina de cores e raios por perfil, toggle de autostart, toggle global do permissão de scripts no perfil, atualizações automáticas.
-- **Atalho**: gravador interativo — pressione a combinação desejada.
-- **Histórico**: log de execuções de script com stdout/stderr (quando habilitado).
+- **Tabs**: CRUD, drag-and-drop reordering, icon picker (emoji or Lucide icons), native file/folder picker, visual picker for installed apps.
+- **Appearance**: theme (dark/light/auto), language, fine-grained color and radii customization per profile, autostart toggle, the per-profile script-permission toggle, automatic updates.
+- **Shortcut**: interactive recorder — press the desired combination.
+- **History**: log of script executions with stdout/stderr (when enabled).
 
 ### Import / export
 
-Em **Settings → Aparência → Sistema** há botões para **exportar** o JSON inteiro (incluindo todos os perfis) e **importar** um arquivo de outra máquina. A importação valida tudo antes de substituir; falhas mantêm a configuração atual intacta.
+In **Settings → Appearance → System** there are buttons to **export** the entire JSON (including all profiles) and **import** a file from another machine. The import validates everything before replacing; failures keep the current configuration intact.
 
 ---
 
-## Perfis
+## Profiles
 
-Cada perfil é um conjunto independente de:
+Each profile is an independent set of:
 
-- **Nome + ícone**
-- **Atalho global** (apenas o do perfil ativo está registrado no SO)
-- **Tema e overrides cosméticos**
-- **Abas**
-- **Flag `allowScripts`** — kill-switch que bloqueia execução de qualquer script no perfil, independente da flag `trusted` per-item
+- **Name + icon**
+- **Global shortcut** (only the active profile's is registered with the OS)
+- **Theme and cosmetic overrides**
+- **Tabs**
+- **`allowScripts` flag** — a kill-switch that blocks execution of any script in the profile, regardless of the per-item `trusted` flag
 
-Use perfis para separar contextos (ex.: "Trabalho" com Jira/Gmail/Slack, "Pessoal" com YouTube/Notícias). Trocar de perfil é instantâneo via switcher no centro do donut ou via Settings.
+Use profiles to separate contexts (e.g. "Work" with Jira/Gmail/Slack, "Personal" with YouTube/News). Switching profiles is instant via the switcher in the center of the donut or via Settings.
 
 ---
 
-## Tipos de item suportados
+## Supported item types
 
-Cada aba carrega uma lista ordenada de itens; clicar na aba dispara todos em sequência.
+Each tab carries an ordered list of items; clicking the tab fires them all in sequence.
 
-| Tipo | Comportamento | Campos |
+| Type | Behavior | Fields |
 | --- | --- | --- |
-| **URL** | Abre no navegador padrão (ou no handler em `openWith`, ex.: `firefox`) | `value`, `openWith?` |
-| **Arquivo** | Abre no app padrão do SO ou em `openWith` (ex.: `code` pra forçar VS Code) | `path`, `openWith?` |
-| **Pasta** | Abre no explorador de arquivos ou em `openWith` | `path`, `openWith?` |
-| **App** | Lança o executável por nome (com picker visual cross-OS) | `name` |
-| **Script** | Roda um comando shell (`cmd /C` no Windows, `sh -c` em Unix) | `command`, `trusted` |
+| **URL** | Opens in the default browser (or the handler in `openWith`, e.g. `firefox`) | `value`, `openWith?` |
+| **File** | Opens in the OS default app or in `openWith` (e.g. `code` to force VS Code) | `path`, `openWith?` |
+| **Folder** | Opens in the file explorer or in `openWith` | `path`, `openWith?` |
+| **App** | Launches the executable by name (with a cross-OS visual picker) | `name` |
+| **Script** | Runs a shell command (`cmd /C` on Windows, `sh -c` on Unix) | `command`, `trusted` |
 
-**Segurança de scripts:** scripts não confiáveis disparam um modal de confirmação na primeira execução, com a opção "Confiar nesta aba" para pular o modal nas próximas. O kill-switch `allowScripts` por perfil tem prioridade absoluta — quando desligado, **nenhum** script roda no perfil, independente da flag `trusted`.
+**Script security:** untrusted scripts trigger a confirmation modal on first run, with a "Trust this tab" option to skip the modal next time. The per-profile `allowScripts` kill-switch takes absolute priority — when off, **no** script runs in the profile, regardless of the `trusted` flag.
 
 ---
 
-## Atalhos
+## Shortcuts
 
-| Atalho | Ação |
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl/Cmd+Shift+Space` | Abre o donut no cursor (configurável por perfil) |
-| `Ctrl/Cmd+F` | Busca rápida de abas dentro do donut (configurável globalmente) |
-| `ESC` | Fecha o donut (ou volta um nível em sub-donut) |
-| Clique fora / Alt-Tab | Fecha o donut |
-| Roda do mouse | Pagina entre páginas de abas |
+| `Ctrl/Cmd+Shift+Space` | Opens the donut at the cursor (configurable per profile) |
+| `Ctrl/Cmd+F` | Quick tab search inside the donut (configurable globally) |
+| `ESC` | Closes the donut (or goes back one level in a sub-donut) |
+| Click outside / Alt-Tab | Closes the donut |
+| Mouse wheel | Pages between tab pages |
 
 ---
 
-## Atualizações automáticas
+## Automatic updates
 
-O app checa por updates na inicialização (quando online). Quando uma nova versão estiver disponível:
+The app checks for updates on startup (when online). When a new version is available:
 
-- Aparece uma **notificação OS-native** uma única vez por versão.
-- O ícone do tray ganha uma entrada **📥 Atualizar para v…**.
-- Em **Settings → Aparência → Sistema → Atualizações** há um card com release notes e botão **Instalar e reiniciar**.
+- An **OS-native notification** appears once per version.
+- The tray icon gains a **📥 Update to v…** entry.
+- In **Settings → Appearance → System → Updates** there's a card with release notes and an **Install and restart** button.
 
-Para desligar, desmarque **Verificar atualizações automaticamente** na mesma seção. O botão **Verificar agora** ignora os gates e força a checagem.
+To turn it off, uncheck **Check for updates automatically** in the same section. The **Check now** button ignores the gates and forces a check.
 
-Pipeline de release documentado em [`docs/release-process.md`](docs/release-process.md).
+Release pipeline documented in [`docs/release-process.md`](docs/release-process.md).
 
 ---
 
-## Desenvolvimento
+## Development
 
 ### Stack
 
-- **Tauri 2** (Rust core) — janelas, atalho global, tray, IO, IPC
-- **React 19 + TypeScript** — donut SVG e Settings
-- **Vite** — bundling do frontend
-- **ts-rs** — geração automática de tipos TS a partir de structs Rust
+- **Tauri 2** (Rust core) — windows, global shortcut, tray, IO, IPC
+- **React 19 + TypeScript** — donut SVG and Settings
+- **Vite** — frontend bundling
+- **ts-rs** — automatic generation of TS types from Rust structs
 
-### Pré-requisitos
+### Prerequisites
 
 - **Node.js** ≥ 20
-- **Rust** stable + Cargo (instale via [rustup](https://rustup.rs))
-- **Dependências nativas do Tauri** — siga o [guia oficial](https://v2.tauri.app/start/prerequisites/) para o seu SO:
-  - **Windows**: WebView2 (já vem no Windows 11) + Build Tools do Visual Studio
+- **Rust** stable + Cargo (install via [rustup](https://rustup.rs))
+- **Tauri native dependencies** — follow the [official guide](https://v2.tauri.app/start/prerequisites/) for your OS:
+  - **Windows**: WebView2 (already ships with Windows 11) + Visual Studio Build Tools
   - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
   - **Linux**: `webkit2gtk-4.1`, `libssl-dev`, `libgtk-3-dev`, `librsvg2-dev`, etc.
 
@@ -242,100 +244,100 @@ cd DonutTabs
 npm install
 ```
 
-### Comandos
+### Commands
 
 ```bash
-# Dev loop com hot-reload do frontend e auto-rebuild do Rust
+# Dev loop with frontend hot-reload and Rust auto-rebuild
 npm run tauri dev
 
 # Frontend
-npm test                 # vitest run (todos os testes do frontend)
-npx tsc --noEmit         # typecheck sem emitir
+npm test                 # vitest run (all frontend tests)
+npx tsc --noEmit         # typecheck without emitting
 
-# Rust (cd src-tauri primeiro)
-cargo test --lib         # todos os testes Rust
-cargo clippy --lib       # lint (rodamos com -D warnings no CI)
-cargo fmt --check        # check de formato; sem --check aplica
+# Rust (cd src-tauri first)
+cargo test --lib         # all Rust tests
+cargo clippy --lib       # lint (we run with -D warnings in CI)
+cargo fmt --check        # format check; without --check it applies
 
-# Build de produção (instaladores para o SO atual)
+# Production build (installers for the current OS)
 npm run tauri build
 ```
 
-### Regenerando bindings ts-rs
+### Regenerating ts-rs bindings
 
-`src/core/types/*.ts` é **gerado** a partir das structs Rust com `#[derive(TS)]` via `cargo test`. Os arquivos **são versionados** e o CI valida drift:
+`src/core/types/*.ts` is **generated** from the Rust structs with `#[derive(TS)]` via `cargo test`. The files **are versioned** and CI validates drift:
 
 ```bash
-cd src-tauri && cargo test --lib config::schema   # regenera src/core/types/
+cd src-tauri && cargo test --lib config::schema   # regenerates src/core/types/
 cd .. && git add src/core/types/
 ```
 
-### Estrutura
+### Structure
 
 ```
 src-tauri/src/        # Rust core
-  config/             # schema v2, migrações v1→v2, validação, IO atômico
-  commands.rs         # comandos Tauri expostos para o frontend
-  donut_window/       # criação da janela transparente
-  settings_window/    # criação da janela do Settings
-  tray/               # ícone e menu da bandeja
-  shortcut/           # registro de atalho global
-  launcher/           # abertura de URLs/arquivos/apps/scripts
-  favicon/            # cache de favicons em disco
-  apps_picker/        # enumeração de apps instalados cross-OS
-  updater/            # wrapper do tauri-plugin-updater
-  script_history/     # captura de stdout/stderr de scripts
-  errors.rs           # AppError tagged enum com códigos i18n-friendly
+  config/             # schema v2, v1→v2 migrations, validation, atomic IO
+  commands.rs         # Tauri commands exposed to the frontend
+  donut_window/       # creation of the transparent window
+  settings_window/    # creation of the Settings window
+  tray/               # tray icon and menu
+  shortcut/           # global shortcut registration
+  launcher/           # opening URLs/files/apps/scripts
+  favicon/            # on-disk favicon cache
+  apps_picker/        # cross-OS enumeration of installed apps
+  updater/            # tauri-plugin-updater wrapper
+  script_history/     # stdout/stderr capture for scripts
+  errors.rs           # AppError tagged enum with i18n-friendly codes
 
 src/                  # Frontend
-  donut/              # SVG do donut + hooks de gesto
-  settings/           # janela de configuração
-  core/               # i18n, IPC, tema, tipos gerados
-  entry/              # entrypoints React (donut.tsx, settings.tsx)
+  donut/              # donut SVG + gesture hooks
+  settings/           # configuration window
+  core/               # i18n, IPC, theme, generated types
+  entry/              # React entrypoints (donut.tsx, settings.tsx)
   locales/            # pt-BR.json, en.json
 ```
 
-A regra de ouro: **Rust nunca desenha UI; frontend nunca toca disco ou APIs do SO**. Toda nova necessidade de acesso ao sistema vira um `#[tauri::command]` em `src-tauri/src/commands.rs` exposto via `src/core/ipc.ts`.
+The golden rule: **Rust never draws UI; the frontend never touches disk or OS APIs**. Every new need for system access becomes a `#[tauri::command]` in `src-tauri/src/commands.rs` exposed via `src/core/ipc.ts`.
 
-Documentação detalhada por módulo em [`CLAUDE.md`](CLAUDE.md).
-
----
-
-## Arquitetura
-
-Processo único com três peças lógicas:
-
-1. **Rust core** — toda preocupação OS-level (atalho global, tray, criação de janelas, abertura de URLs, IO de config).
-2. **Webview do donut** — janela transparente no cursor que renderiza o SVG do donut e captura hover/click.
-3. **Webview do Settings** — janela decorada e redimensionável para CRUD de abas, perfis e preferências.
-
-As duas webviews se comunicam com o Rust via **comandos Tauri tipados**. Mudanças no config disparam um evento `config-changed` que ambas as janelas escutam, mantendo o estado sincronizado sem polling.
-
-Diagramas e racional de design no [`docs/Plano.md`](docs/Plano.md) (local, gitignored).
+Detailed per-module documentation in [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
-## Contribuindo
+## Architecture
 
-PRs são bem-vindos. Convenções principais:
+A single process with three logical pieces:
 
-- **TDD para lógica pura** (`config/*`, `launcher`, `geometry`, validadores) — teste falha primeiro, depois o mínimo código pra passar.
-- **Schema-first** — qualquer novo dado trocado entre Rust e frontend nasce como struct Rust com `#[derive(TS)]`.
-- **Atomic writes para config** — sempre via `config::io::save_atomic` (validate → `.tmp` → rename) com rollback em memória se a escrita falhar.
-- **Strings de UI passam por `t()`** — sem texto hardcoded em JSX ou em payload de `AppError`. Toda nova chave precisa estar em `src/locales/pt-BR.json` e `src/locales/en.json`.
-- **Commits pequenos e escopados**: `feat(config): ...`, `fix(launcher): ...`, `docs(plan): ...`. Um logical concern = um commit.
-- **CI verde antes do merge** — 5 jobs paralelos (frontend, lint, test-linux, test-macos, test-windows). Clippy roda com `-D warnings`.
+1. **Rust core** — every OS-level concern (global shortcut, tray, window creation, opening URLs, config IO).
+2. **Donut webview** — transparent window at the cursor that renders the donut SVG and captures hover/click.
+3. **Settings webview** — decorated, resizable window for CRUD of tabs, profiles, and preferences.
 
-Para mudanças não-triviais, abra uma issue primeiro descrevendo o problema. Para bugs, anexe o `config.json` (sanitizado de URLs sensíveis) e o SO.
+The two webviews communicate with Rust via **typed Tauri commands**. Config changes fire a `config-changed` event that both windows listen for, keeping state in sync without polling.
 
----
-
-## Licença
-
-A definir. O código-fonte está público enquanto a licença não é formalizada; entre em contato antes de redistribuir comercialmente.
+Diagrams and design rationale in [`docs/Plano.md`](docs/Plano.md) (local, gitignored).
 
 ---
 
-## Créditos
+## Contributing
 
-Construído com [Tauri](https://tauri.app), [React](https://react.dev), [Vite](https://vitejs.dev) e [Lucide Icons](https://lucide.dev).
+PRs are welcome. Main conventions:
+
+- **TDD for pure logic** (`config/*`, `launcher`, `geometry`, validators) — failing test first, then the minimum code to pass.
+- **Schema-first** — any new data exchanged between Rust and the frontend is born as a Rust struct with `#[derive(TS)]`.
+- **Atomic writes for config** — always via `config::io::save_atomic` (validate → `.tmp` → rename) with in-memory rollback if the write fails.
+- **UI strings go through `t()`** — no hardcoded text in JSX or in `AppError` payloads. Every new key must exist in both `src/locales/pt-BR.json` and `src/locales/en.json`.
+- **Small, scoped commits**: `feat(config): ...`, `fix(launcher): ...`, `docs(plan): ...`. One logical concern = one commit.
+- **Green CI before merge** — 5 parallel jobs (frontend, lint, test-linux, test-macos, test-windows). Clippy runs with `-D warnings`.
+
+For non-trivial changes, open an issue first describing the problem. For bugs, attach the `config.json` (sanitized of sensitive URLs) and your OS.
+
+---
+
+## License
+
+To be determined. The source code is public while the license isn't formalized; get in touch before redistributing commercially.
+
+---
+
+## Credits
+
+Built with [Tauri](https://tauri.app), [React](https://react.dev), [Vite](https://vitejs.dev), and [Lucide Icons](https://lucide.dev).
