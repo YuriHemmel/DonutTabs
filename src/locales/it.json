@@ -362,8 +362,9 @@
       "addChildGroup": "+ Aggiungi sottogruppo",
       "maxDepthHint": "Profondità massima raggiunta — impossibile aggiungere altri sottogruppi qui.",
       "groupNewHint": "Salva prima il gruppo. Poi riaprilo dall'elenco o fai clic sul «+» del donut per aggiungere schede.",
-      "moveToLabel": "Sposta in",
+      "moveToLabel": "Sposta scheda",
       "moveToRoot": "Radice (menu principale)",
+      "moveSuccess": "Scheda spostata in {{dest}}",
       "focusIfOpen": {
         "label": "Porta in primo piano se già aperto",
         "hint": "Le app e le schede già aperte vengono portate in primo piano; le altre si aprono normalmente.",

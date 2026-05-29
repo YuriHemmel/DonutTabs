@@ -362,8 +362,9 @@
       "addChildGroup": "+ Ajouter un sous-groupe",
       "maxDepthHint": "Profondeur maximale atteinte — impossible d'ajouter d'autres sous-groupes ici.",
       "groupNewHint": "Enregistrez d'abord le groupe. Rouvrez-le ensuite depuis la liste ou cliquez sur le « + » du donut pour ajouter des onglets.",
-      "moveToLabel": "Déplacer vers",
+      "moveToLabel": "Déplacer l'onglet",
       "moveToRoot": "Racine (menu principal)",
+      "moveSuccess": "Onglet déplacé vers {{dest}}",
       "focusIfOpen": {
         "label": "Mettre au premier plan si déjà ouvert",
         "hint": "Les apps et onglets déjà ouverts sont mis au premier plan ; les autres s'ouvrent normalement.",

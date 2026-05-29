@@ -362,8 +362,9 @@
       "addChildGroup": "+ 添加子分组",
       "maxDepthHint": "已达最大深度——此处无法添加更多子分组。",
       "groupNewHint": "请先保存分组。然后从列表中重新打开它，或点击甜甜圈的“+”来添加标签页。",
-      "moveToLabel": "移动到",
+      "moveToLabel": "移动标签页",
       "moveToRoot": "根（主菜单）",
+      "moveSuccess": "标签页已移动到{{dest}}",
       "focusIfOpen": {
         "label": "如果已打开则聚焦",
         "hint": "已打开的应用和标签页会被聚焦；其他的正常打开。",

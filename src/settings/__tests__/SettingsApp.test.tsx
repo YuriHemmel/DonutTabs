@@ -889,7 +889,8 @@ describe("SettingsApp intent routing", () => {
     await renderApp();
 
     const select = await waitFor(() => screen.getByTestId("tab-move-to-select"));
-    // Único destino disponível é a raiz (o grupo atual é excluído).
+    // O grupo atual vem preselecionado; mover pra raiz é o outro destino.
+    expect((select as HTMLSelectElement).value).toBe(GROUP_ID);
     await user.selectOptions(select, "root");
     await waitFor(() =>
       expect(ipc.moveTab).toHaveBeenCalledWith(
