@@ -50,7 +50,7 @@ Download the installer for your platform from the [Releases](https://github.com/
 
 | Platform | File |
 | --- | --- |
-| Windows | `DonutTabs_<version>_x64-setup.exe` or `.msi` — also available directly in [`installers/`](installers/) |
+| Windows | `DonutTabs_<version>_x64-setup.exe` (also in [`installers/`](installers/)) or `.msi` |
 | macOS (Apple Silicon) | `DonutTabs_<version>_aarch64.dmg` |
 | macOS (Intel) | `DonutTabs_<version>_x64.dmg` |
 | Linux (Debian/Ubuntu) | `donut-tabs_<version>_amd64.deb` |
