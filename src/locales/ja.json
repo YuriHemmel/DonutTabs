@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "タブ {{tabId}} はリーフのため、サブ項目を持てません。",
       "tabGroupHasItems": "タブ {{tabId}} はグループのため、直接の URL/ファイルを持てません。",
       "tabTooDeep": "タブ {{tabId}} の深さ（{{depth}}）が上限（{{maxDepth}}）を超えています。",
+      "tabMoveIntoSelf": "グループを自分自身の中へ移動することはできません。",
+      "tabDestNotGroup": "無効な移動先です: 対象はグループではありません。",
+      "tabSwapIntoDescendant": "タブをその内部の要素と入れ替えることはできません。",
       "tabMixedLeafAndGroup": "タブ {{tabId}} は項目とサブ項目を混在できません。",
       "pathEmpty": "タブ {{tabId}} の {{kind}} パスは空にできません。",
       "openWithEmpty": "タブ {{tabId}}（{{kind}} 項目）の起動プログラムは空にできません。",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ サブグループを追加",
       "maxDepthHint": "最大の深さに達しました — ここにこれ以上サブグループを追加できません。",
       "groupNewHint": "まずグループを保存してください。その後、一覧から再度開くか、ドーナツの「+」をクリックしてタブを追加してください。",
+      "moveToLabel": "移動先",
+      "moveToRoot": "ルート（メインメニュー）",
       "focusIfOpen": {
         "label": "既に開いている場合はフォーカス",
         "hint": "既に開いているアプリやタブはフォーカスされ、それ以外は通常どおり開きます。",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "タブの整理",
-      "crossRingHint": "スライスをドラッグして並べ替えたり、ページ間で移動できます。ドラッグは同じ階層（ルートまたはグループ）内でのみ機能し、異なるグループ間では機能しません。",
+      "crossRingHint": "スライスをドラッグすると同じ階層内で並べ替えられます。別のグループ（またはルート）にドロップするとタブを移動できます。グループはルートにのみ配置できます。",
       "itemsPerPageLabel": "ページあたりの項目数",
       "itemsPerPageHint": "すべてのプロファイルに適用されます",
       "pageLabel": "ページ {{n}}",

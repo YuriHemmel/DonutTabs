@@ -124,6 +124,8 @@ export const SettingsApp: React.FC = () => {
     config,
     saveTab,
     deleteTab,
+    moveTab,
+    swapTabs,
     setShortcut,
     setTheme,
     setLanguage,
@@ -338,6 +340,50 @@ export const SettingsApp: React.FC = () => {
     setSelection({ mode: "empty" });
   };
 
+  // Issue #109 — destinos válidos pra "Mover para" no editor. Sempre inclui a
+  // raiz + cada grupo da raiz, exceto a localização atual da aba. Um grupo só
+  // pode ir pra raiz (não cabe dentro de outro grupo, MAX_TAB_DEPTH = 2).
+  const moveDestinations: { value: string; label: string }[] =
+    selection.mode === "edit" && selectedTab
+      ? (() => {
+          const currentKey = currentParentPath?.[0] ?? "root";
+          const isGroupTab =
+            selectedTab.kind === "group" ||
+            (selectedTab.children?.length ?? 0) > 0;
+          const all: { value: string; label: string }[] = [
+            { value: "root", label: t("settings.editor.moveToRoot") },
+          ];
+          if (!isGroupTab) {
+            for (const tab of selectedProfile.tabs) {
+              if (tab.kind === "group") {
+                all.push({
+                  value: tab.id,
+                  label: tab.name ?? tab.icon ?? tab.id.slice(0, 6),
+                });
+              }
+            }
+          }
+          return all.filter((d) => d.value !== currentKey);
+        })()
+      : [];
+
+  const handleMove = async (toParentPath: string[]) => {
+    if (selection.mode !== "edit") return;
+    await moveTab(
+      selection.tabId,
+      currentParentPath ?? [],
+      toParentPath,
+      undefined,
+      selectedProfile.id,
+    );
+    // Editor segue a aba pra nova localização.
+    setSelection({
+      mode: "edit",
+      tabId: selection.tabId,
+      parentPath: toParentPath,
+    });
+  };
+
   const handleProfileEditorSubmit = async ({
     name,
     icon,
@@ -452,6 +498,8 @@ export const SettingsApp: React.FC = () => {
               currentDepth={currentDepth}
               onSelectChild={handleSelectChild}
               onAddChild={handleAddChild}
+              moveDestinations={moveDestinations}
+              onMove={handleMove}
             />
           ) : (
             <section
@@ -483,6 +531,20 @@ export const SettingsApp: React.FC = () => {
             reorderTabs(profileId, orderedIds, parentPath).catch((e) => {
               console.error("reorderTabs failed", e);
             });
+          }}
+          onMoveTab={(tabId, from, to, destIndex) => {
+            moveTab(tabId, from, to, destIndex, selectedProfile.id).catch(
+              (e) => {
+                window.alert(translateAppError(e, t));
+              },
+            );
+          }}
+          onSwapTabs={(aId, aParent, bId, bParent) => {
+            swapTabs(aId, aParent, bId, bParent, selectedProfile.id).catch(
+              (e) => {
+                window.alert(translateAppError(e, t));
+              },
+            );
           }}
         />
       )}

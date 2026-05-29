@@ -32,6 +32,8 @@ vi.mock("../../core/ipc", () => ({
     getConfig: vi.fn(),
     saveTab: vi.fn(),
     deleteTab: vi.fn(),
+    moveTab: vi.fn(),
+    swapTabs: vi.fn(),
     openSettings: vi.fn(),
     closeSettings: vi.fn(),
     openTab: vi.fn(),
@@ -840,5 +842,63 @@ describe("SettingsApp intent routing", () => {
     const btn = await waitFor(() => screen.getByTestId("set-active-profile"));
     await user.click(btn);
     expect(ipc.setActiveProfile).toHaveBeenCalledWith(PROFILE_ID_2);
+  });
+
+  it("moves a tab out of a group to root via the editor's 'Mover para' select", async () => {
+    const CHILD_ID = "00000000-0000-0000-0000-0000000000aa";
+    const GROUP_ID = "00000000-0000-0000-0000-0000000000bb";
+    const child = {
+      id: CHILD_ID,
+      name: "Filho",
+      icon: null,
+      order: 0,
+      openMode: "reuseOrNewWindow",
+      items: [
+        {
+          kind: "url",
+          value: "https://x.test",
+          openWith: null,
+          monitor: null,
+          incognito: false,
+        },
+      ],
+      kind: "leaf",
+      children: [],
+      focusIfOpen: false,
+    };
+    const grp = {
+      id: GROUP_ID,
+      name: "Grupo",
+      icon: null,
+      order: 0,
+      openMode: "reuseOrNewWindow",
+      items: [],
+      kind: "group",
+      children: [child],
+      focusIfOpen: false,
+    };
+    const cfg = makeConfig({
+      profiles: [makeProfile({ tabs: [grp] as never })],
+    });
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.moveTab as ReturnType<typeof vi.fn>).mockResolvedValue(cfg);
+    (ipc.consumeSettingsIntent as ReturnType<typeof vi.fn>).mockResolvedValue(
+      `edit-tab:${CHILD_ID}`,
+    );
+    const user = userEvent.setup();
+    await renderApp();
+
+    const select = await waitFor(() => screen.getByTestId("tab-move-to-select"));
+    // Único destino disponível é a raiz (o grupo atual é excluído).
+    await user.selectOptions(select, "root");
+    await waitFor(() =>
+      expect(ipc.moveTab).toHaveBeenCalledWith(
+        CHILD_ID,
+        [GROUP_ID],
+        [],
+        undefined,
+        PROFILE_ID,
+      ),
+    );
   });
 });

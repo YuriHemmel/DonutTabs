@@ -23,6 +23,22 @@ export interface OrganizationSectionProps {
     orderedIds: string[],
     parentPath?: string[],
   ) => void;
+  /** Issue #109 — move uma aba pra outro nível (drop na fatia "+" de outro
+   *  ring → append no fim do nível de destino). */
+  onMoveTab: (
+    tabId: string,
+    fromParentPath: string[],
+    toParentPath: string[],
+    destIndex?: number,
+  ) => void;
+  /** Issue #109 — troca duas abas de nível (drop SOBRE uma aba de outro ring →
+   *  X e Y trocam de lugar/nível). */
+  onSwapTabs: (
+    aId: string,
+    aParentPath: string[],
+    bId: string,
+    bParentPath: string[],
+  ) => void;
 }
 
 interface RingModel {
@@ -62,6 +78,8 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
   itemsPerPage,
   onSetItemsPerPage,
   onReorderTabs,
+  onMoveTab,
+  onSwapTabs,
 }) => {
   const { t } = useTranslation();
   const tokens = useMemo(
@@ -128,6 +146,9 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
     fromFlatIndex: number;
     label: string;
     icon: string | null;
+    /** Issue #109 — grupos só podem ficar na raiz; usado pra bloquear drop
+     *  de um grupo dentro de outro ring. */
+    isGroup: boolean;
   }
   const [drag, setDrag] = useState<DragState | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
@@ -139,11 +160,13 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
     (
       clientX: number,
       clientY: number,
-      sourceRingKey: string,
     ): { donutKey: string; slot: number } | null => {
+      // Issue #109 — sem filtro de ring: qualquer donut (raiz ou grupo) é alvo
+      // de drop, habilitando mover abas entre níveis. A distinção same-ring
+      // (reordenar) vs cross-ring (mover) é feita no `onUp`.
       for (const [key, el] of elByKey.current) {
         const meta = metaByKeyRef.current.get(key);
-        if (!meta || meta.ringKey !== sourceRingKey) continue;
+        if (!meta) continue;
         const rect = el.getBoundingClientRect();
         if (
           clientX < rect.left ||
@@ -172,22 +195,43 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
     [],
   );
 
+  /** Página (offset achatado) onde o donut `meta` começa no anel. */
+  const pageStartFor = useCallback(
+    (meta: DonutMeta): number => {
+      const starts = pageStartIndices(meta.orderedTabs, itemsPerPage);
+      return starts[Math.min(Math.max(0, meta.pageIndex), starts.length - 1)];
+    },
+    [itemsPerPage],
+  );
+
   // Listeners de pointer enquanto arrasta. `drag` nas deps re-subscreve no
   // início/fim do gesto; durante o arrasto os refs trazem o estado atual.
   useEffect(() => {
     if (!drag) return;
+    const isBlockedCrossRing = (meta: DonutMeta): boolean =>
+      // Grupo só pode ficar na raiz; ignora drop num sub-ring.
+      drag.isGroup && meta.parentPath.length > 0;
+
     const onMove = (e: PointerEvent) => {
       setGhost({ x: e.clientX, y: e.clientY });
-      setHover(hitTest(e.clientX, e.clientY, drag.ringKey));
+      const target = hitTest(e.clientX, e.clientY);
+      // Não destaca um drop bloqueado (grupo num sub-ring).
+      if (target) {
+        const meta = metaByKeyRef.current.get(target.donutKey);
+        if (meta && meta.ringKey !== drag.ringKey && isBlockedCrossRing(meta)) {
+          setHover(null);
+          return;
+        }
+      }
+      setHover(target);
     };
     const onUp = (e: PointerEvent) => {
-      const target = hitTest(e.clientX, e.clientY, drag.ringKey);
+      const target = hitTest(e.clientX, e.clientY);
       if (target) {
         const meta = metaByKeyRef.current.get(target.donutKey);
         if (meta && meta.ringKey === drag.ringKey) {
-          const starts = pageStartIndices(meta.orderedTabs, itemsPerPage);
-          const pageStart =
-            starts[Math.min(Math.max(0, meta.pageIndex), starts.length - 1)];
+          // Same ring → reordenar (comportamento existente).
+          const pageStart = pageStartFor(meta);
           let newIds: string[];
           if (target.slot < meta.pageTabsLength) {
             // Soltou sobre outra aba → troca de lugar (X assume a posição de
@@ -213,6 +257,29 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
               drag.parentPath.length > 0 ? drag.parentPath : undefined,
             );
           }
+        } else if (meta && !isBlockedCrossRing(meta)) {
+          // Cross ring → entre níveis diferentes (Issue #109).
+          if (target.slot < meta.pageTabsLength) {
+            // Soltou SOBRE uma aba Y → troca X e Y de lugar/nível (swap).
+            const pageStart = pageStartFor(meta);
+            const targetTab = meta.orderedTabs[pageStart + target.slot];
+            if (targetTab && targetTab.id !== drag.tabId) {
+              onSwapTabs(
+                drag.tabId,
+                drag.parentPath,
+                targetTab.id,
+                meta.parentPath,
+              );
+            }
+          } else {
+            // Soltou na fatia "+" → adiciona X no fim do nível de destino.
+            onMoveTab(
+              drag.tabId,
+              drag.parentPath,
+              meta.parentPath,
+              meta.orderedTabs.length,
+            );
+          }
         }
       }
       setDrag(null);
@@ -225,7 +292,16 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [drag, hitTest, itemsPerPage, onReorderTabs, profile.id]);
+  }, [
+    drag,
+    hitTest,
+    pageStartFor,
+    itemsPerPage,
+    onReorderTabs,
+    onMoveTab,
+    onSwapTabs,
+    profile.id,
+  ]);
 
   const startDrag = useCallback(
     (ring: RingModel, tabId: string, e: React.PointerEvent) => {
@@ -242,6 +318,7 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
         fromFlatIndex,
         label: tab.name ?? tab.icon ?? tab.id.slice(0, 6),
         icon: tab.icon,
+        isGroup: tab.kind === "group",
       });
       setGhost({ x: e.clientX, y: e.clientY });
     },

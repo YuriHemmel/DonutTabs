@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "Tab {{tabId}} is a leaf and cannot have sub-items.",
       "tabGroupHasItems": "Tab {{tabId}} is a group and cannot have direct URLs/files.",
       "tabTooDeep": "Tab {{tabId}} depth ({{depth}}) exceeds the limit ({{maxDepth}}).",
+      "tabMoveIntoSelf": "Can't move a group into itself.",
+      "tabDestNotGroup": "Invalid destination: the target is not a group.",
+      "tabSwapIntoDescendant": "Can't swap a tab with something inside itself.",
       "tabMixedLeafAndGroup": "Tab {{tabId}} cannot mix items and sub-items.",
       "pathEmpty": "{{kind}} path cannot be empty in tab {{tabId}}.",
       "openWithEmpty": "Open-with program cannot be empty in tab {{tabId}} ({{kind}} item).",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ Add subgroup",
       "maxDepthHint": "Maximum depth reached — cannot add more subgroups here.",
       "groupNewHint": "Save the group first. Then reopen it from the list or click the donut's \"+\" to add tabs.",
+      "moveToLabel": "Move to",
+      "moveToRoot": "Root (main menu)",
       "focusIfOpen": {
         "label": "Focus if already open",
         "hint": "Apps and tabs already open get focused; others open normally.",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "Tab organization",
-      "crossRingHint": "Drag slices to reorder them and move them between pages. Dragging works within the same level (root or a group), not across different groups.",
+      "crossRingHint": "Drag slices to reorder within a level, or drop onto another group (or the root) to move the tab. Groups can only live at the root.",
       "itemsPerPageLabel": "Items per page",
       "itemsPerPageHint": "Applies to all profiles",
       "pageLabel": "Page {{n}}",

@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "L'onglet {{tabId}} est une feuille et ne peut pas avoir de sous-éléments.",
       "tabGroupHasItems": "L'onglet {{tabId}} est un groupe et ne peut pas avoir d'URL/fichiers directs.",
       "tabTooDeep": "La profondeur de l'onglet {{tabId}} ({{depth}}) dépasse la limite ({{maxDepth}}).",
+      "tabMoveIntoSelf": "Impossible de déplacer un groupe dans lui-même.",
+      "tabDestNotGroup": "Destination invalide : la cible n'est pas un groupe.",
+      "tabSwapIntoDescendant": "Impossible d'échanger un onglet avec un élément qu'il contient.",
       "tabMixedLeafAndGroup": "L'onglet {{tabId}} ne peut pas mélanger éléments et sous-éléments.",
       "pathEmpty": "Le chemin {{kind}} ne peut pas être vide dans l'onglet {{tabId}}.",
       "openWithEmpty": "Le programme d'ouverture ne peut pas être vide dans l'onglet {{tabId}} (élément {{kind}}).",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ Ajouter un sous-groupe",
       "maxDepthHint": "Profondeur maximale atteinte — impossible d'ajouter d'autres sous-groupes ici.",
       "groupNewHint": "Enregistrez d'abord le groupe. Rouvrez-le ensuite depuis la liste ou cliquez sur le « + » du donut pour ajouter des onglets.",
+      "moveToLabel": "Déplacer vers",
+      "moveToRoot": "Racine (menu principal)",
       "focusIfOpen": {
         "label": "Mettre au premier plan si déjà ouvert",
         "hint": "Les apps et onglets déjà ouverts sont mis au premier plan ; les autres s'ouvrent normalement.",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "Organisation des onglets",
-      "crossRingHint": "Faites glisser les segments pour les réordonner et les déplacer entre les pages. Le glisser-déposer fonctionne au sein d'un même niveau (racine ou groupe), pas entre groupes différents.",
+      "crossRingHint": "Faites glisser les segments pour les réordonner au sein d'un niveau, ou déposez-les sur un autre groupe (ou la racine) pour déplacer l'onglet. Les groupes ne peuvent rester qu'à la racine.",
       "itemsPerPageLabel": "Éléments par page",
       "itemsPerPageHint": "S'applique à tous les profils",
       "pageLabel": "Page {{n}}",
