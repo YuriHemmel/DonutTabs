@@ -270,6 +270,8 @@ pub fn run() {
             commands::hide_donut,
             commands::save_tab,
             commands::delete_tab,
+            commands::move_tab,
+            commands::swap_tabs,
             commands::open_settings,
             commands::consume_settings_intent,
             commands::close_settings,

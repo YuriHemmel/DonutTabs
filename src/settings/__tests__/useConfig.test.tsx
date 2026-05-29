@@ -29,6 +29,8 @@ vi.mock("../../core/ipc", () => ({
     getConfig: vi.fn(),
     saveTab: vi.fn(),
     deleteTab: vi.fn(),
+    moveTab: vi.fn(),
+    swapTabs: vi.fn(),
     openSettings: vi.fn(),
     closeSettings: vi.fn(),
     openTab: vi.fn(),
@@ -142,6 +144,36 @@ describe("useConfig", () => {
 
     await act(() => result.current.deleteTab("some-id"));
     expect(ipc.deleteTab).toHaveBeenCalledWith("some-id", undefined, undefined);
+  });
+
+  it("moveTab delegates to ipc and applies the new snapshot", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const moved = makeConfig({
+      profiles: [makeProfile({ shortcut: "CommandOrControl+Shift+M" })],
+    });
+    (ipc.moveTab as ReturnType<typeof vi.fn>).mockResolvedValue(moved);
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    await act(() => result.current.moveTab("tab-id", ["g1"], [], 2, PROFILE_ID));
+    expect(ipc.moveTab).toHaveBeenCalledWith("tab-id", ["g1"], [], 2, PROFILE_ID);
+    expect(result.current.config).toEqual(moved);
+  });
+
+  it("swapTabs delegates to ipc and applies the new snapshot", async () => {
+    (ipc.getConfig as ReturnType<typeof vi.fn>).mockResolvedValue(makeConfig());
+    const swapped = makeConfig({
+      profiles: [makeProfile({ shortcut: "CommandOrControl+Shift+S" })],
+    });
+    (ipc.swapTabs as ReturnType<typeof vi.fn>).mockResolvedValue(swapped);
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(result.current.config).not.toBeNull());
+
+    await act(() => result.current.swapTabs("a", ["g1"], "b", [], PROFILE_ID));
+    expect(ipc.swapTabs).toHaveBeenCalledWith("a", ["g1"], "b", [], PROFILE_ID);
+    expect(result.current.config).toEqual(swapped);
   });
 
   it("setShortcut delegates to ipc and applies the new snapshot", async () => {

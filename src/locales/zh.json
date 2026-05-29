@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "标签页 {{tabId}} 是叶子项，不能包含子项。",
       "tabGroupHasItems": "标签页 {{tabId}} 是分组，不能包含直接的 URL/文件。",
       "tabTooDeep": "标签页 {{tabId}} 的深度（{{depth}}）超过了限制（{{maxDepth}}）。",
+      "tabMoveIntoSelf": "无法将分组移动到它自身内部。",
+      "tabDestNotGroup": "无效的目标：目标不是分组。",
+      "tabSwapIntoDescendant": "无法将标签页与其内部的项目互换。",
       "tabMixedLeafAndGroup": "标签页 {{tabId}} 不能同时包含项目和子项。",
       "pathEmpty": "标签页 {{tabId}} 中的 {{kind}} 路径不能为空。",
       "openWithEmpty": "标签页 {{tabId}}（{{kind}} 项）的打开程序不能为空。",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ 添加子分组",
       "maxDepthHint": "已达最大深度——此处无法添加更多子分组。",
       "groupNewHint": "请先保存分组。然后从列表中重新打开它，或点击甜甜圈的“+”来添加标签页。",
+      "moveToLabel": "移动到",
+      "moveToRoot": "根（主菜单）",
       "focusIfOpen": {
         "label": "如果已打开则聚焦",
         "hint": "已打开的应用和标签页会被聚焦；其他的正常打开。",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "标签页整理",
-      "crossRingHint": "拖动扇区可重新排序并在页面之间移动。拖动仅在同一层级（根或某个分组）内有效，不能跨不同分组。",
+      "crossRingHint": "拖动扇区可在同一层级内重新排序，或拖放到另一个分组（或根）以移动标签页。分组只能位于根层级。",
       "itemsPerPageLabel": "每页项目数",
       "itemsPerPageHint": "适用于所有配置文件",
       "pageLabel": "第 {{n}} 页",

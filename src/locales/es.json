@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "La pestaña {{tabId}} es una hoja y no puede tener subelementos.",
       "tabGroupHasItems": "La pestaña {{tabId}} es un grupo y no puede tener URLs/archivos directos.",
       "tabTooDeep": "La profundidad de la pestaña {{tabId}} ({{depth}}) supera el límite ({{maxDepth}}).",
+      "tabMoveIntoSelf": "No se puede mover un grupo dentro de sí mismo.",
+      "tabDestNotGroup": "Destino no válido: el objetivo no es un grupo.",
+      "tabSwapIntoDescendant": "No se puede intercambiar una pestaña con algo dentro de ella misma.",
       "tabMixedLeafAndGroup": "La pestaña {{tabId}} no puede mezclar elementos y subelementos.",
       "pathEmpty": "La ruta de {{kind}} no puede estar vacía en la pestaña {{tabId}}.",
       "openWithEmpty": "El programa de apertura no puede estar vacío en la pestaña {{tabId}} (elemento {{kind}}).",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ Añadir subgrupo",
       "maxDepthHint": "Profundidad máxima alcanzada — no se pueden añadir más subgrupos aquí.",
       "groupNewHint": "Guarda primero el grupo. Luego reábrelo desde la lista o haz clic en el «+» del donut para añadir pestañas.",
+      "moveToLabel": "Mover a",
+      "moveToRoot": "Raíz (menú principal)",
       "focusIfOpen": {
         "label": "Enfocar si ya está abierto",
         "hint": "Las apps y pestañas ya abiertas se enfocan; las demás se abren normalmente.",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "Organización de pestañas",
-      "crossRingHint": "Arrastra los segmentos para reordenarlos y moverlos entre páginas. El arrastre funciona dentro del mismo nivel (raíz o un grupo), no entre grupos distintos.",
+      "crossRingHint": "Arrastra los segmentos para reordenarlos dentro de un nivel, o suéltalos sobre otro grupo (o la raíz) para mover la pestaña. Los grupos solo pueden estar en la raíz.",
       "itemsPerPageLabel": "Elementos por página",
       "itemsPerPageHint": "Se aplica a todos los perfiles",
       "pageLabel": "Página {{n}}",

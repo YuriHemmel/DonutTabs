@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "Aba {{tabId}} marcada como leaf não pode ter sub-itens.",
       "tabGroupHasItems": "Aba {{tabId}} marcada como grupo não pode ter URLs/arquivos diretos.",
       "tabTooDeep": "Profundidade da aba {{tabId}} ({{depth}}) excede o limite ({{maxDepth}}).",
+      "tabMoveIntoSelf": "Não é possível mover um grupo para dentro de si mesmo.",
+      "tabDestNotGroup": "Destino inválido: o alvo não é um grupo.",
+      "tabSwapIntoDescendant": "Não é possível trocar uma aba com algo dentro dela mesma.",
       "tabMixedLeafAndGroup": "Aba {{tabId}} não pode ter items e sub-itens simultaneamente.",
       "pathEmpty": "{{kind}}: caminho não pode ser vazio na aba {{tabId}}.",
       "openWithEmpty": "Programa para abrir não pode ser vazio na aba {{tabId}} (item {{kind}}).",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ Adicionar subgrupo",
       "maxDepthHint": "Profundidade máxima atingida — não é possível adicionar mais subgrupos aqui.",
       "groupNewHint": "Salve o grupo primeiro. Depois reabra-o pela lista ou clique no \"+\" do donut pra adicionar abas.",
+      "moveToLabel": "Mover para",
+      "moveToRoot": "Raiz (menu principal)",
       "focusIfOpen": {
         "label": "Focar se já estiver aberto",
         "hint": "Apps e abas já abertos ganham foco; os demais abrem normalmente.",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "Organização das abas",
-      "crossRingHint": "Arraste as fatias para reordenar e movê-las entre páginas. O arrasto funciona dentro do mesmo nível (raiz ou um grupo), não entre grupos diferentes.",
+      "crossRingHint": "Arraste as fatias para reordenar dentro de um nível, ou solte sobre outro grupo (ou a raiz) para mover a aba. Grupos só podem ficar na raiz.",
       "itemsPerPageLabel": "Itens por página",
       "itemsPerPageHint": "Vale para todos os perfis",
       "pageLabel": "Página {{n}}",

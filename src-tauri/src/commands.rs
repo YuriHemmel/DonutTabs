@@ -1,7 +1,7 @@
 use crate::apps_picker::{self, InstalledApp};
 use crate::config::io::{load_from_path, save_atomic};
 use crate::config::schema::{
-    Config, Item, Language, Profile, SpawnPosition, Tab, Theme, ThemeOverrides,
+    Config, Item, Language, Profile, SpawnPosition, Tab, TabKind, Theme, ThemeOverrides,
 };
 use crate::errors::{AppError, AppResult};
 use crate::favicon::{self, FaviconResult};
@@ -340,6 +340,60 @@ pub fn delete_tab<R: tauri::Runtime>(
         let target = profile_id.unwrap_or(cfg.active_profile_id);
         let profile = profile_by_id_mut(&mut cfg, target)?;
         apply_delete_in_profile(profile, tab_id, &path)?;
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Issue #109 — move uma aba entre níveis (de/para um grupo, ou de/para a
+/// raiz). `from_parent_path`/`to_parent_path` ausentes = raiz. `dest_index`
+/// ausente = append no destino. Atômico: valida + persiste + emite, com
+/// rollback em memória se o write falhar.
+#[tauri::command]
+pub fn move_tab<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    tab_id: Uuid,
+    from_parent_path: Option<Vec<Uuid>>,
+    to_parent_path: Option<Vec<Uuid>>,
+    dest_index: Option<usize>,
+    profile_id: Option<Uuid>,
+) -> Result<Config, AppError> {
+    let from = from_parent_path.unwrap_or_default();
+    let to = to_parent_path.unwrap_or_default();
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let target = profile_id.unwrap_or(cfg.active_profile_id);
+        let profile = profile_by_id_mut(&mut cfg, target)?;
+        apply_move_in_profile(profile, tab_id, &from, &to, dest_index)?;
+        save_with_rollback(&mut cfg, &state.config_path)?;
+        cfg.clone()
+    };
+    let _ = app.emit(CONFIG_CHANGED_EVENT, &snapshot);
+    Ok(snapshot)
+}
+
+/// Issue #109 — troca duas abas de posição (drop cross-ring sobre uma aba:
+/// ambas trocam de nível). Paths ausentes = raiz. Atômico + emite evento.
+#[tauri::command]
+pub fn swap_tabs<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, AppState>,
+    a_id: Uuid,
+    a_parent_path: Option<Vec<Uuid>>,
+    b_id: Uuid,
+    b_parent_path: Option<Vec<Uuid>>,
+    profile_id: Option<Uuid>,
+) -> Result<Config, AppError> {
+    let a_path = a_parent_path.unwrap_or_default();
+    let b_path = b_parent_path.unwrap_or_default();
+    let snapshot = {
+        let mut cfg = state.config.write().unwrap();
+        let target = profile_id.unwrap_or(cfg.active_profile_id);
+        let profile = profile_by_id_mut(&mut cfg, target)?;
+        apply_swap_tabs(profile, a_id, &a_path, b_id, &b_path)?;
         save_with_rollback(&mut cfg, &state.config_path)?;
         cfg.clone()
     };
@@ -1506,6 +1560,162 @@ fn apply_delete_in_profile(profile: &mut Profile, id: Uuid, parent_path: &[Uuid]
     Ok(())
 }
 
+/// Issue #109 — variante de [`find_parent_tabs_mut`] usada como **destino** de
+/// um move. Diferença crucial: cada nó no path precisa ser `TabKind::Group`
+/// (não basta existir). `find_parent_tabs_mut` desce em `.children` sem checar
+/// `kind`, então sem essa validação seria possível "inserir" uma aba na lista
+/// (sempre vazia) de children de um leaf, gerando um estado que só falharia
+/// depois em `validate` com erro genérico. Aqui o erro é específico
+/// (`tab_dest_not_group`). Path vazio (raiz) é sempre válido.
+fn find_dest_tabs_mut<'a>(
+    profile: &'a mut Profile,
+    parent_path: &[Uuid],
+) -> AppResult<&'a mut Vec<Tab>> {
+    let mut current: &mut Vec<Tab> = &mut profile.tabs;
+    for id in parent_path {
+        let next = current
+            .iter_mut()
+            .find(|t| t.id == *id)
+            .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", id.to_string())]))?;
+        if next.kind != TabKind::Group {
+            return Err(AppError::config(
+                "tab_dest_not_group",
+                &[("tabId", id.to_string())],
+            ));
+        }
+        current = &mut next.children;
+    }
+    Ok(current)
+}
+
+/// Issue #109 — remove a aba `tab_id` de `from_parent_path` e a reinsere em
+/// `to_parent_path` (na posição `dest_index`, ou no fim quando `None`).
+/// Renormaliza `order` nas **duas** listas (origem perde uma aba, destino
+/// ganha). O `validate` chamado por `save_atomic` cobre `tab_too_deep` como
+/// backstop — aqui só bloqueamos os casos que produziriam erro genérico:
+///   - mover um grupo pra dentro de si mesmo (`tab_move_into_self`);
+///   - destino que não é grupo nem raiz (`tab_dest_not_group`, via
+///     [`find_dest_tabs_mut`]).
+pub(crate) fn apply_move_in_profile(
+    profile: &mut Profile,
+    tab_id: Uuid,
+    from_parent_path: &[Uuid],
+    to_parent_path: &[Uuid],
+    dest_index: Option<usize>,
+) -> AppResult<()> {
+    // Cycle guard: o destino não pode passar pela própria aba sendo movida.
+    if to_parent_path.contains(&tab_id) {
+        return Err(AppError::config(
+            "tab_move_into_self",
+            &[("tabId", tab_id.to_string())],
+        ));
+    }
+
+    // Remover da origem (clonando), renormalizando o que sobra. Borrow encerra
+    // ao fim deste bloco, liberando `profile` para o re-borrow do destino.
+    let moved = {
+        let src = find_parent_tabs_mut(profile, from_parent_path)?;
+        let idx = src
+            .iter()
+            .position(|t| t.id == tab_id)
+            .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", tab_id.to_string())]))?;
+        let moved = src.remove(idx);
+        for (i, t) in src.iter_mut().enumerate() {
+            t.order = i as u32;
+        }
+        moved
+    };
+
+    // Inserir no destino (kind-checked), renormalizando.
+    let dest = find_dest_tabs_mut(profile, to_parent_path)?;
+    // Clamp contra o `len` PÓS-remoção (relevante em move same-parent, onde a
+    // remoção acima já encolheu a lista).
+    let insert_at = dest_index.unwrap_or(dest.len()).min(dest.len());
+    dest.insert(insert_at, moved);
+    for (i, t) in dest.iter_mut().enumerate() {
+        t.order = i as u32;
+    }
+    Ok(())
+}
+
+/// Issue #109 — troca as abas `a_id` e `b_id` de posição, possivelmente entre
+/// pais diferentes (drop cross-ring sobre uma aba: ambas trocam de nível).
+/// Cada aba assume a posição (índice + `order`) que a outra ocupava. O
+/// `validate` em `save_atomic` cobre `tab_too_deep`/kind como backstop (ex.:
+/// trocar uma leaf por um grupo que cairia fundo demais). Bloqueamos aqui só o
+/// caso de uma aba estar na subárvore da outra (`tab_swap_into_descendant`),
+/// que produziria ciclo/auto-referência.
+pub(crate) fn apply_swap_tabs(
+    profile: &mut Profile,
+    a_id: Uuid,
+    a_parent_path: &[Uuid],
+    b_id: Uuid,
+    b_parent_path: &[Uuid],
+) -> AppResult<()> {
+    if a_id == b_id {
+        return Ok(());
+    }
+    // Nenhuma pode estar na subárvore da outra (evita ciclo).
+    if a_parent_path.contains(&b_id) || b_parent_path.contains(&a_id) {
+        return Err(AppError::config("tab_swap_into_descendant", &[]));
+    }
+
+    let not_found = |id: Uuid| AppError::launcher("tab_not_found", &[("id", id.to_string())]);
+
+    if a_parent_path == b_parent_path {
+        // Mesmo pai: troca dois elementos in-place + renormaliza.
+        let v = find_parent_tabs_mut(profile, a_parent_path)?;
+        let i = v
+            .iter()
+            .position(|t| t.id == a_id)
+            .ok_or_else(|| not_found(a_id))?;
+        let j = v
+            .iter()
+            .position(|t| t.id == b_id)
+            .ok_or_else(|| not_found(b_id))?;
+        v.swap(i, j);
+        for (k, t) in v.iter_mut().enumerate() {
+            t.order = k as u32;
+        }
+        return Ok(());
+    }
+
+    // Pais diferentes: cada aba assume o slot da outra. Como o guard acima
+    // garante que nenhum path é descendente do outro, os dois slots são
+    // independentes — re-navegar após a primeira escrita continua válido.
+    let a_idx = {
+        let v = find_parent_tabs_mut(profile, a_parent_path)?;
+        v.iter()
+            .position(|t| t.id == a_id)
+            .ok_or_else(|| not_found(a_id))?
+    };
+    let a_tab = {
+        let v = find_parent_tabs_mut(profile, a_parent_path)?;
+        v[a_idx].clone()
+    };
+    let b_idx = {
+        let v = find_parent_tabs_mut(profile, b_parent_path)?;
+        v.iter()
+            .position(|t| t.id == b_id)
+            .ok_or_else(|| not_found(b_id))?
+    };
+    let b_tab = {
+        let v = find_parent_tabs_mut(profile, b_parent_path)?;
+        v[b_idx].clone()
+    };
+    {
+        let v = find_parent_tabs_mut(profile, a_parent_path)?;
+        let order = v[a_idx].order;
+        v[a_idx] = Tab { order, ..b_tab };
+    }
+    {
+        let v = find_parent_tabs_mut(profile, b_parent_path)?;
+        let order = v[b_idx].order;
+        v[b_idx] = Tab { order, ..a_tab };
+    }
+    Ok(())
+}
+
 /// Plano de troca do perfil ativo. Captura combos antes da mutação para que
 /// um rollback no `save_atomic` consiga restaurar o atalho global mesmo após
 /// a edição em memória.
@@ -1852,6 +2062,251 @@ mod tests {
         assert_eq!(children[0].order, 0);
         assert_eq!(children[1].id, id_a);
         assert_eq!(children[1].order, 1);
+    }
+
+    // ---------- Issue #109: move tab between groups / root ----------
+
+    #[test]
+    fn apply_move_out_of_group_to_root() {
+        let mut profile = Profile::default();
+        let leaf = sample_tab("inside");
+        let leaf_id = leaf.id;
+        let group = group_tab("G", vec![leaf]);
+        let gid = group.id;
+        profile.tabs.push(group);
+
+        apply_move_in_profile(&mut profile, leaf_id, &[gid], &[], None).unwrap();
+
+        // Saiu do grupo.
+        assert!(profile.tabs[0].children.is_empty());
+        // Foi pra raiz, depois do grupo.
+        assert_eq!(profile.tabs.len(), 2);
+        assert_eq!(profile.tabs[1].id, leaf_id);
+        assert_eq!(profile.tabs[1].order, 1);
+    }
+
+    #[test]
+    fn apply_move_root_to_group() {
+        let mut profile = Profile::default();
+        let leaf = sample_tab("free");
+        let leaf_id = leaf.id;
+        let group = group_tab("G", vec![]);
+        let gid = group.id;
+        profile.tabs.push(group);
+        profile.tabs.push(leaf);
+
+        apply_move_in_profile(&mut profile, leaf_id, &[], &[gid], None).unwrap();
+
+        // Raiz só tem o grupo agora.
+        assert_eq!(profile.tabs.len(), 1);
+        assert_eq!(profile.tabs[0].id, gid);
+        // O leaf entrou no grupo.
+        assert_eq!(profile.tabs[0].children.len(), 1);
+        assert_eq!(profile.tabs[0].children[0].id, leaf_id);
+        assert_eq!(profile.tabs[0].children[0].order, 0);
+    }
+
+    #[test]
+    fn apply_move_with_dest_index_inserts_at_position() {
+        let mut profile = Profile::default();
+        let c0 = sample_tab("c0");
+        let c1 = sample_tab("c1");
+        let group = group_tab("G", vec![c0, c1]);
+        let gid = group.id;
+        let mover = sample_tab("mover");
+        let mover_id = mover.id;
+        profile.tabs.push(group);
+        profile.tabs.push(mover);
+
+        // Insere no índice 1 (entre c0 e c1).
+        apply_move_in_profile(&mut profile, mover_id, &[], &[gid], Some(1)).unwrap();
+
+        let children = &profile.tabs[0].children;
+        assert_eq!(children.len(), 3);
+        assert_eq!(children[1].id, mover_id);
+        assert_eq!(children[0].order, 0);
+        assert_eq!(children[1].order, 1);
+        assert_eq!(children[2].order, 2);
+    }
+
+    #[test]
+    fn apply_move_into_leaf_rejected() {
+        let mut profile = Profile::default();
+        let dest_leaf = sample_tab("dest");
+        let dest_id = dest_leaf.id;
+        let mover = sample_tab("mover");
+        let mover_id = mover.id;
+        profile.tabs.push(dest_leaf);
+        profile.tabs.push(mover);
+
+        let err = apply_move_in_profile(&mut profile, mover_id, &[], &[dest_id], None).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "tab_dest_not_group"),
+            other => panic!("expected Config tab_dest_not_group, got {other:?}"),
+        }
+        // A remoção da origem deve ser revertida pelo caller via rollback; aqui
+        // só garantimos que o erro foi emitido (a função não persiste nada).
+    }
+
+    #[test]
+    fn apply_move_into_self_rejected() {
+        let mut profile = Profile::default();
+        let group = group_tab("G", vec![]);
+        let gid = group.id;
+        profile.tabs.push(group);
+
+        let err = apply_move_in_profile(&mut profile, gid, &[], &[gid], None).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "tab_move_into_self"),
+            other => panic!("expected Config tab_move_into_self, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_move_missing_source_tab_errors() {
+        let mut profile = Profile::default();
+        let group = group_tab("G", vec![]);
+        let gid = group.id;
+        profile.tabs.push(group);
+
+        let err =
+            apply_move_in_profile(&mut profile, Uuid::new_v4(), &[], &[gid], None).unwrap_err();
+        match err {
+            AppError::Launcher { code, .. } => assert_eq!(code, "tab_not_found"),
+            other => panic!("expected Launcher tab_not_found, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_move_renormalizes_both_parents() {
+        let mut profile = Profile::default();
+        let a = sample_tab("a");
+        let a_id = a.id;
+        let b = sample_tab("b");
+        let b_id = b.id;
+        let c0 = sample_tab("c0");
+        let group = group_tab("G", vec![c0]);
+        let gid = group.id;
+        // raiz: a, b, G
+        profile.tabs.push(a);
+        profile.tabs.push(b);
+        profile.tabs.push(group);
+
+        // Move `a` (raiz idx 0) pra dentro do grupo.
+        apply_move_in_profile(&mut profile, a_id, &[], &[gid], None).unwrap();
+
+        // Origem (raiz): b, G renormalizados 0,1.
+        let root_ids: Vec<_> = profile.tabs.iter().map(|t| t.id).collect();
+        assert_eq!(root_ids, vec![b_id, gid]);
+        assert_eq!(profile.tabs[0].order, 0);
+        assert_eq!(profile.tabs[1].order, 1);
+        // Destino (grupo): c0, a renormalizados 0,1.
+        let group_ref = profile.tabs.iter().find(|t| t.id == gid).unwrap();
+        assert_eq!(group_ref.children.len(), 2);
+        assert_eq!(group_ref.children[1].id, a_id);
+        assert_eq!(group_ref.children[0].order, 0);
+        assert_eq!(group_ref.children[1].order, 1);
+    }
+
+    #[test]
+    fn apply_move_same_parent_reposition() {
+        let mut profile = Profile::default();
+        let a = sample_tab("a");
+        let a_id = a.id;
+        let b = sample_tab("b");
+        let b_id = b.id;
+        let c = sample_tab("c");
+        let c_id = c.id;
+        profile.tabs.push(a);
+        profile.tabs.push(b);
+        profile.tabs.push(c);
+
+        // Move `a` (idx 0) pro fim da mesma lista (raiz). Após remover `a`, a
+        // lista tem len 2; dest_index 2 = append no fim → b, c, a.
+        apply_move_in_profile(&mut profile, a_id, &[], &[], Some(2)).unwrap();
+
+        let ids: Vec<_> = profile.tabs.iter().map(|t| t.id).collect();
+        assert_eq!(ids, vec![b_id, c_id, a_id]);
+        assert_eq!(profile.tabs[0].order, 0);
+        assert_eq!(profile.tabs[1].order, 1);
+        assert_eq!(profile.tabs[2].order, 2);
+    }
+
+    #[test]
+    fn apply_swap_tabs_across_parents_exchanges_levels() {
+        let mut profile = Profile::default();
+        let child = sample_tab("inside");
+        let child_id = child.id;
+        let group = group_tab("G", vec![child]);
+        let gid = group.id;
+        let root_leaf = sample_tab("free");
+        let root_leaf_id = root_leaf.id;
+        // raiz: [free, G(child=inside)]
+        profile.tabs.push(root_leaf);
+        profile.tabs.push(group);
+
+        // Troca `inside` (dentro de G) com `free` (raiz).
+        apply_swap_tabs(&mut profile, child_id, &[gid], root_leaf_id, &[]).unwrap();
+
+        // `inside` agora está na raiz, na posição que era do `free` (idx 0).
+        assert_eq!(profile.tabs[0].id, child_id);
+        assert_eq!(profile.tabs[0].order, 0);
+        // `free` foi pra dentro de G, na posição que era do `inside`.
+        let group_ref = profile.tabs.iter().find(|t| t.id == gid).unwrap();
+        assert_eq!(group_ref.children.len(), 1);
+        assert_eq!(group_ref.children[0].id, root_leaf_id);
+        assert_eq!(group_ref.children[0].order, 0);
+    }
+
+    #[test]
+    fn apply_swap_tabs_same_parent_swaps_in_place() {
+        let mut profile = Profile::default();
+        let a = sample_tab("a");
+        let a_id = a.id;
+        let b = sample_tab("b");
+        let b_id = b.id;
+        let c = sample_tab("c");
+        let c_id = c.id;
+        profile.tabs.extend([a, b, c]);
+
+        // Troca a (idx0) com c (idx2).
+        apply_swap_tabs(&mut profile, a_id, &[], c_id, &[]).unwrap();
+
+        let ids: Vec<_> = profile.tabs.iter().map(|t| t.id).collect();
+        assert_eq!(ids, vec![c_id, b_id, a_id]);
+        assert_eq!(profile.tabs[0].order, 0);
+        assert_eq!(profile.tabs[2].order, 2);
+    }
+
+    #[test]
+    fn apply_swap_tabs_into_descendant_rejected() {
+        let mut profile = Profile::default();
+        let child = sample_tab("inside");
+        let child_id = child.id;
+        let group = group_tab("G", vec![child]);
+        let gid = group.id;
+        profile.tabs.push(group);
+
+        // Tentar trocar o grupo G (raiz) com seu próprio filho `inside`.
+        let err = apply_swap_tabs(&mut profile, gid, &[], child_id, &[gid]).unwrap_err();
+        match err {
+            AppError::Config { code, .. } => assert_eq!(code, "tab_swap_into_descendant"),
+            other => panic!("expected Config tab_swap_into_descendant, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_swap_tabs_missing_tab_errors() {
+        let mut profile = Profile::default();
+        let a = sample_tab("a");
+        let a_id = a.id;
+        profile.tabs.push(a);
+
+        let err = apply_swap_tabs(&mut profile, a_id, &[], Uuid::new_v4(), &[]).unwrap_err();
+        match err {
+            AppError::Launcher { code, .. } => assert_eq!(code, "tab_not_found"),
+            other => panic!("expected Launcher tab_not_found, got {other:?}"),
+        }
     }
 
     #[test]

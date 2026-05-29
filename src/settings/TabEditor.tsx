@@ -51,6 +51,13 @@ export interface TabEditorProps {
    *  (mode=new + currentDepth > 1). Renderizado como cabeçalho (ícone + nome)
    *  acima do título "Nova aba"; `null` no root. */
   parentGroup?: { name: string | null; icon: string | null } | null;
+  /** Issue #109 — destinos válidos pra "Mover para" (mode=edit). Cada item:
+   *  `value` = `"root"` ou o id do grupo de destino. A localização atual da
+   *  aba já vem **excluída** da lista pelo SettingsApp; lista vazia esconde o
+   *  controle. */
+  moveDestinations?: { value: string; label: string }[];
+  /** Issue #109 — dispara o move pro destino escolhido (`"root"` → `[]`). */
+  onMove?: (toParentPath: string[]) => Promise<void>;
 }
 
 interface FormState {
@@ -200,6 +207,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   onAddChild,
   initialKind = "leaf",
   parentGroup = null,
+  moveDestinations = [],
+  onMove,
 }) => {
   const { t } = useTranslation();
   // Issue #103 — dentro de um grupo (currentDepth > 1) só é possível criar
@@ -310,6 +319,23 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     }
   };
 
+  const handleMoveSelect = async (value: string) => {
+    if (!onMove || value === "") return;
+    const toParentPath = value === "root" ? [] : [value];
+    setServerError(null);
+    setSaving(true);
+    try {
+      await onMove(toParentPath);
+    } catch (err) {
+      setServerError(translateAppError(err, t));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const showMoveControl =
+    mode === "edit" && !!onMove && moveDestinations.length > 0;
+
   const title =
     mode === "new" ? t("settings.editor.newTabTitle") : state.name || state.icon || "";
 
@@ -399,6 +425,31 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         onClose={() => setPickerOpen(false)}
         onSelect={(icon) => setState((s) => ({ ...s, icon }))}
       />
+
+      {showMoveControl && (
+        <label
+          data-testid="tab-move-to"
+          style={{ display: "flex", flexDirection: "column", gap: 4 }}
+        >
+          <span>{t("settings.editor.moveToLabel")}</span>
+          <select
+            data-testid="tab-move-to-select"
+            value=""
+            disabled={saving}
+            onChange={(e) => {
+              void handleMoveSelect(e.target.value);
+            }}
+            style={inputStyle}
+          >
+            <option value="">{t("settings.editor.moveToLabel")}…</option>
+            {moveDestinations.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {state.kind === "leaf" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

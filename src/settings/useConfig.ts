@@ -17,6 +17,20 @@ export interface UseConfig {
     profileId?: string,
     parentPath?: string[],
   ) => Promise<Config>;
+  moveTab: (
+    tabId: string,
+    fromParentPath: string[],
+    toParentPath: string[],
+    destIndex?: number,
+    profileId?: string,
+  ) => Promise<Config>;
+  swapTabs: (
+    aId: string,
+    aParentPath: string[],
+    bId: string,
+    bParentPath: string[],
+    profileId?: string,
+  ) => Promise<Config>;
   setShortcut: (combo: string, profileId?: string) => Promise<Config>;
   setTheme: (theme: Theme, profileId?: string) => Promise<Config>;
   setLanguage: (language: Language) => Promise<Config>;
@@ -99,6 +113,48 @@ export function useConfig(): UseConfig {
   const deleteTab = useCallback(
     async (tabId: string, profileId?: string, parentPath?: string[]) => {
       const next = await ipc.deleteTab(tabId, profileId, parentPath);
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
+  const moveTab = useCallback(
+    async (
+      tabId: string,
+      fromParentPath: string[],
+      toParentPath: string[],
+      destIndex?: number,
+      profileId?: string,
+    ) => {
+      const next = await ipc.moveTab(
+        tabId,
+        fromParentPath,
+        toParentPath,
+        destIndex,
+        profileId,
+      );
+      setConfig(next);
+      return next;
+    },
+    [],
+  );
+
+  const swapTabs = useCallback(
+    async (
+      aId: string,
+      aParentPath: string[],
+      bId: string,
+      bParentPath: string[],
+      profileId?: string,
+    ) => {
+      const next = await ipc.swapTabs(
+        aId,
+        aParentPath,
+        bId,
+        bParentPath,
+        profileId,
+      );
       setConfig(next);
       return next;
     },
@@ -260,6 +316,8 @@ export function useConfig(): UseConfig {
     loadError,
     saveTab,
     deleteTab,
+    moveTab,
+    swapTabs,
     setShortcut,
     setTheme,
     setLanguage,

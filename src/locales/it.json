@@ -9,6 +9,9 @@
       "tabLeafHasChildren": "La scheda {{tabId}} è una foglia e non può avere sotto-elementi.",
       "tabGroupHasItems": "La scheda {{tabId}} è un gruppo e non può avere URL/file diretti.",
       "tabTooDeep": "La profondità della scheda {{tabId}} ({{depth}}) supera il limite ({{maxDepth}}).",
+      "tabMoveIntoSelf": "Impossibile spostare un gruppo dentro sé stesso.",
+      "tabDestNotGroup": "Destinazione non valida: il bersaglio non è un gruppo.",
+      "tabSwapIntoDescendant": "Impossibile scambiare una scheda con un elemento al suo interno.",
       "tabMixedLeafAndGroup": "La scheda {{tabId}} non può mescolare elementi e sotto-elementi.",
       "pathEmpty": "Il percorso {{kind}} non può essere vuoto nella scheda {{tabId}}.",
       "openWithEmpty": "Il programma di apertura non può essere vuoto nella scheda {{tabId}} (elemento {{kind}}).",
@@ -359,6 +362,8 @@
       "addChildGroup": "+ Aggiungi sottogruppo",
       "maxDepthHint": "Profondità massima raggiunta — impossibile aggiungere altri sottogruppi qui.",
       "groupNewHint": "Salva prima il gruppo. Poi riaprilo dall'elenco o fai clic sul «+» del donut per aggiungere schede.",
+      "moveToLabel": "Sposta in",
+      "moveToRoot": "Radice (menu principale)",
       "focusIfOpen": {
         "label": "Porta in primo piano se già aperto",
         "hint": "Le app e le schede già aperte vengono portate in primo piano; le altre si aprono normalmente.",
@@ -395,7 +400,7 @@
     },
     "organization": {
       "title": "Organizzazione delle schede",
-      "crossRingHint": "Trascina gli spicchi per riordinarli e spostarli tra le pagine. Il trascinamento funziona all'interno dello stesso livello (radice o gruppo), non tra gruppi diversi.",
+      "crossRingHint": "Trascina gli spicchi per riordinarli all'interno di un livello, oppure rilasciali su un altro gruppo (o sulla radice) per spostare la scheda. I gruppi possono stare solo nella radice.",
       "itemsPerPageLabel": "Elementi per pagina",
       "itemsPerPageHint": "Vale per tutti i profili",
       "pageLabel": "Pagina {{n}}",

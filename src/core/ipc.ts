@@ -46,6 +46,40 @@ export const ipc = {
       profileId: profileId ?? null,
       parentPath: parentPath ?? null,
     }),
+  /** Issue #109 — move uma aba entre níveis. `fromParentPath`/`toParentPath`
+   *  são caminhos de UUIDs de grupos (`[]` = raiz). `destIndex` ausente =
+   *  append no destino; presente = posição exata (drag). */
+  moveTab: (
+    tabId: string,
+    fromParentPath: string[],
+    toParentPath: string[],
+    destIndex?: number,
+    profileId?: string,
+  ) =>
+    invoke<Config>("move_tab", {
+      tabId,
+      fromParentPath,
+      toParentPath,
+      destIndex: destIndex ?? null,
+      profileId: profileId ?? null,
+    }),
+  /** Issue #109 — troca duas abas de posição (drop cross-ring sobre uma aba:
+   *  ambas trocam de nível). Paths são caminhos de UUIDs de grupos (`[]` =
+   *  raiz). */
+  swapTabs: (
+    aId: string,
+    aParentPath: string[],
+    bId: string,
+    bParentPath: string[],
+    profileId?: string,
+  ) =>
+    invoke<Config>("swap_tabs", {
+      aId,
+      aParentPath,
+      bId,
+      bParentPath,
+      profileId: profileId ?? null,
+    }),
   openSettings: (intent?: SettingsIntent) =>
     invoke<void>("open_settings", { intent: intent ?? null }),
   consumeSettingsIntent: () => invoke<string | null>("consume_settings_intent"),

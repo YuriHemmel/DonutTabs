@@ -621,6 +621,72 @@ describe("TabEditor", () => {
     await renderEditor({ mode: "edit", initial: chromeTab });
     expect(screen.queryByTestId("tab-focus-firefox-warning")).toBeNull();
   });
+
+  // ---------- Issue #109: "Mover para" control ----------
+
+  it("renders the move-to select with the given destinations (mode=edit)", async () => {
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [
+        { value: "root", label: "Raiz" },
+        { value: "g1", label: "Grupo 1" },
+      ],
+      onMove: vi.fn().mockResolvedValue(undefined),
+    });
+    const select = screen.getByTestId("tab-move-to-select") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    // Placeholder vazio + os dois destinos.
+    expect(optionValues).toEqual(["", "root", "g1"]);
+  });
+
+  it("calls onMove with the parsed path when a destination is chosen", async () => {
+    const onMove = vi.fn().mockResolvedValue(undefined);
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [{ value: "g1", label: "Grupo 1" }],
+      onMove,
+    });
+    fireEvent.change(screen.getByTestId("tab-move-to-select"), {
+      target: { value: "g1" },
+    });
+    expect(onMove).toHaveBeenCalledWith(["g1"]);
+  });
+
+  it("maps the root option to an empty path", async () => {
+    const onMove = vi.fn().mockResolvedValue(undefined);
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [{ value: "root", label: "Raiz" }],
+      onMove,
+    });
+    fireEvent.change(screen.getByTestId("tab-move-to-select"), {
+      target: { value: "root" },
+    });
+    expect(onMove).toHaveBeenCalledWith([]);
+  });
+
+  it("hides the move-to control when there are no destinations", async () => {
+    await renderEditor({
+      mode: "edit",
+      initial: existing,
+      moveDestinations: [],
+      onMove: vi.fn(),
+    });
+    expect(screen.queryByTestId("tab-move-to")).toBeNull();
+  });
+
+  it("hides the move-to control in mode=new", async () => {
+    await renderEditor({
+      mode: "new",
+      initial: null,
+      moveDestinations: [{ value: "g1", label: "Grupo 1" }],
+      onMove: vi.fn(),
+    });
+    expect(screen.queryByTestId("tab-move-to")).toBeNull();
+  });
 });
 
 describe("hasFirefoxUrlItem", () => {
