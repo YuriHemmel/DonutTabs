@@ -189,8 +189,9 @@ O desenho (donut) vive em `src-tauri/icons/icon.{png,ico,icns}` e é gerado uma 
 ≥1024×1024 e commitar `src-tauri/icons/*` + `public/app-icon.png`.
 
 - **Instalador Windows (NSIS):** o ícone do `.exe` do instalador/wizard vem de
-  `bundle.windows.nsis.installerIcon`/`uninstallerIcon` em `tauri.conf.json` (apontam para
-  `icons/icon.ico`). **Sem essas chaves o NSIS usa o ícone genérico do MUI2** (`modern-install.ico`),
+  `bundle.windows.nsis.installerIcon` em `tauri.conf.json` (aponta para `icons/icon.ico`;
+  o desinstalador reaproveita o mesmo ícone — não há chave `uninstallerIcon` nesta versão do
+  `tauri-build`). **Sem essa chave o NSIS usa o ícone genérico do MUI2** (`modern-install.ico`),
   que parece um ícone de download padrão — foi o sintoma da issue #107. MSI (WiX) e o `.app`/DMG
   do macOS já usam o `icon` do bundle.
 

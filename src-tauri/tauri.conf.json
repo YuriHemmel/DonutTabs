@@ -33,8 +33,7 @@
     ],
     "windows": {
       "nsis": {
-        "installerIcon": "icons/icon.ico",
-        "uninstallerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico"
       }
     }
   },
