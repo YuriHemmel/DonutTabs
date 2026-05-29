@@ -1560,6 +1560,31 @@ fn apply_delete_in_profile(profile: &mut Profile, id: Uuid, parent_path: &[Uuid]
     Ok(())
 }
 
+/// Issue #109 — validação read-only do path de destino, com as mesmas regras
+/// de [`find_dest_tabs_mut`] (cada nó precisa existir e ser `TabKind::Group`;
+/// raiz sempre válida). Existe para ser chamada **antes** de qualquer mutação:
+/// `apply_move_in_profile` remove a aba da origem antes de navegar o destino,
+/// então sem esse pré-check um destino inválido deixaria a aba removida sem
+/// reinserção, corrompendo o config em memória (o caller só faz rollback em
+/// falha de `save_atomic`, não de mutação).
+fn validate_dest_reachable(profile: &Profile, parent_path: &[Uuid]) -> AppResult<()> {
+    let mut current: &Vec<Tab> = &profile.tabs;
+    for id in parent_path {
+        let next = current
+            .iter()
+            .find(|t| t.id == *id)
+            .ok_or_else(|| AppError::launcher("tab_not_found", &[("id", id.to_string())]))?;
+        if next.kind != TabKind::Group {
+            return Err(AppError::config(
+                "tab_dest_not_group",
+                &[("tabId", id.to_string())],
+            ));
+        }
+        current = &next.children;
+    }
+    Ok(())
+}
+
 /// Issue #109 — variante de [`find_parent_tabs_mut`] usada como **destino** de
 /// um move. Diferença crucial: cada nó no path precisa ser `TabKind::Group`
 /// (não basta existir). `find_parent_tabs_mut` desce em `.children` sem checar
@@ -1610,6 +1635,12 @@ pub(crate) fn apply_move_in_profile(
             &[("tabId", tab_id.to_string())],
         ));
     }
+
+    // Valida o destino ANTES de mexer na origem. A aba a ser movida não está no
+    // path do destino (cycle guard acima), então a remoção subsequente não muda
+    // o resultado dessa checagem — mas fazê-la primeiro garante que um destino
+    // inválido aborte sem deixar a aba removida sem reinserção.
+    validate_dest_reachable(profile, to_parent_path)?;
 
     // Remover da origem (clonando), renormalizando o que sobra. Borrow encerra
     // ao fim deste bloco, liberando `profile` para o re-borrow do destino.
@@ -2144,8 +2175,12 @@ mod tests {
             AppError::Config { code, .. } => assert_eq!(code, "tab_dest_not_group"),
             other => panic!("expected Config tab_dest_not_group, got {other:?}"),
         }
-        // A remoção da origem deve ser revertida pelo caller via rollback; aqui
-        // só garantimos que o erro foi emitido (a função não persiste nada).
+        // Destino inválido aborta SEM remover a aba da origem: o config em
+        // memória continua intacto (a aba não pode "sumir" só porque o destino
+        // era um leaf). Sem o pré-check de destino, `mover` ficaria órfão.
+        assert_eq!(profile.tabs.len(), 2);
+        assert!(profile.tabs.iter().any(|t| t.id == mover_id));
+        assert!(profile.tabs.iter().any(|t| t.id == dest_id));
     }
 
     #[test]
