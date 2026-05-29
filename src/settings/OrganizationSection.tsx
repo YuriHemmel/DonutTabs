@@ -4,7 +4,6 @@ import type { Profile } from "../core/types/Profile";
 import type { Tab } from "../core/types/Tab";
 import { paginate, type Page } from "../donut/pagination";
 import {
-  flatDropIndex,
   moveInOrder,
   swapInOrder,
   pageStartIndices,
@@ -196,14 +195,15 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({
             const targetTabId = drag.orderedIds[pageStart + target.slot];
             newIds = swapInOrder(drag.orderedIds, drag.tabId, targetTabId);
           } else {
-            // Soltou na fatia "+" → move pro fim daquela página.
-            const toFlat = flatDropIndex(
-              meta.orderedTabs,
-              itemsPerPage,
-              meta.pageIndex,
-              meta.pageTabsLength,
+            // Soltou na fatia "+" → move pro fim do ring. O "+" só aparece na
+            // última página, então o destino é sempre o fim da lista (inclusive
+            // quando a contagem é múltipla exata de itemsPerPage e a última
+            // página é "só +").
+            newIds = moveInOrder(
+              drag.orderedIds,
+              drag.fromFlatIndex,
+              meta.orderedTabs.length,
             );
-            newIds = moveInOrder(drag.orderedIds, drag.fromFlatIndex, toFlat);
           }
           // Só persiste se mudou de fato.
           if (newIds.join() !== drag.orderedIds.join()) {

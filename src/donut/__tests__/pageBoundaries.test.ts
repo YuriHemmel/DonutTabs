@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   pageStartIndices,
-  flatDropIndex,
   moveInOrder,
   swapInOrder,
 } from "../pageBoundaries";
@@ -67,30 +66,6 @@ describe("pageStartIndices", () => {
   });
 });
 
-describe("flatDropIndex", () => {
-  const tabs = makeTabs(7); // pages: [0..5], [6]; starts [0, 6]
-
-  it("maps (page 0, slot 2) to flat index 2", () => {
-    expect(flatDropIndex(tabs, 6, 0, 2)).toBe(2);
-  });
-
-  it("maps (page 1, slot 0) to flat index 6", () => {
-    expect(flatDropIndex(tabs, 6, 1, 0)).toBe(6);
-  });
-
-  it("clamps a slot beyond the list length to the end", () => {
-    expect(flatDropIndex(tabs, 6, 1, 99)).toBe(tabs.length);
-  });
-
-  it("clamps a target page beyond the last page to the last start + slot", () => {
-    expect(flatDropIndex(tabs, 6, 99, 0)).toBe(6);
-  });
-
-  it("clamps a negative slot to the page start", () => {
-    expect(flatDropIndex(tabs, 6, 1, -3)).toBe(6);
-  });
-});
-
 describe("moveInOrder", () => {
   const ids = ["a", "b", "c", "d"];
 
@@ -115,6 +90,13 @@ describe("moveInOrder", () => {
   it("treats a drop index past the removal point correctly", () => {
     // remove "a" (idx 0) → [b,c,d]; insert at flat target 3 (end)
     expect(moveInOrder(ids, 0, 3)).toEqual(["b", "c", "d", "a"]);
+  });
+
+  it("moves to the end when toIndex equals the array length (drop on '+')", () => {
+    // OrganizationSection usa `length` como destino do drop na fatia "+",
+    // que sempre representa o fim do ring — inclusive quando a contagem é
+    // múltipla exata de itemsPerPage e a última página é "só +".
+    expect(moveInOrder(ids, 1, ids.length)).toEqual(["a", "c", "d", "b"]);
   });
 });
 

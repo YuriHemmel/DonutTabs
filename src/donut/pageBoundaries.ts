@@ -29,27 +29,6 @@ export function pageStartIndices(tabs: Tab[], itemsPerPage: number): number[] {
 }
 
 /**
- * Converte um destino de drop (página alvo + posição dentro da página) num
- * índice achatado de inserção no array ordenado de abas. Clampa a página ao
- * intervalo válido e o slot ao intervalo `[inícioDaPágina, comprimento]`.
- *
- * O resultado é a posição FINAL desejada da aba arrastada no array ordenado;
- * compor com `moveInOrder` produz a permutação a persistir via `reorderTabs`.
- */
-export function flatDropIndex(
-  tabs: Tab[],
-  itemsPerPage: number,
-  targetPage: number,
-  slotInPage: number,
-): number {
-  const starts = pageStartIndices(tabs, itemsPerPage);
-  const page = Math.min(Math.max(0, targetPage), starts.length - 1);
-  const start = starts[page];
-  const raw = start + slotInPage;
-  return Math.min(Math.max(start, raw), tabs.length);
-}
-
-/**
  * Remove o id em `fromIndex` e o reinsere em `toIndex` (índice de inserção no
  * array JÁ sem o item removido), clampado a `[0, n-1]`. `from === to` devolve
  * uma cópia inalterada. Pure pra teste; é a permutação que vai pro
